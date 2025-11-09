@@ -124,7 +124,8 @@
     <div class="p-6 space-y-6">
 
       {# ===== لوحة تحكم المدير العام ===== #}
-      {% if request.user.is_authenticated and request.user.role == 'admin' or request.user.is_authenticated and request.user.is_staff %}
+      {% if request.user.is_authenticated %}
+        {% if request.user.role == 'admin' or request.user.is_staff %}
         <div class="rounded-xl border bg-amber-50 dark:bg-amber-900/20 p-4">
           <div class="flex items-center justify-between gap-3">
             <div class="text-slate-800 dark:text-amber-200 font-semibold">لوحة تحكم المدير العام</div>
@@ -149,6 +150,7 @@
           </div>
           <p class="text-xs text-slate-600 dark:text-slate-400 mt-2">هذه الإجراءات متاحة للمدير العام فقط.</p>
         </div>
+        {% endif %}
       {% endif %}
 
       {# 🟦 تقديم عرض #}
