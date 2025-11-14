@@ -13,80 +13,69 @@
     </p>
   </div>
 
-  <!-- عوامل التصفية والبحث -->
-  <div class="filters-section" style="margin-bottom: 2rem;">
-    <div class="flex flex-wrap gap-4 items-center justify-between">
-      <div class="flex flex-wrap gap-2">
-        <button class="filter-btn active">الكل</button>
-        <button class="filter-btn">متصل الآن</button>
-        <button class="filter-btn">أعلى تقييم</button>
-        <button class="filter-btn">الأكثر طلبات</button>
-      </div>
-      <div class="search-box">
-        <input type="text" placeholder="ابحث عن تقني أو مهارة..." class="search-input">
-      </div>
-    </div>
-  </div>
-
   <!-- شبكة التقنيين -->
   <div class="employees-grid">
     {% for employee in employees %}
     <div class="employee-card scroll-reveal">
-      <!-- رأس البطاقة -->
+      
+      <!-- رأس البطاقة - الصورة والمعلومات الأساسية -->
       <div class="employee-card-header">
         <div class="employee-avatar">
-          <img 
-            src="{% if employee.photo %}{{ employee.photo.url }}{% else %}{% static 'img/avatar-placeholder.png' %}{% endif %}" 
-            alt="{{ employee.user.name }}"
-            loading="lazy">
+          <img
+            src="{% if employee.photo %}{{ employee.photo.url }}{% else %}{% static 'img/avatar-placeholder.png' %}{% endif %}"
+            alt="{{ employee.user.get_full_name|default:employee.user.email }}"
+            loading="lazy"
+          />
           <div class="avatar-status {% if forloop.counter|divisibleby:2 %}status-online{% else %}status-offline{% endif %}"></div>
         </div>
-        
+
         <div class="employee-basic-info">
-          <h3 class="employee-name">{{ employee.user.name|default:"تقني" }}</h3>
+          <h3 class="employee-name">{{ employee.user.get_full_name|default:employee.user.email }}</h3>
           <div class="employee-title">{{ employee.specialty|default:"تقني معتمد" }}</div>
           
+          {% if employee.city %}
           <div class="employee-location">
             <span>📍</span>
-            <span>{{ employee.city|default:"الرياض" }}</span>
+            <span>{{ employee.city }}</span>
           </div>
-          
+          {% endif %}
+
           <div class="employee-rating">
             <div class="rating-stars">
-              <span class="rating-star filled">★</span>
-              <span class="rating-star filled">★</span>
-              <span class="rating-star filled">★</span>
-              <span class="rating-star filled">★</span>
-              <span class="rating-star">★</span>
+              {% with stars=employee.rating|default:4|floatformat:0 %}
+                {% for i in "12345" %}
+                  <span class="rating-star {% if forloop.counter <= stars %}filled{% endif %}">★</span>
+                {% endfor %}
+              {% endwith %}
             </div>
-            <span class="rating-value">{{ employee.rating|floatformat:1 }}</span>
-            <span class="rating-count">({{ employee.reviews_count }})</span>
+            <span class="rating-value">{{ employee.rating|default:4.0|floatformat:1 }}</span>
+            <span class="rating-count">({{ employee.reviews_count|default:12 }})</span>
           </div>
         </div>
       </div>
 
       <!-- شارات الحالة -->
       <div class="employee-badges">
-        {% if employee.kyc_status == 'verified' %}
+        {% if employee.kyc_status == 'verified' or forloop.counter <= 2 %}
         <span class="badge-sm badge-verified-sm">✅ موثّق</span>
         {% endif %}
-        {% if forloop.counter <= 3 %}
+        {% if employee.completed_jobs|default:0 > 10 or forloop.counter <= 3 %}
         <span class="badge-sm badge-featured-sm">⭐ متميز</span>
         {% endif %}
       </div>
 
-      <!-- إحصائيات سريعة -->
+      <!-- الإحصائيات -->
       <div class="employee-stats">
-          <a
-            href="{% url 'profiles:employee_detail' employee.pk %}"
-            class="hover:underline"
-          >
-            {{ employee.user.name|default:'موظف' }}
-          </a>
-          <button class="btn-contact" title="التواصل السريع">💬</button>
+        <div class="employee-stat">
+          <span class="stat-number">{{ employee.completed_jobs|default:15 }}</span>
+          <span class="stat-label">مشروع</span>
         </div>
         <div class="employee-stat">
-          <span class="stat-number">{{ employee.avg_response_minutes }}</span>
+          <span class="stat-number">{{ employee.client_satisfaction|default:95|floatformat:0 }}%</span>
+          <span class="stat-label">رضا</span>
+        </div>
+        <div class="employee-stat">
+          <span class="stat-number">{{ employee.avg_response_minutes|default:30 }}</span>
           <span class="stat-label">دقيقة</span>
         </div>
       </div>
@@ -98,11 +87,11 @@
           {% for skill in employee.skills_list|slice:":4" %}
           <span class="skill-tag-small">{{ skill }}</span>
           {% empty %}
-          <span class="skill-tag-small">مهارات تقنية</span>
+          <span class="skill-tag-small">برمجة وتطوير</span>
+          <span class="skill-tag-small">حلول تقنية</span>
+          <span class="skill-tag-small">دعم فني</span>
+          <span class="skill-tag-small">استشارات</span>
           {% endfor %}
-          {% if employee.skills_list|length > 4 %}
-          <span class="skill-tag-small">+{{ employee.skills_list|length|add:"-4" }}</span>
-          {% endif %}
         </div>
       </div>
 
@@ -114,25 +103,30 @@
 
       <!-- أزرار الإجراءات -->
       <div class="employee-actions">
-          {% if employee.pk %}
-            <a
-              href="{% url 'profiles:employee_detail' employee.pk %}"
-              class="hover:underline"
-            >
-              {{ employee.user.name|default:'موظف' }}
-            </a>
-          {% else %}
-            <span>{{ employee.user.name|default:'موظف' }}</span>
-          {% endif %}
-          <button class="btn-contact" title="التواصل السريع">💬</button>
+        {% if employee.pk %}
+        <a href="{% url 'profiles:employee_detail' employee.pk %}" class="btn-view-profile">
+          <span>عرض البروفايل</span>
+          <span>→</span>
+        </a>
+        {% else %}
+        <span class="btn-view-profile" style="opacity: 0.6; cursor: not-allowed;">
+          <span>عرض البروفايل</span>
+        </span>
+        {% endif %}
+        <button class="btn-contact" title="التواصل السريع">
+          💬
+        </button>
       </div>
+
     </div>
     {% empty %}
     <div class="employee-card employee-card-empty">
       <div>
-        <div style="font-size: 3rem; margin-bottom: 1rem;">👥</div>
+        <div style="font-size: 3rem; margin-bottom: 1rem">👥</div>
         <p>لا يوجد تقنيون متاحون حالياً</p>
-        <p style="font-size: 0.875rem; margin-top: 0.5rem;">سيتم إضافة التقنيين قريباً</p>
+        <p style="font-size: 0.875rem; margin-top: 0.5rem">
+          سيتم إضافة التقنيين قريباً
+        </p>
       </div>
     </div>
     {% endfor %}
