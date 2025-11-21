@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, Sum, Value as V
+from django.db.models import Q, Count, Sum, Value as V, DecimalField
 from django.db.models.functions import Coalesce
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -19,12 +19,22 @@ logger = logging.getLogger(__name__)
 
 # ====================== أمان وصلاحيات ======================
 
+
 def _is_admin(user) -> bool:
     """تحقق دور المدير/المالية/السوبر (RBAC مبسّط)."""
     if not getattr(user, "is_authenticated", False):
         return False
+
+    # سوبر يمر دائمًا
     if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
         return True
+
+    # أدوار من حقل role (مدير عام / أدمن / مالية ...)
+    role = getattr(user, "role", "") or ""
+    if role in ["admin", "gm", "manager", "finance"]:
+        return True
+
+    # فلاغ إضافي (لو موجود عندك)
     return bool(getattr(user, "is_system_admin", False))
 
 
@@ -35,7 +45,7 @@ def _require_admin(request) -> bool:
     return True
 
 
-# ====================== نماذج اختيارية (قد لا تتوفر) ======================
+# ====================== نماذج اختيارية ======================
 
 User = get_user_model()
 
@@ -43,7 +53,7 @@ try:
     from marketplace.models import Request, Offer  # type: ignore
 except Exception:  # pragma: no cover
     Request = None  # type: ignore
-    Offer = None    # type: ignore
+    Offer = None  # type: ignore
 
 try:
     from agreements.models import Agreement  # type: ignore
@@ -62,6 +72,7 @@ except Exception:  # pragma: no cover
 
 
 # ====================== أدوات مساعدة عامة ======================
+
 
 def _paginate(request, qs, per_page: int = 20):
     paginator = Paginator(qs, per_page)
@@ -126,46 +137,48 @@ def _only_fields(model, base: list[str]) -> list[str]:
     return [f for f in base if f and _model_has_field(model, f)]
 
 
-# ====================== لوحة المدير (لوحة تشغيل) ======================
+# ====================== لوحة المدير ======================
 
 @login_required
 def admin_dashboard(request):
     if not _require_admin(request):
         return redirect("website:home")
 
-    # إلغاء التصفية الزمنية: عرض جميع البيانات بدون حدود زمنية
-    d_from, d_to = None, None
-    ctx = {
-        "from": d_from,
-        "to": d_to,
-        "today": date.today(),  # ⬅️ متغيّر اليوم للقوالب
-        "urls": {
-            "users": _safe_reverse("accounts:user_list"),
-            "requests": _safe_reverse("marketplace:request_list"),
-            "invoices": _safe_reverse("finance:invoice_list"),
-            "agreements": _safe_reverse("agreements:list"),
-            "offers": _safe_reverse("marketplace:offers_list"),
-            "disputes": _safe_reverse("disputes:list"),
-        },
+    # لا نطبّق أي تصفية زمنية افتراضيًا في لوحة المدير
+    ctx: dict[str, object] = {
+        "from": None,
+        "to": None,
+        "today": date.today(),
         "ops_alerts": [],
     }
-    # حماية إضافية: تحويل أي متغير من نوع datetime إلى date في السياق
-    from datetime import datetime, date as dt_date
-    for k, v in ctx.items():
-        if isinstance(v, datetime):
-            ctx[k] = v.date()
+
+    # روابط (لو استخدمتها في القالب مستقبلاً)
+    ctx["urls"] = {
+        "users": _safe_reverse("accounts:user_list"),
+        "requests": _safe_reverse("marketplace:request_list"),
+        "invoices": _safe_reverse("finance:invoice_list"),
+        "agreements": _safe_reverse("agreements:list"),
+        "offers": _safe_reverse("marketplace:offers_list"),
+        "disputes": _safe_reverse("disputes:list"),
+    }
 
     # ---- المستخدمون
     try:
-        users_qs = User.objects.all().only(*_only_fields(User, ["id", "email", "name", "date_joined", "is_staff"]))
+        users_qs = User.objects.all().only(
+            *_only_fields(User, ["id", "email", "name", "date_joined", "is_staff", "role"])
+        )
         ctx["users_total"] = users_qs.count()
         ctx["users_staff"] = users_qs.filter(is_staff=True).count()
         ctx["role_counts"] = (
-            list(users_qs.values("role").annotate(c=Count("id")).order_by("-c"))
+            list(
+                users_qs.values("role")
+                .annotate(c=Count("id"))
+                .order_by("-c")
+            )
             if _model_has_field(User, "role")
             else []
         )
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         logger.exception("Users stats error: %s", e)
         ctx["users_total"] = 0
         ctx["users_staff"] = 0
@@ -176,31 +189,29 @@ def admin_dashboard(request):
     ctx["req_recent"] = []
     try:
         if Request is not None:
-            req_state = _pick_field(Request, ["state", "status", "phase"])
-            req_created = _pick_field(Request, ["created_at", "created", "submitted_at"])
-            req_assigned = _pick_field(Request, ["assigned_employee", "assigned_to"])
-            req_requester = _pick_field(Request, ["client", "created_by"])
-
-            # select_related ديناميكي على علاقة واحدة إن وجدت
-            req_base = Request.objects.all()
-            if req_requester:
-                req_base = req_base.select_related(req_requester)
-
-            # لا يوجد تصفية زمنية
-
-            if req_state:
-                agg = req_base.values(req_state).annotate(c=Count("id")).order_by("-c")
-                ctx["req_counts"] = [{"state": row.get(req_state), "c": row["c"]} for row in agg]
-
-            ctx["req_recent"] = req_base.order_by(f"-{req_created}" if req_created else "-id")[:10]
-
-            # تنبيه طلبات جديدة غير مُسنّدة
-            if req_state and req_assigned:
-                try:
-                    if req_base.filter(**{f"{req_assigned}__isnull": True, req_state: "NEW"}).exists():
-                        ctx["ops_alerts"].append("طلبات جديدة غير مُسنّدة — رجاء الإسناد.")
-                except Exception:
-                    pass
+            req_qs = Request.objects.all()
+            if _model_has_field(Request, "client"):
+                req_qs = req_qs.select_related("client")
+            status_field = _pick_field(Request, ["status", "state", "phase"])
+            req_total = 0
+            if status_field:
+                raw = (
+                    req_qs.values(status_field)
+                    .annotate(c=Count("id"))
+                    .order_by("-c")
+                )
+                ctx["req_counts"] = [
+                    {"state": row.get(status_field) or "غير محدد", "c": row["c"]}
+                    for row in raw
+                ]
+                req_total = sum(row["c"] for row in raw)
+            ctx["req_total"] = req_total
+            order_field = "created_at" if _model_has_field(Request, "created_at") else "id"
+            ctx["req_recent"] = list(req_qs.order_by(f"-{order_field}").select_related("client")[:10])
+            assigned_field = _pick_field(Request, ["assigned_employee", "assigned_to"])
+            if assigned_field and status_field:
+                if req_qs.filter(**{assigned_field + "__isnull": True, status_field: "new"}).exists():
+                    ctx["ops_alerts"].append("طلبات جديدة غير مُسنّدة — رجاء الإسناد.")
     except Exception as e:
         logger.exception("Requests stats error: %s", e)
 
@@ -210,50 +221,49 @@ def admin_dashboard(request):
     ctx["overdue_count"] = 0
     try:
         if Invoice is not None:
-            amount_f = None
-            # ابحث فقط عن أول حقل من نوع DecimalField
-            for f in ["amount", "total", "grand_total"]:
-                try:
-                    field_obj = Invoice._meta.get_field(f)
-                    if isinstance(field_obj, DecimalField):
-                        amount_f = f
-                        break
-                except Exception:
-                    continue
-            paid_flag = _pick_field(Invoice, ["is_paid", "paid"])
-            issued_f = _pick_field(Invoice, ["issued_at", "created_at", "created"])
-
-            inv_base = Invoice.objects.all()
-            # لا يوجد تصفية زمنية
-
-            if amount_f:
-                from django.db.models import DecimalField
-                totals = inv_base.aggregate(
-                    total=Coalesce(Sum(amount_f, output_field=DecimalField()), V(0)),
-                    paid=Coalesce(
-                        Sum(
-                            amount_f,
-                            filter=Q(**{paid_flag: True}) if paid_flag else Q(pk__in=[]),
-                            output_field=DecimalField(),
-                        ),
-                        V(0),
-                    ),
-                )
-                total = _money(totals["total"])
-                paid = _money(totals["paid"])
-                ctx["inv_totals"] = {"total": total, "paid": paid, "unpaid": total - paid}
-
-            fields = _only_fields(Invoice, ["id", amount_f or "", paid_flag or "", "agreement_id"])
-            if not fields:
-                fields = ["id"]
-            ctx["inv_recent"] = inv_base.select_related("agreement").only(*fields).order_by(
-                f"-{issued_f}" if issued_f else "-id"
-            )[:10]
-
-            # تنبيه تأخر (>3 أيام)
-            if issued_f and paid_flag:
-                overdue = inv_base.filter(
-                    **{paid_flag: False, f"{issued_f}__lt": date.today() - timedelta(days=3)}
+            invs = Invoice.objects.all()
+            paid_val = getattr(getattr(Invoice, "Status", None), "PAID", "paid")
+            unpaid_val = getattr(getattr(Invoice, "Status", None), "UNPAID", "unpaid")
+            # إجمالي الفواتير المدفوعة وغير المدفوعة
+            paid_total_amount = (
+                invs.filter(status=paid_val).aggregate(s=Sum("total_amount"))["s"]
+                or Decimal("0.00")
+            )
+            unpaid_total_amount = (
+                invs.filter(status=unpaid_val).aggregate(s=Sum("total_amount"))["s"]
+                or Decimal("0.00")
+            )
+            total = paid_total_amount + unpaid_total_amount
+            # VAT + عمولة المنصّة (الكل)
+            vat_all = invs.aggregate(s=Sum("vat_amount"))["s"] or Decimal("0.00")
+            fee_all = invs.aggregate(s=Sum("platform_fee_amount"))["s"] or Decimal("0.00")
+            # مبالغ محتجزة بسبب نزاعات
+            disputed_val = getattr(getattr(Request, "Status", None), "DISPUTED", "disputed")
+            inv_disputed_qs = invs.filter(agreement__request__status=disputed_val)
+            agg_dispute = inv_disputed_qs.aggregate(p=Sum("amount"), fee=Sum("platform_fee_amount"))
+            P = agg_dispute["p"] or Decimal("0.00")
+            FEE = agg_dispute["fee"] or Decimal("0.00")
+            employee_held_dispute = (P - FEE) if P >= FEE else Decimal("0.00")
+            ctx["inv_totals"] = {
+                "total": total,
+                "paid": paid_total_amount,
+                "unpaid": unpaid_total_amount,
+                "vat_total": vat_all,
+                "platform_fee_total": fee_all,
+                "disputed_total": employee_held_dispute,
+            }
+            # آخر الفواتير
+            issued_field = _pick_field(Invoice, ["issued_at", "created_at", "created"])
+            if issued_field:
+                invs = invs.order_by(f"-{issued_field}")
+            else:
+                invs = invs.order_by("-id")
+            ctx["inv_recent"] = list(invs.select_related("agreement")[:10])
+            # فواتير متأخرة (أقدم من 3 أيام وغير مدفوعة)
+            if issued_field:
+                overdue = invs.filter(
+                    status=unpaid_val,
+                    **{issued_field + "__lt": date.today() - timedelta(days=3)},
                 ).count()
                 ctx["overdue_count"] = overdue
                 if overdue:
@@ -267,21 +277,16 @@ def admin_dashboard(request):
     ctx["offers_total"] = 0
     try:
         if Agreement is not None:
-            ag_created = _pick_field(Agreement, ["created_at", "created", "approved_at"])
-            ag_status = _pick_field(Agreement, ["status", "state"])
-            ag_base = Agreement.objects.all()
-            # لا يوجد تصفية زمنية
-            ctx["agreements_total"] = ag_base.count()
-            fields = _only_fields(Agreement, ["id", "title", ag_status or ""])
-            if not fields:
-                fields = ["id"]
-            ctx["agreements_recent"] = ag_base.only(*fields).order_by(f"-{ag_created}" if ag_created else "-id")[:10]
-
+            ag_qs = Agreement.objects.select_related("request", "employee").all()
+            created_field = _pick_field(Agreement, ["created_at", "approved_at", "created"])
+            if created_field:
+                ag_qs = ag_qs.order_by(f"-{created_field}")
+            else:
+                ag_qs = ag_qs.order_by("-id")
+            ctx["agreements_total"] = ag_qs.count()
+            ctx["agreements_recent"] = list(ag_qs[:5])
         if Offer is not None:
-            off_created = _pick_field(Offer, ["created_at", "created"])
-            off_base = Offer.objects.all()
-            # لا يوجد تصفية زمنية
-            ctx["offers_total"] = off_base.count()
+            ctx["offers_total"] = Offer.objects.count()
     except Exception as e:
         logger.exception("Agreements/Offers stats error: %s", e)
 
@@ -289,24 +294,23 @@ def admin_dashboard(request):
     ctx["disputes_recent"] = []
     try:
         if Dispute is not None:
-            d_created = _pick_field(Dispute, ["created_at", "created", "opened_at"])
-            d_status = _pick_field(Dispute, ["status", "state"])
-            fields = _only_fields(Dispute, ["id", d_status or "", "title", "note"])
-            if not fields:
-                fields = ["id"]
-            d_base = Dispute.objects.all()
-            # لا يوجد تصفية زمنية
-            ctx["disputes_recent"] = d_base.only(*fields).order_by(f"-{d_created}" if d_created else "-id")[:10]
-
-            # SLA: نزاعات عمرها >3 أيام
-            if d_created:
-                aged = d_base.filter(**{f"{d_created}__lt": date.today() - timedelta(days=3)}).count()
+            d_qs = Dispute.objects.all()
+            opened_field = _pick_field(Dispute, ["opened_at", "created_at", "created"])
+            if opened_field:
+                d_qs = d_qs.order_by(f"-{opened_field}")
+            else:
+                d_qs = d_qs.order_by("-id")
+            ctx["disputes_recent"] = list(d_qs[:10])
+            if opened_field:
+                aged = d_qs.filter(
+                    **{opened_field + "__lt": date.today() - timedelta(days=3)}
+                ).count()
                 if aged:
                     ctx["ops_alerts"].append(f"نزاعات متأخرة للمراجعة: {aged}.")
     except Exception as e:
         logger.exception("Disputes stats error: %s", e)
 
-    # أفعال سريعة (تعتمد توافر الروابط)
+    # أفعال سريعة (يمكنك تعديلها لاحقًا)
     ctx["quick"] = [
         {"label": "إدارة الفواتير", "url": ctx["urls"]["invoices"], "icon": "fa-receipt"},
         {"label": "عرض الطلبات", "url": ctx["urls"]["requests"], "icon": "fa-list"},
@@ -319,6 +323,7 @@ def admin_dashboard(request):
 
 
 # ====================== إدارة الموظفين ======================
+
 
 @login_required
 def employees_list(request):
@@ -352,6 +357,7 @@ def employees_list(request):
 
 # ====================== إدارة العملاء ======================
 
+
 @login_required
 def clients_list(request):
     if not _require_admin(request):
@@ -384,13 +390,18 @@ def clients_list(request):
 
 # ====================== إدارة الطلبات ======================
 
+
 @login_required
 def requests_list(request):
     if not _require_admin(request):
         return redirect("website:home")
     if Request is None:
         messages.warning(request, "تطبيق الطلبات غير متاح.")
-        return render(request, "dashboard/requests.html", {"page_obj": None, "q": "", "state": "", "today": date.today()})
+        return render(
+            request,
+            "dashboard/requests.html",
+            {"page_obj": None, "q": "", "state": "", "today": date.today()},
+        )
 
     q = (request.GET.get("q") or "").strip()
     wanted_state = (request.GET.get("state") or "").strip()
@@ -400,47 +411,49 @@ def requests_list(request):
     req_created = _pick_field(Request, ["created_at", "created", "submitted_at"])
     req_requester = _pick_field(Request, ["client", "created_by"])
 
-    # select_related ديناميكي
     qs = Request.objects.all()
     if req_requester:
         qs = qs.select_related(req_requester)
 
-    # بحث
     if q:
         filters = Q(title__icontains=q) | Q(description__icontains=q)
         if _model_has_field(Request, "short_code"):
             filters |= Q(short_code__icontains=q)
 
-        # بحث على صاحب الطلب إن وُجد
         if req_requester:
-            # نفترض أن جهة المستخدم هي User؛ نتحقق من الحقول المتاحة على User
             if _model_has_field(User, "username"):
                 filters |= Q(**{f"{req_requester}__username__icontains": q})
             if _model_has_field(User, "email"):
                 filters |= Q(**{f"{req_requester}__email__icontains": q})
             if _model_has_field(User, "name"):
                 filters |= Q(**{f"{req_requester}__name__icontains": q})
-
         qs = qs.filter(filters)
 
-    # حالة
     if wanted_state and req_state:
         qs = qs.filter(**{req_state: wanted_state})
 
-    # نطاق الزمن
     if req_created:
         qs = qs.filter(**{f"{req_created}__date__gte": d_from, f"{req_created}__date__lte": d_to})
 
-    # Ensure select_related field is not deferred in .only()
     base_fields = ["id", "title", req_state or ""]
     if req_requester:
         base_fields.append(req_requester)
     fields = _only_fields(Request, base_fields)
     if not fields:
         fields = ["id"]
+    # استخدم select_related لجلب بيانات العميل
+    if req_requester:
+        qs = qs.select_related(req_requester)
     qs = qs.only(*fields).order_by(f"-{req_created}" if req_created else "-id")
 
     page_obj = _paginate(request, qs, per_page=20)
+    # تمرير اسم العميل مع كل طلب
+    for r in page_obj:
+        if hasattr(r, req_requester):
+            client_obj = getattr(r, req_requester)
+            r.client_name = getattr(client_obj, "name", None) or getattr(client_obj, "email", None) or str(client_obj)
+        else:
+            r.client_name = "-"
     return render(
         request,
         "dashboard/requests.html",
@@ -450,13 +463,18 @@ def requests_list(request):
 
 # ====================== إدارة النزاعات ======================
 
+
 @login_required
 def disputes_list(request):
     if not _require_admin(request):
         return redirect("website:home")
     if Dispute is None:
         messages.warning(request, "تطبيق النزاعات غير متاح.")
-        return render(request, "dashboard/disputes.html", {"page_obj": None, "q": "", "status": "", "today": date.today()})
+        return render(
+            request,
+            "dashboard/disputes.html",
+            {"page_obj": None, "q": "", "status": "", "today": date.today()},
+        )
 
     q = (request.GET.get("q") or "").strip()
     status_val = (request.GET.get("status") or "").strip()
@@ -471,7 +489,9 @@ def disputes_list(request):
         if q.isdigit():
             qs = qs.filter(request_id=int(q))
         else:
-            qs = qs.filter(Q(title__icontains=q) | Q(details__icontains=q) | Q(reason__icontains=q))
+            qs = qs.filter(
+                Q(title__icontains=q) | Q(details__icontains=q) | Q(reason__icontains=q)
+            )
 
     if status_val and d_status:
         qs = qs.filter(**{d_status: status_val})

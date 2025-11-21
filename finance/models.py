@@ -229,13 +229,13 @@ class Invoice(models.Model):
         default=Decimal("0.00"),
     )
 
-    # عمولة المنصّة (نسبة) — تُضبط تلقائيًا من FinanceSettings إن لم تُمرّر
+    # جميع الحقول المالية تعتمد فقط على المبلغ المدخل (amount)
     platform_fee_percent = models.DecimalField(
         "نسبة المنصّة",
         max_digits=5,
         decimal_places=4,
-        default=Decimal("0.10"),
-        help_text="مثال: 0.10 = 10٪. تُحتسب على P.",
+        default=Decimal("0.00"),
+        help_text="تم تعطيل الحسابات التلقائية."
     )
     platform_fee_amount = models.DecimalField(
         "قيمة عمولة المنصّة",
@@ -243,14 +243,12 @@ class Invoice(models.Model):
         decimal_places=2,
         default=Decimal("0.00"),
     )
-
-    # VAT (نسبة) — تُضبط تلقائيًا من FinanceSettings إن لم تُمرّر
     vat_percent = models.DecimalField(
         "نسبة الضريبة VAT",
         max_digits=5,
         decimal_places=4,
-        default=Decimal("0.15"),
-        help_text="مثال: 0.15 = 15٪. تُحتسب على (P + عمولة المنصّة).",
+        default=Decimal("0.00"),
+        help_text="تم تعطيل الحسابات التلقائية."
     )
     vat_amount = models.DecimalField(
         "قيمة الضريبة",
@@ -258,21 +256,19 @@ class Invoice(models.Model):
         decimal_places=2,
         default=Decimal("0.00"),
     )
-
-    # مشتقات
-    subtotal = models.DecimalField(  # P + platform_fee_amount
+    subtotal = models.DecimalField(
         "المجموع الفرعي",
         max_digits=12,
         decimal_places=2,
         default=Decimal("0.00"),
-        help_text="P + عمولة المنصّة",
+        help_text="تم تعطيل الحسابات التلقائية."
     )
-    total_amount = models.DecimalField(  # subtotal + VAT
+    total_amount = models.DecimalField(
         "الإجمالي المستحق",
         max_digits=12,
         decimal_places=2,
         default=Decimal("0.00"),
-        help_text="المبلغ النهائي الذي يراه العميل ويدفعه",
+        help_text="المبلغ النهائي الذي يراه العميل ويدفعه (المبلغ المدخل فقط)",
     )
 
     # -------- الحالة والتواريخ --------
@@ -418,28 +414,23 @@ class Invoice(models.Model):
 
     def recompute_totals(self) -> None:
         """
-        يعيد احتساب:
-        - platform_fee_amount = P × F
-        - subtotal = P + platform_fee_amount
-        - vat_amount = VAT × subtotal
-        - total_amount = subtotal + vat_amount
+        حساب تلقائي للحقول المالية:
+        - platform_fee_amount = amount × platform_fee_percent
+        - vat_amount = amount × vat_percent
+        - total_amount = amount + platform_fee_amount + vat_amount
         """
-        P = self._as_decimal(self.amount)
-        F = self._as_decimal(self.platform_fee_percent)
-        V = self._as_decimal(self.vat_percent)
-
-        fee = self._q2(P * F)
-        subtotal = self._q2(P + fee)
-        vat = self._q2(subtotal * V)
-        total = self._q2(subtotal + vat)
-
-        self.platform_fee_amount = fee
-        self.subtotal = subtotal
-        self.vat_amount = vat
-        self.total_amount = total
+        amount = self._as_decimal(self.amount)
+        platform_fee_percent = self._as_decimal(self.platform_fee_percent)
+        vat_percent = self._as_decimal(self.vat_percent)
+        self.platform_fee_amount = (amount * platform_fee_percent).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.subtotal = amount
+        self.vat_amount = (amount * vat_percent).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.total_amount = (amount + self.platform_fee_amount + self.vat_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def recalc_and_save(self, *, update_timestamps: bool = True) -> None:
-        """أعد الحساب واحفظ بسرعة (مفيد بعد تعديل amount أو النِّسب)."""
+        """
+        تم تعطيل أي حساب تلقائي. جميع الحقول المالية تعتمد فقط على المبلغ المدخل (amount).
+        """
         self.recompute_totals()
         fields = ["platform_fee_amount", "subtotal", "vat_amount", "total_amount"]
         if update_timestamps and hasattr(self, "updated_at"):
@@ -481,53 +472,9 @@ class Invoice(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        - يقرأ النِّسب تلقائيًا من FinanceSettings عند الإنشاء إذا لم تُمرّر صراحة.
-        - يطبّع الدقة العشرية ويعيد احتساب الإجماليات دائمًا قبل الحفظ.
-        - يضبط paid_at عند التحول إلى حالة مدفوعة.
+        تم تعطيل أي منطق حسابي تلقائي. جميع الحقول المالية تعتمد فقط على المبلغ المدخل (amount).
         """
-        creating = self._state.adding
-
-        # في حالة الإنشاء: لو لم تُمرّر نسب مخصصة، استوردها من FinanceSettings
-        if creating:
-            fee, vat = FinanceSettings.current_rates()
-            # لا نستبدل القيم لو تم تمرير قيم مختلفة صراحة قبل save()
-            if self.platform_fee_percent is None or self.platform_fee_percent == Decimal("0.10"):
-                self.platform_fee_percent = fee
-            if self.vat_percent is None or self.vat_percent == Decimal("0.15"):
-                self.vat_percent = vat
-
-        # تطبيع الدقة العشرية
-        for fld in (
-            "amount",
-            "platform_fee_percent",
-            "platform_fee_amount",
-            "vat_percent",
-            "vat_amount",
-            "subtotal",
-            "total_amount",
-        ):
-            val = getattr(self, fld, None)
-            if isinstance(val, Decimal):
-                if fld.endswith("_percent"):
-                    # دع النسبة بدقتها (حتى 4 منازل) ولا تقرّب إلى 0.01
-                    setattr(self, fld, self._q4(val))
-                else:
-                    setattr(self, fld, self._q2(val))
-
-        # ربط agreement تلقائيًا عند تمرير milestone
-        if self.milestone_id and not self.agreement_id:
-            self.agreement_id = self.milestone.agreement_id
-
-        # احتساب الإجماليات دائمًا قبل الحفظ (يحافظ على التوافق الخلفي)
         self.recompute_totals()
-
-        # إذا الحالة مدفوعة ولم يُحدد paid_at؛ اضبطه الآن
-        if self.status == self.Status.PAID and self.paid_at is None:
-            self.paid_at = timezone.now()
-
-        # تحقق صلاحية الحقول
-        self.full_clean(exclude=None)
-
         return super().save(*args, **kwargs)
 
     # ======================

@@ -226,10 +226,29 @@ def detail(request: HttpRequest, pk: int) -> HttpResponse:
         messages.error(request, "غير مصرح بعرض هذه الاتفاقية.")
         return redirect("marketplace:request_detail", pk=req.pk)
 
+    # حساب breakdown وcfg بنفس منطق شاشة التعديل
+    from finance.utils import calculate_financials_from_net, get_finance_cfg
+    net_amount = ag.total_amount or 0
+    if not net_amount or net_amount == 0:
+        breakdown = {
+            "net_for_employee": 0,
+            "platform_fee": 0,
+            "vat_amount": 0,
+            "client_total": 0,
+        }
+        cfg = None
+    else:
+        cfg = get_finance_cfg()
+        breakdown = calculate_financials_from_net(
+            net_amount,
+            platform_fee_percent=cfg.platform_fee_percent,
+            vat_rate=cfg.vat_rate,
+        )
+
     return render(
         request,
         "agreements/agreement_detail.html",
-        {"agreement": ag, "req": req, "rejection_reason": ag.rejection_reason},
+        {"agreement": ag, "req": req, "rejection_reason": ag.rejection_reason, "breakdown": breakdown, "cfg": cfg},
     )
 
 
@@ -244,53 +263,97 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
         messages.error(request, "غير مصرح بتحرير الاتفاقية.")
         return redirect("agreements:detail", pk=ag.pk)
 
+
+    # مزامنة مبلغ الاتفاقية مع العرض المختار دائماً
+    selected_offer = getattr(req, "selected_offer", None)
+    if selected_offer and ag.total_amount != selected_offer.proposed_price:
+        ag.total_amount = selected_offer.proposed_price
+        ag.save(update_fields=["total_amount", "updated_at"] if hasattr(ag, "updated_at") else ["total_amount"])
+
+    from finance.utils import calculate_financials_from_net, get_finance_cfg
+    net_amount = ag.total_amount or 0
+    if not net_amount or net_amount == 0:
+        breakdown = {
+            "net_for_employee": 0,
+            "platform_fee": 0,
+            "vat_amount": 0,
+            "client_total": 0,
+        }
+    else:
+        cfg = get_finance_cfg()
+        breakdown = calculate_financials_from_net(
+            net_amount,
+            platform_fee_percent=cfg.platform_fee_percent,
+            vat_rate=cfg.vat_rate,
+        )
+
     if request.method == "POST":
-        action = (request.POST.get("action") or "save").strip()  # save | send
-        form = AgreementEditForm(request.POST, instance=ag)
-        formset: BaseFormSet = MilestoneFormSet(request.POST, instance=ag)
+        post_data = request.POST.copy()
+        if not post_data.get("title"):
+            post_data["title"] = req.title or f"اتفاقية طلب #{req.pk}"
+        action = (post_data.get("action") or "save").strip()  # save | send
+        form = AgreementEditForm(post_data, instance=ag)
+        formset: BaseFormSet = MilestoneFormSet(post_data, instance=ag)
+        extra_errors = []
+        try:
+            if form.is_valid() and formset.is_valid():
+                # تحقق من تساوي مجموع الأيام بناءً على القيمة المدخلة
+                duration_days = form.cleaned_data["duration_days"]
+                milestones_days = sum([
+                    f.cleaned_data.get("due_days", 0)
+                    for f in formset.forms
+                    if f.cleaned_data and not f.cleaned_data.get("DELETE")
+                ])
+                if duration_days != milestones_days:
+                    form.add_error(None, "مجموع مدة الأيام المتفق عليها يجب أن يساوي مجموع مدة الأيام في جميع المراحل.")
+                else:
+                    try:
+                        ag = form.save()
+                        _save_formset_strict(formset, ag)
+                    except Exception as e:
+                        extra_errors.append(str(e))
+                        raise
 
-        if form.is_valid() and formset.is_valid():
-            # حفظ الاتفاقية
-            ag = form.save()
+                    if action == "send":
+                        updates = ["status"]
+                        ag.status = Agreement.Status.PENDING
+                        if hasattr(ag, "updated_at"):
+                            ag.updated_at = timezone.now()
+                            updates.append("updated_at")
+                        ag.save(update_fields=updates)
+                        _update_request_status_on_send(req)
+                        messages.success(request, "تم حفظ الاتفاقية وإرسالها للعميل.")
+                        return redirect("agreements:detail", pk=ag.pk)
 
-            # حفظ صارم للمراحل (حذف/إضافة فعلي)
-            _save_formset_strict(formset, ag)
-
-            # حالة الإرسال/المسودة
-            if action == "send":
-                updates = ["status"]
-                ag.status = Agreement.Status.PENDING
-                if hasattr(ag, "updated_at"):
-                    ag.updated_at = timezone.now()
-                    updates.append("updated_at")
-                ag.save(update_fields=updates)
-                _update_request_status_on_send(req)
-                messages.success(request, "تم حفظ الاتفاقية وإرسالها للعميل.")
-                return redirect("agreements:detail", pk=ag.pk)
-
-            updates = ["status"]
-            ag.status = Agreement.Status.DRAFT
-            if hasattr(ag, "updated_at"):
-                ag.updated_at = timezone.now()
-                updates.append("updated_at")
-            ag.save(update_fields=updates)
-            messages.success(request, "تم حفظ التعديلات (مسودة).")
-            return redirect("agreements:edit", pk=ag.pk)
-
+                    updates = ["status"]
+                    ag.status = Agreement.Status.DRAFT
+                    if hasattr(ag, "updated_at"):
+                        ag.updated_at = timezone.now()
+                        updates.append("updated_at")
+                    ag.save(update_fields=updates)
+                    messages.success(request, "تم حفظ التعديلات (مسودة).")
+                    return redirect("agreements:edit", pk=ag.pk)
+        except Exception as e:
+            # أضف الخطأ إلى الأخطاء العامة للنموذج
+            form.add_error(None, f"خطأ أثناء الحفظ: {e}")
+        if extra_errors:
+            for err in extra_errors:
+                form.add_error(None, err)
         messages.error(request, "لم يتم الحفظ. الرجاء تصحيح الأخطاء.")
         return render(
             request,
             "agreements/agreement_form.html",
-            {"agreement": ag, "req": req, "form": form, "formset": formset},
+            {"agreement": ag, "req": req, "form": form, "formset": formset, "breakdown": breakdown},
         )
 
     # GET
-    form = AgreementEditForm(instance=ag)
+    initial = {"title": req.title or f"اتفاقية طلب #{req.pk}"}
+    form = AgreementEditForm(instance=ag, initial=initial)
     formset: BaseFormSet = MilestoneFormSet(instance=ag)
     return render(
         request,
         "agreements/agreement_form.html",
-        {"agreement": ag, "req": req, "form": form, "formset": formset},
+        {"agreement": ag, "req": req, "form": form, "formset": formset, "breakdown": breakdown},
     )
 
 
@@ -484,34 +547,22 @@ def milestone_approve(request: HttpRequest, milestone_id: int, *args, **kwargs) 
         _set_db_field(ms, "status", Milestone.Status.APPROVED, ms_updates)
         ms.save(update_fields=ms_updates or None)
 
-        _touch_request_in_progress(req)
-
-        amount = getattr(ms, "amount", None) or Decimal("0.00")
-        inv, created = Invoice.objects.get_or_create(
-            milestone=ms,
-            defaults={
-                "agreement": ms.agreement,
-                "amount": amount,
-                "status": getattr(Invoice.Status, "UNPAID", "unpaid"),
-            },
-        )
-        inv_updates: List[str] = []
-        if hasattr(inv, "issued_at") and not getattr(inv, "issued_at", None):
-            inv.issued_at = timezone.now()
-            inv_updates.append("issued_at")
-        if hasattr(inv, "due_at") and not getattr(inv, "due_at", None):
-            base_time = getattr(inv, "issued_at", None) or timezone.now()
-            inv.due_at = base_time + timedelta(days=3)
-            inv_updates.append("due_at")
-        if inv_updates:
-            inv.save(update_fields=inv_updates)
+        # لا تحول الطلب إلى قيد التنفيذ إلا إذا كانت فاتورة الاتفاقية مدفوعة
+        agreement = getattr(ms, "agreement", None)
+        invoice = getattr(agreement, "invoice", None) if agreement else None
+        invoice_paid = False
+        if invoice and hasattr(invoice, "status"):
+            PAID_VAL = getattr(getattr(invoice.__class__, "Status", None), "PAID", "paid")
+            invoice_paid = (getattr(invoice, "status", None) or "").lower() == (PAID_VAL or "").lower()
+        if invoice_paid:
+            _touch_request_in_progress(req)
 
     except Exception as exc:
         logger.exception("milestone_approve failed (milestone_id=%s): %s", milestone_id, exc)
         messages.error(request, "حدث خطأ غير متوقع أثناء اعتماد المرحلة.")
         return _redirect_to_request_detail(ms)
 
-    messages.success(request, "تم اعتماد المرحلة وإصدار الفاتورة المستحقة.")
+    messages.success(request, "تم اعتماد المرحلة.")
     return _redirect_to_request_detail(ms)
 
 
@@ -570,43 +621,75 @@ def agreement_edit(request: HttpRequest, request_id: int) -> HttpResponse:
         },
     )
 
+
+    from finance.utils import calculate_financials_from_net, get_finance_cfg
+    # استخدم دائماً مبلغ الاتفاقية الرسمي ونسب المالية من الإعدادات
+    net_amount = ag.total_amount or 0
+    if not net_amount or net_amount == 0:
+        breakdown = {
+            "net_for_employee": 0,
+            "platform_fee": 0,
+            "vat_amount": 0,
+            "client_total": 0,
+        }
+    else:
+        cfg = get_finance_cfg()
+        breakdown = calculate_financials_from_net(
+            net_amount,
+            platform_fee_percent=cfg.platform_fee_percent,
+            vat_rate=cfg.vat_rate,
+        )
+
     if request.method == "POST":
         action = (request.POST.get("action") or "save").strip()
         form = AgreementEditForm(request.POST, instance=ag)
         formset: BaseFormSet = MilestoneFormSet(request.POST, instance=ag)
         if form.is_valid() and formset.is_valid():
-            ag = form.save()
-            _save_formset_strict(formset, ag)
+            duration_days = ag.duration_days if not hasattr(form, "cleaned_data") or "duration_days" not in form.cleaned_data else form.cleaned_data["duration_days"]
+            milestones_days = sum([
+                f.cleaned_data.get("due_days", 0)
+                for f in formset.forms
+                if f.cleaned_data and not f.cleaned_data.get("DELETE")
+            ])
+            if duration_days != milestones_days:
+                form.add_error(None, "مجموع مدة الأيام المتفق عليها يجب أن يساوي مجموع مدة الأيام في جميع المراحل.")
+            else:
+                ag = form.save()
+                _save_formset_strict(formset, ag)
 
-            if action == "send":
+                if action == "send":
+                    updates = ["status"]
+                    ag.status = Agreement.Status.PENDING
+                    if hasattr(ag, "updated_at"):
+                        ag.updated_at = timezone.now()
+                        updates.append("updated_at")
+                    ag.save(update_fields=updates)
+                    _update_request_status_on_send(req)
+                    messages.success(request, "تم إرسال الاتفاقية للعميل.")
+                    return redirect("marketplace:request_detail", pk=req.pk)
+
                 updates = ["status"]
-                ag.status = Agreement.Status.PENDING
+                ag.status = Agreement.Status.DRAFT
                 if hasattr(ag, "updated_at"):
                     ag.updated_at = timezone.now()
                     updates.append("updated_at")
                 ag.save(update_fields=updates)
-                _update_request_status_on_send(req)
-                messages.success(request, "تم إرسال الاتفاقية للعميل.")
-                return redirect("marketplace:request_detail", pk=req.pk)
-
-            updates = ["status"]
-            ag.status = Agreement.Status.DRAFT
-            if hasattr(ag, "updated_at"):
-                ag.updated_at = timezone.now()
-                updates.append("updated_at")
-            ag.save(update_fields=updates)
-            messages.success(request, "تم الحفظ (مسودة).")
-            return redirect("agreements:agreement_edit", request_id=req.pk)
+                messages.success(request, "تم الحفظ (مسودة).")
+                return redirect("agreements:agreement_edit", request_id=req.pk)
 
         messages.error(request, "لم يتم الحفظ. تأكد من صحة الحقول.")
-        return redirect("agreements:agreement_edit", request_id=req.pk)
+        return render(
+            request,
+            "agreements/agreement_form.html",
+            {"agreement": ag, "req": req, "form": form, "formset": formset, "breakdown": breakdown},
+        )
 
     form = AgreementEditForm(instance=ag)
     formset: BaseFormSet = MilestoneFormSet(instance=ag)
     return render(
         request,
         "agreements/agreement_form.html",
-        {"agreement": ag, "req": req, "form": form, "formset": formset},
+        {"agreement": ag, "req": req, "form": form, "formset": formset, "breakdown": breakdown},
     )
 
 
@@ -634,6 +717,7 @@ def finalize_clauses(request: HttpRequest, pk: int) -> HttpResponse:
                 status=400,
             )
 
+
         # مسح البنود القديمة ثم إنشاء الجديدة
         AgreementClauseItem.objects.filter(agreement=ag).delete()
 
@@ -641,11 +725,15 @@ def finalize_clauses(request: HttpRequest, pk: int) -> HttpResponse:
         custom_lines = form.cleaned_custom_lines()
 
         items: list[AgreementClauseItem] = []
+        # اجمع البنود الجاهزة أولاً ثم البنود المخصصة
         for c in chosen:
             items.append(AgreementClauseItem(agreement=ag, clause=c, custom_text=""))
-
         for line in custom_lines:
             items.append(AgreementClauseItem(agreement=ag, clause=None, custom_text=line))
+
+        # أعد ترقيم البنود: position=1,2,3,...
+        for idx, item in enumerate(items, start=1):
+            item.position = idx
 
         if items:
             AgreementClauseItem.objects.bulk_create(items)
@@ -685,7 +773,7 @@ def agreement_decide(request: HttpRequest, request_id: int) -> HttpResponse:
             ag.updated_at = timezone.now()
             updates.append("updated_at")
         ag.save(update_fields=updates)
-        _move_request_on_accept(req)
+        # لا تغيّر حالة الطلب هنا، التحويل يتم بعد دفع الفاتورة فقط
         messages.success(request, "تم قبول الاتفاقية. جارٍ تحويلك للدفع الآمن.")
         return _go_checkout_or_detail(ag)
 

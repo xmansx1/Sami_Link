@@ -5,20 +5,384 @@
 {% block title %}أوامر صرف الموظفين{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6" dir="rtl">
-  <div class="mb-4 flex items-center justify-between">
-    <div>
-      <h1 class="text-2xl font-extrabold">أوامر صرف الموظفين</h1>
-      <p class="text-sm text-gray-600 mt-1">عرض وإدارة أوامر صرف مستحقات الموظفين.</p>
+<section class="page-section payouts-page">
+  <div class="container">
+    
+    {# ===== رأس الصفحة ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        💳 أوامر صرف الموظفين
+      </div>
+      <h1 class="section-title">
+        أوامر صرف الموظفين
+      </h1>
+      <p class="section-description">
+        عرض وإدارة أوامر صرف مستحقات الموظفين
+      </p>
     </div>
-  </div>
 
-  <div class="rounded-2xl bg-white p-6 shadow">
-    <p class="text-gray-600 text-sm">هذه الصفحة Placeholder وستعرض لاحقًا قائمة Payouts بعد ربط view/queries. يمكن تنفيذ الإنشاء من الإدارة الآن.</p>
-    <div class="mt-3">
-      <a href="{% url 'finance:employee_dues' %}" class="btn btn-sm">عرض مستحقات الموظفين (حسب الفواتير)</a>
-      <a href="{% url 'finance:collections_report' %}" class="btn btn-sm">تقرير التحصيل</a>
+    {# ===== بطاقة المحتوى الرئيسي ===== #}
+    <div class="profile-section" style="text-align: center; padding: 3rem 2rem;">
+      <div class="placeholder-icon" style="font-size: 4rem; margin-bottom: 1.5rem; opacity: 0.4;">
+        💰
+      </div>
+      <h2 class="card-section-title" style="margin-bottom: 1rem; color: var(--dark-700);">
+        قائمة أوامر الصرف قيد التطوير
+      </h2>
+      <p class="card-section-note" style="font-size: 1rem; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+        هذه الصفحة تحت التطوير وستعرض قائمة أوامر الصرف بعد ربطها مع البيانات. 
+        يمكن حاليًا إدارة أوامر الصرف من لوحة الإدارة.
+      </p>
+
+      {# ===== أزرار التنقل البديلة ===== #}
+      <div class="navigation-actions employee-actions" style="justify-content: center; gap: 1rem;">
+        <a href="{% url 'finance:employee_dues' %}" class="btn btn-primary">
+          👥 عرض مستحقات الموظفين
+        </a>
+        <a href="{% url 'finance:collections_report' %}" class="btn btn-secondary">
+          📊 تقرير التحصيل
+        </a>
+        <a href="{% url 'admin:finance_payout_changelist' %}" class="btn btn-outline">
+          ⚙️ الإدارة المتقدمة
+        </a>
+      </div>
     </div>
+
+    {# ===== معلومات عن الميزة القادمة ===== #}
+    <div class="feature-preview" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 3rem;">
+      
+      <div class="profile-section">
+        <div class="card-section-title">📋 ما ستوفره هذه الصفحة</div>
+        <ul class="feature-list" style="margin-top: 1rem; padding-right: 1rem;">
+          <li class="feature-item">
+            <span class="feature-icon">✅</span>
+            <span>عرض جميع أوامر الصرف</span>
+          </li>
+          <li class="feature-item">
+            <span class="feature-icon">💰</span>
+            <span>متابعة حالات الصرف</span>
+          </li>
+          <li class="feature-item">
+            <span class="feature-icon">📊</span>
+            <span>إحصائيات الصرف الشهرية</span>
+          </li>
+          <li class="feature-item">
+            <span class="feature-icon">🔍</span>
+            <span>بحث وتصفية متقدمة</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="profile-section">
+        <div class="card-section-title">🔄 الإجراءات المتاحة</div>
+        <ul class="action-list" style="margin-top: 1rem; padding-right: 1rem;">
+          <li class="action-item">
+            <span class="action-icon">➕</span>
+            <span>إنشاء أوامر صرف جديدة</span>
+          </li>
+          <li class="action-item">
+            <span class="action-icon">📤</span>
+            <span>تصدير بيانات الصرف</span>
+          </li>
+          <li class="action-item">
+            <span class="action-icon">📧</span>
+            <span>إشعار الموظفين بالصرف</span>
+          </li>
+          <li class="action-item">
+            <span class="action-icon">✅</span>
+            <span>تأكيد استلام الصرف</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="profile-section">
+        <div class="card-section-title">⏱️ الجدول الزمني</div>
+        <div class="timeline" style="margin-top: 1rem;">
+          <div class="timeline-item">
+            <div class="timeline-date">Q1 2024</div>
+            <div class="timeline-content">تصميم واجهة أوامر الصرف</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-date">Q2 2024</div>
+            <div class="timeline-content">ربط مع بيانات الفواتير</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-date">Q3 2024</div>
+            <div class="timeline-content">إضافة نظام الإشعارات</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {# ===== إحصائيات سريعة ===== #}
+    <div class="quick-stats profile-section" style="background: var(--primary-50); margin-top: 2rem;">
+      <div class="card-section-title" style="color: var(--primary-700);">📈 إحصائيات سريعة</div>
+      <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div class="stat-item">
+          <div class="stat-label">إجمالي المستحقات</div>
+          <div class="stat-number">يتم التحميل...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">أوامر صرف هذا الشهر</div>
+          <div class="stat-number">يتم التحميل...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">متوسط وقت الصرف</div>
+          <div class="stat-number">يتم التحميل...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">معدل الرضا</div>
+          <div class="stat-number">يتم التحميل...</div>
+        </div>
+      </div>
+    </div>
+
   </div>
-</div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تأثيرات على الأزرار
+    document.querySelectorAll('.btn').forEach(button => {
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+      });
+    });
+
+    // تأثيرات على عناصر القوائم
+    document.querySelectorAll('.feature-item, .action-item').forEach((item, index) => {
+      item.style.animationDelay = `${index * 0.1}s`;
+      item.classList.add('scroll-reveal');
+      
+      // تأثير hover
+      item.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateX(-5px)';
+        this.style.background = 'var(--primary-50)';
+      });
+      
+      item.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateX(0)';
+        this.style.background = '';
+      });
+    });
+
+    // تأثير على الأيقونة الرئيسية
+    const placeholderIcon = document.querySelector('.placeholder-icon');
+    if (placeholderIcon) {
+      setInterval(() => {
+        placeholderIcon.style.transform = 'scale(1.1)';
+        placeholderIcon.style.opacity = '0.6';
+        setTimeout(() => {
+          placeholderIcon.style.transform = 'scale(1)';
+          placeholderIcon.style.opacity = '0.4';
+        }, 500);
+      }, 3000);
+    }
+
+    // محاكاة تحميل الإحصائيات
+    setTimeout(() => {
+      const statNumbers = document.querySelectorAll('.stat-number');
+      statNumbers.forEach(stat => {
+        stat.textContent = 'قريبًا...';
+        stat.style.color = 'var(--primary-600)';
+      });
+    }, 2000);
+
+    // تأثيرات على الجدول الزمني
+    document.querySelectorAll('.timeline-item').forEach((item, index) => {
+      item.style.animationDelay = `${index * 0.3}s`;
+      item.classList.add('scroll-reveal');
+    });
+
+    // رسالة ترحيب باستخدام نظام التوست
+    setTimeout(() => {
+      if (typeof showToast === 'function') {
+        showToast('صفحة أوامر الصرف قيد التطوير - شكرًا لصبرك!', 'info');
+      }
+    }, 1000);
+
+  })();
+  </script>
+
+  <style>
+  .payouts-page .placeholder-icon {
+    transition: all 0.5s ease;
+  }
+
+  .payouts-page .navigation-actions {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .payouts-page .feature-preview {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .payouts-page .feature-list,
+  .payouts-page .action-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .payouts-page .feature-item,
+  .payouts-page .action-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: var(--radius);
+    transition: all 0.3s ease;
+  }
+
+  .payouts-page .feature-icon,
+  .payouts-page .action-icon {
+    font-size: 1.1rem;
+    width: 1.5rem;
+    text-align: center;
+  }
+
+  .payouts-page .timeline {
+    position: relative;
+    padding-right: 1.5rem;
+  }
+
+  .payouts-page .timeline::before {
+    content: '';
+    position: absolute;
+    right: 0.5rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--primary-200);
+  }
+
+  .payouts-page .timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--dark-100);
+  }
+
+  .payouts-page .timeline-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .payouts-page .timeline-item::before {
+    content: '';
+    position: absolute;
+    right: -1.5rem;
+    top: 0.25rem;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary-500);
+    border: 2px solid var(--white);
+    box-shadow: 0 0 0 2px var(--primary-500);
+  }
+
+  .payouts-page .timeline-date {
+    font-weight: 600;
+    color: var(--primary-600);
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .payouts-page .timeline-content {
+    color: var(--dark-600);
+    font-size: 0.9rem;
+  }
+
+  .payouts-page .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .payouts-page .stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--primary-200);
+  }
+
+  .payouts-page .stat-label {
+    font-size: 0.875rem;
+    color: var(--primary-600);
+    margin-bottom: 0.5rem;
+  }
+
+  .payouts-page .stat-number {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-700);
+  }
+
+  @media (max-width: 768px) {
+    .payouts-page .navigation-actions {
+      flex-direction: column;
+    }
+    
+    .payouts-page .navigation-actions .btn {
+      width: 100%;
+    }
+    
+    .payouts-page .feature-preview {
+      grid-template-columns: 1fr;
+    }
+    
+    .payouts-page .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .payouts-page .stats-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .payouts-page .profile-section {
+      padding: 1.5rem;
+    }
+  }
+
+  /* تأثيرات الحركة */
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .payouts-page .placeholder-icon {
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .payouts-page .scroll-reveal {
+    animation: fadeInUp 0.6s ease-out;
+  }
+  </style>
 {% endblock %}

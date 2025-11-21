@@ -1,14 +1,162 @@
-<div class="flex items-center gap-2">
-  <div class="font-bold">مرحبًا، {{ request.user|default:"مسؤول" }}</div>
-  <span class="text-sm text-slate-500">آخر تحديث: {{ now|default:today|date:"d/m/Y" }}</span>
-</div>
-<div class="flex items-center gap-2">
-  {% url 'website:home' as home_url %}
-  {% if home_url %}<a href="{{ home_url }}" class="btn btn-gray"><i class="fa fa-house"></i><span>الموقع</span></a>{% endif %}
-  <form method="get" action="" class="hidden md:block">
-    <div class="flex items-center gap-2">
-      <input class="card" style="padding:.45rem .8rem" type="search" name="q" value="{{ q }}" placeholder="بحث سريع…">
-      <button class="btn btn-blue" type="submit"><i class="fa fa-search"></i><span>بحث</span></button>
+<div class="topbar-container">
+  <div class="topbar-left">
+    <div class="topbar-user">
+      <span class="topbar-icon user"><i class="fa fa-user-circle"></i></span>
+      <span class="topbar-welcome">مرحبًا، {{ request.user.get_full_name|default:request.user.email|default:"مسؤول" }}</span>
     </div>
-  </form>
+    <span class="topbar-update"><i class="fa fa-clock"></i> آخر تحديث: {{ now|default:today|date:"d/m/Y" }}</span>
+  </div>
+  <div class="topbar-right">
+    {% url 'website:home' as home_url %}
+    {% if home_url %}
+      <a href="{{ home_url }}" class="topbar-btn">
+        <span class="topbar-icon"><i class="fa fa-house"></i></span>
+        <span class="topbar-btn-text">الموقع</span>
+      </a>
+    {% endif %}
+    <form method="get" action="" class="topbar-search-form">
+      <input class="topbar-search-input" type="search" name="q" value="{{ q }}" placeholder="بحث سريع…">
+      <button class="topbar-btn topbar-search-btn" type="submit">
+        <span class="topbar-icon"><i class="fa fa-search"></i></span>
+        <span class="topbar-btn-text">بحث</span>
+      </button>
+    </form>
+  </div>
 </div>
+
+<style>
+.topbar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 0.5rem 1rem 0.5rem;
+  background: #fff;
+  border-radius: 1.1rem;
+  box-shadow: 0 2px 8px #0001;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+}
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.08rem;
+  color: #6366f1;
+}
+.topbar-icon {
+  font-size: 1.25rem;
+  color: #6366f1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.topbar-icon.user {
+  color: #6366f1;
+}
+.topbar-update {
+  font-size: 0.97rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+.topbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.7rem;
+  background: #f3f4f6;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.98rem;
+  text-decoration: none;
+  border: 1px solid #e0e7ff;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+.topbar-btn:hover, .topbar-btn:focus {
+  background: #e0e7ff;
+  color: #4338ca;
+  box-shadow: 0 2px 8px #6366f133;
+}
+.topbar-btn .topbar-icon {
+  color: inherit;
+  font-size: 1.1rem;
+}
+.topbar-btn-text {
+  display: inline-block;
+}
+.topbar-search-form {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #f8fafc;
+  border-radius: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid #e0e7ff;
+}
+.topbar-search-input {
+  border: none;
+  background: transparent;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.97rem;
+  border-radius: 0.5rem;
+  outline: none;
+  color: #334155;
+  min-width: 120px;
+}
+.topbar-search-btn {
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  border-radius: 0.6rem;
+  transition: background 0.18s;
+}
+.topbar-search-btn:hover, .topbar-search-btn:focus {
+  background: #4338ca;
+}
+@media (max-width: 900px) {
+  .topbar-container {
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 0.7rem 0.2rem;
+  }
+  .topbar-left, .topbar-right {
+    gap: 0.7rem;
+  }
+}
+@media (max-width: 600px) {
+  .topbar-container {
+    padding: 0.5rem 0.1rem;
+    border-radius: 0.7rem;
+  }
+  .topbar-user {
+    font-size: 0.97rem;
+  }
+  .topbar-btn, .topbar-search-btn {
+    font-size: 0.93rem;
+    padding: 0.4rem 0.7rem;
+  }
+  .topbar-search-input {
+    font-size: 0.93rem;
+    padding: 0.3rem 0.5rem;
+    min-width: 80px;
+  }
+}
+</style>

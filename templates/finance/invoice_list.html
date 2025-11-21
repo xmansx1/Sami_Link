@@ -5,63 +5,458 @@
 {% block title %}الفواتير{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6" dir="rtl">
-  <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
-    <div>
-      <h1 class="text-2xl font-extrabold">قائمة الفواتير</h1>
-      <p class="text-sm text-gray-600 mt-1">تصفية سريعة بالحالة.</p>
-    </div>
-    <div>
-      <div class="flex gap-2">
-        <a href="{% url 'finance:invoice_list' %}" class="btn btn-sm">الكل</a>
-        <a href="{% url 'finance:invoice_list' %}?status=paid" class="btn btn-sm">مدفوعة</a>
-        <a href="{% url 'finance:invoice_list' %}?status=unpaid" class="btn btn-sm">غير مدفوعة</a>
-        <a href="{% url 'finance:invoice_list' %}?status=cancelled" class="btn btn-sm">ملغاة</a>
+<section class="page-section invoice-list-page">
+  <div class="container">
+    
+    {# ===== رأس الصفحة ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        🧾 قائمة الفواتير
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 1rem;">
+        <div>
+          <h1 class="section-title" style="margin: 0;">
+            الفواتير
+          </h1>
+          <p class="section-description">
+            تصفية سريعة بالحالة
+          </p>
+        </div>
+        <div class="filter-buttons employee-actions">
+          <a href="{% url 'finance:invoice_list' %}" class="btn btn-outline btn-sm {% if not request.GET.status %}active{% endif %}">
+            الكل
+          </a>
+          <a href="{% url 'finance:invoice_list' %}?status=paid" class="btn btn-outline btn-sm {% if request.GET.status == 'paid' %}active{% endif %}">
+            ✅ مدفوعة
+          </a>
+          <a href="{% url 'finance:invoice_list' %}?status=unpaid" class="btn btn-outline btn-sm {% if request.GET.status == 'unpaid' %}active{% endif %}">
+            ⏳ غير مدفوعة
+          </a>
+          <a href="{% url 'finance:invoice_list' %}?status=cancelled" class="btn btn-outline btn-sm {% if request.GET.status == 'cancelled' %}active{% endif %}">
+            🚫 ملغاة
+          </a>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="overflow-x-auto rounded-2xl shadow bg-white">
-    <table class="min-w-full text-sm">
-      <thead>
-        <tr class="text-gray-600 border-b">
-          <th class="py-2 px-3 text-right">#</th>
-          <th class="py-2 px-3 text-right">الاتفاقية</th>
-          <th class="py-2 px-3 text-right">المرحلة</th>
-          <th class="py-2 px-3 text-right">المجموع</th>
-          <th class="py-2 px-3 text-right">الحالة</th>
-          <th class="py-2 px-3 text-right">الإصدار</th>
-          <th class="py-2 px-3 text-right">السداد</th>
-          <th class="py-2 px-3"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if invoices %}
-        {% for inv in invoices %}
-        <tr class="border-b">
-          <td class="py-2 px-3">#{{ inv.id }}</td>
-          <td class="py-2 px-3">A{{ inv.agreement_id }}{% if inv.agreement and inv.agreement.request_id %} / R{{ inv.agreement.request_id }}{% endif %}</td>
-          <td class="py-2 px-3">{% if inv.milestone %}{{ inv.milestone.title }}{% else %}—{% endif %}</td>
-          <td class="py-2 px-3">{{ inv.total_amount|floatformat:2 }}</td>
-          <td class="py-2 px-3">{{ inv.get_status_display }}</td>
-          <td class="py-2 px-3">
-            {% if inv.issued_at %}{{ inv.issued_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
-          </td>
-          <td class="py-2 px-3">
-            {% if inv.paid_at %}{{ inv.paid_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
-          </td>
-          <td class="py-2 px-3">
-            <a class="btn btn-sm" href="{% url 'finance:invoice_detail' inv.id %}">تفاصيل</a>
-          </td>
-        </tr>
-        {% endfor %}
-        {% else %}
-        <tr>
-          <td colspan="8" class="py-4 px-3 text-gray-500">لا توجد فواتير.</td>
-        </tr>
-        {% endif %}
-      </tbody>
-    </table>
+    {# ===== جدول الفواتير ===== #}
+    <div class="profile-section">
+      <div class="table-wrapper">
+        <table class="table table-clean">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>الاتفاقية</th>
+              <th>المرحلة</th>
+              <th>المجموع</th>
+              <th>الحالة</th>
+              <th>الإصدار</th>
+              <th>السداد</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if invoices %}
+              {% for item in invoices %}
+                  <tr class="scroll-reveal invoice-row">
+                    <td class="invoice-number">
+                      <span class="badge badge-default">#{{ item.inv.id }}</span>
+                    </td>
+                  
+                    <td class="agreement-info">
+                      <div class="agreement-main">
+                        <div class="agreement-id">A{{ item.inv.agreement_id }}</div>
+                        {% if item.inv.agreement and item.inv.agreement.request_id %}
+                          <div class="request-id">طلب #{{ item.inv.agreement.request_id }}</div>
+                        {% endif %}
+                      </div>
+                    </td>
+                  
+                    <td class="milestone-info">
+                      {% if item.inv.milestone %}
+                        <div class="milestone-title">{{ item.inv.milestone.title|truncatewords:3 }}</div>
+                      {% else %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  
+                    <td class="amount-info">
+                      <div class="amount-value">{{ item.breakdown.client_total|floatformat:2 }}</div>
+                      <div class="amount-currency">ر.س</div>
+                    </td>
+                  
+                    <td class="status-info">
+                      <span class="badge 
+                                 {% if item.inv.status == 'paid' %}badge-verified
+                                 {% elif item.inv.status == 'unpaid' %}badge-pending
+                                 {% elif item.inv.status == 'cancelled' %}badge-rejected
+                                 {% else %}badge-default{% endif %}">
+                        {% if item.inv.status == 'paid' %}✅ 
+                        {% elif item.inv.status == 'unpaid' %}⏳
+                        {% elif item.inv.status == 'cancelled' %}🚫
+                        {% endif %}
+                        {{ item.inv.get_status_display }}
+                      </span>
+                    </td>
+                  
+                    <td class="date-info">
+                      {% if item.inv.issued_at %}
+                        <div class="date-main">{{ item.inv.issued_at|date:"Y-m-d" }}</div>
+                        <div class="date-time">{{ item.inv.issued_at|date:"H:i" }}</div>
+                      {% else %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  
+                    <td class="date-info">
+                      {% if item.inv.paid_at %}
+                        <div class="date-main">{{ item.inv.paid_at|date:"Y-m-d" }}</div>
+                        <div class="date-time">{{ item.inv.paid_at|date:"H:i" }}</div>
+                      {% else %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  
+                    <td class="actions-info">
+                      <a href="{% url 'finance:invoice_detail' item.inv.id %}" 
+                         class="btn btn-outline btn-sm"
+                         title="عرض تفاصيل الفاتورة">
+                        👁️ تفاصيل
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+            {% else %}
+              {# ===== حالة عدم وجود فواتير ===== #}
+              <tr>
+                <td colspan="8" class="empty-state">
+                  <div class="empty-content" style="text-align: center; padding: 3rem;">
+                    <div class="empty-icon" style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.4;">🧾</div>
+                    <h3 class="card-section-title" style="margin-bottom: 0.5rem;">لا توجد فواتير</h3>
+                    <p class="card-section-note">
+                      {% if request.GET.status %}
+                        لا توجد فواتير بحالة "{{ request.GET.status }}"
+                      {% else %}
+                        لم يتم إنشاء أي فواتير بعد
+                      {% endif %}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
   </div>
-</div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تأثيرات على صفوف الجدول
+    document.querySelectorAll('.invoice-row').forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.background = 'var(--primary-50)';
+        this.style.transform = 'translateX(-5px)';
+        this.style.boxShadow = 'var(--shadow-sm)';
+      });
+      
+      row.addEventListener('mouseleave', function() {
+        this.style.background = '';
+        this.style.transform = 'translateX(0)';
+        this.style.boxShadow = '';
+      });
+    });
+
+    // تأثيرات على أزرار التصفية
+    document.querySelectorAll('.filter-buttons .btn').forEach(button => {
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+        
+        // إضافة تأثير على الزر النشط
+        document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+
+    // تأثيرات على أزرار التفاصيل
+    document.querySelectorAll('.actions-info .btn').forEach(button => {
+      button.addEventListener('mouseenter', function() {
+        this.style.transform = 'scale(1.05)';
+        this.style.background = 'var(--primary-500)';
+        this.style.color = 'white';
+      });
+      
+      button.addEventListener('mouseleave', function() {
+        this.style.transform = 'scale(1)';
+        this.style.background = '';
+        this.style.color = '';
+      });
+      
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+      });
+    });
+
+    // تحديث العداد الإحصائي (يمكن تطويره لاحقًا)
+    function updateStats() {
+      const paidCount = document.querySelectorAll('.badge-verified').length;
+      const unpaidCount = document.querySelectorAll('.badge-pending').length;
+      const cancelledCount = document.querySelectorAll('.badge-rejected').length;
+      
+      // يمكن تحديث العناصر الإحصائية هنا لاحقًا
+      console.log('الإحصائيات:', { paidCount, unpaidCount, cancelledCount });
+    }
+
+    // تهيئة الإحصائيات
+    updateStats();
+
+  })();
+  </script>
+
+  <style>
+  .invoice-list-page .filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .invoice-list-page .filter-buttons .btn.active {
+    background: var(--primary-500);
+    color: white;
+    border-color: var(--primary-500);
+  }
+
+  .invoice-list-page .table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--dark-200);
+  }
+
+  .invoice-list-page .table-clean {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .invoice-list-page .table-clean th {
+    background: var(--dark-50);
+    color: var(--dark-700);
+    font-weight: 600;
+    padding: 1rem;
+    text-align: right;
+    border-bottom: 1px solid var(--dark-200);
+    white-space: nowrap;
+  }
+
+  .invoice-list-page .table-clean td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--dark-100);
+    vertical-align: middle;
+    transition: all 0.3s ease;
+  }
+
+  .invoice-list-page .table-clean tr:last-child td {
+    border-bottom: none;
+  }
+
+  .invoice-list-page .invoice-number {
+    text-align: center;
+  }
+
+  .invoice-list-page .agreement-info {
+    min-width: 120px;
+  }
+
+  .invoice-list-page .agreement-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .invoice-list-page .agreement-id {
+    font-weight: 600;
+    color: var(--dark-900);
+  }
+
+  .invoice-list-page .request-id {
+    font-size: 0.875rem;
+    color: var(--dark-500);
+  }
+
+  .invoice-list-page .milestone-info {
+    min-width: 150px;
+    max-width: 200px;
+  }
+
+  .invoice-list-page .milestone-title {
+    color: var(--dark-700);
+    line-height: 1.4;
+  }
+
+  .invoice-list-page .amount-info {
+    text-align: left;
+    direction: ltr;
+  }
+
+  .invoice-list-page .amount-value {
+    font-weight: 700;
+    color: var(--dark-900);
+    font-size: 1.1rem;
+  }
+
+  .invoice-list-page .amount-currency {
+    font-size: 0.875rem;
+    color: var(--dark-500);
+  }
+
+  .invoice-list-page .status-info {
+    text-align: center;
+  }
+
+  .invoice-list-page .date-info {
+    text-align: center;
+    min-width: 100px;
+  }
+
+  .invoice-list-page .date-main {
+    font-weight: 600;
+    color: var(--dark-700);
+  }
+
+  .invoice-list-page .date-time {
+    font-size: 0.875rem;
+    color: var(--dark-500);
+  }
+
+  .invoice-list-page .actions-info {
+    text-align: center;
+  }
+
+  .invoice-list-page .empty-state {
+    padding: 0;
+  }
+
+  .invoice-list-page .empty-content {
+    padding: 3rem;
+  }
+
+  .invoice-list-page .empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+  }
+
+  .invoice-list-page .stats-summary {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .invoice-list-page .stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+  }
+
+  .invoice-list-page .stat-label {
+    font-size: 0.875rem;
+    color: var(--dark-600);
+    margin-bottom: 0.5rem;
+  }
+
+  .invoice-list-page .stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-600);
+  }
+
+  .invoice-list-page .text-muted {
+    color: var(--dark-500);
+    font-style: italic;
+  }
+
+  @media (max-width: 1024px) {
+    .invoice-list-page .section-header > div {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+    
+    .invoice-list-page .filter-buttons {
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .invoice-list-page .table-wrapper {
+      font-size: 0.875rem;
+    }
+    
+    .invoice-list-page .table-clean th,
+    .invoice-list-page .table-clean td {
+      padding: 0.75rem 0.5rem;
+    }
+    
+    .invoice-list-page .stats-summary {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .invoice-list-page .filter-buttons {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .invoice-list-page .filter-buttons .btn {
+      flex: 1;
+      min-width: 80px;
+      text-align: center;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .invoice-list-page .stats-summary {
+      grid-template-columns: 1fr;
+    }
+    
+    .invoice-list-page .table-clean {
+      min-width: 700px;
+    }
+    
+    .invoice-list-page .amount-value {
+      font-size: 1rem;
+    }
+  }
+
+  /* تأثيرات الحركة */
+  @keyframes fadeInRow {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .invoice-list-page .invoice-row {
+    animation: fadeInRow 0.5s ease-out;
+  }
+  </style>
 {% endblock %}

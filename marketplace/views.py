@@ -1,10 +1,12 @@
 from __future__ import annotations
+from decimal import Decimal, ROUND_HALF_UP
 
 import logging
 from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -19,6 +21,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView
 
 from core.permissions import require_role
+from finance.models import FinanceSettings, Invoice
 from notifications.utils import create_notification
 from .forms import AdminReassignForm, OfferCreateForm, OfferForm, RequestCreateForm
 from .models import Note, Offer, Request
@@ -31,13 +34,41 @@ logger = logging.getLogger(__name__)
 class ClientOnlyMixin(UserPassesTestMixin):
     def test_func(self):
         u = self.request.user
-        return u.is_authenticated and getattr(u, "role", None) == "client"
+        if not u.is_authenticated:
+            return False
+
+        # ✅ السماح للإداري (أدمن/مالية/مدير عام/ستاف) بالدخول بدل 403
+        role = (getattr(u, "role", "") or "").lower()
+        is_admin_like = (
+            getattr(u, "is_staff", False)
+            or getattr(u, "is_superuser", False)
+            or role in {"admin", "manager", "gm", "finance"}
+        )
+        if is_admin_like:
+            return True
+
+        # المستخدم العادي: عميل فقط
+        return role == "client"
 
 
 class EmployeeOnlyMixin(UserPassesTestMixin):
     def test_func(self):
         u = self.request.user
-        return u.is_authenticated and getattr(u, "role", None) == "employee"
+        if not u.is_authenticated:
+            return False
+
+        # ✅ السماح للإداري بالدخول بدون 403
+        role = (getattr(u, "role", "") or "").lower()
+        is_admin_like = (
+            getattr(u, "is_staff", False)
+            or getattr(u, "is_superuser", False)
+            or role in {"admin", "manager", "gm", "finance"}
+        )
+        if is_admin_like:
+            return True
+
+        # المستخدم العادي: موظف فقط
+        return role == "employee"
 
 
 # ======================
@@ -50,6 +81,46 @@ def _send_email_safely(subject: str, body: str, to_email: str | None):
     except Exception:
         # لا نُسقط العملية في حال فشل البريد
         pass
+
+def _normalize_percent(value) -> Decimal:
+    """
+    يحوّل القيمة إلى نسبة عشرية موحّدة:
+    - 10  -> 0.10
+    - 15  -> 0.15
+    - 0.10 -> 0.10
+    """
+    if value is None:
+        return Decimal("0")
+    if not isinstance(value, Decimal):
+        value = Decimal(str(value))
+    if value > 1:
+        value = value / Decimal("100")
+    return value.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+
+
+def _calculate_financials_from_net(net_amount, platform_fee_percent, vat_percent):
+    """
+    net_amount = صافي الموظف (proposed_price)
+    platform_fee_percent, vat_percent = النِّسب كما هي من الإعدادات (10 أو 0.10)
+    """
+    net = Decimal(str(net_amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    platform_fee_percent = _normalize_percent(platform_fee_percent)
+    vat_percent = _normalize_percent(vat_percent)
+
+    # عمولة المنصّة
+    platform_fee = (net * platform_fee_percent).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    # المجموع قبل الضريبة
+    subtotal = (net + platform_fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    # الضريبة على المجموع
+    vat_amount = (subtotal * vat_percent).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    # الإجمالي الذي يدفعه العميل
+    client_total = (subtotal + vat_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    return net, platform_fee, vat_amount, client_total
 
 
 def _notify(recipient, title: str, body: str = ""):
@@ -181,15 +252,57 @@ def _is_new_unassigned(req: Request) -> bool:
 
 
 def _notify_new_offer(off: Offer):
-    _notify_link(
-        recipient=off.request.client,
-        title="عرض جديد على طلبك",
-        body=f"قدّم {off.employee} عرضًا بقيمة {off.proposed_price} لمدة {off.proposed_duration_days} يوم.",
-        url=reverse("marketplace:request_detail", args=[off.request_id]),
-        actor=off.employee,
-        target=off.request,
-    )
+    """
+    إشعار العميل بعرض جديد مع توضيح:
+    - صافي الموظف (proposed_price)
+    - رسوم المنصّة المتوقعة
+    - الضريبة
+    - المبلغ الإجمالي المتوقع على العميل
+    """
+    try:
+        # جلب النِّسب الحالية من إعدادات المالية
+        try:
+            fee_percent, vat_percent = FinanceSettings.current_rates()
+        except Exception:
+            fee_percent, vat_percent = (Decimal("0"), Decimal("0"))
 
+        net, platform_fee, vat_amount, client_total = _calculate_financials_from_net(
+            net_amount=off.proposed_price,
+            platform_fee_percent=fee_percent,
+            vat_percent=vat_percent,
+        )
+
+        body_lines = [
+            f"قدّم {off.employee} عرضًا على طلبك #{off.request_id} - {off.request.title}.",
+            "",
+            f"• صافي حصة الموظف (بدون رسوم/ضريبة): {net} ريال",
+            f"• رسوم المنصّة المتوقعة: {platform_fee} ريال",
+            f"• ضريبة القيمة المضافة: {vat_amount} ريال",
+            f"• المبلغ الإجمالي المتوقع عليك: {client_total} ريال",
+        ]
+        if getattr(off, "proposed_duration_days", None):
+            body_lines.append(f"• مدة التنفيذ المقترحة: {off.proposed_duration_days} يوم")
+
+        body = "\n".join(body_lines)
+
+        _notify_link(
+            recipient=off.request.client,
+            title="عرض جديد على طلبك",
+            body=body,
+            url=reverse("marketplace:request_detail", args=[off.request_id]),
+            actor=off.employee,
+            target=off.request,
+        )
+    except Exception:
+        # لو صار أي خطأ في الحساب، نرجع للإشعار البسيط القديم
+        _notify_link(
+            recipient=off.request.client,
+            title="عرض جديد على طلبك",
+            body=f"قدّم {off.employee} عرضًا بقيمة {off.proposed_price} لمدة {off.proposed_duration_days} يوم.",
+            url=reverse("marketplace:request_detail", args=[off.request_id]),
+            actor=off.employee,
+            target=off.request,
+        )
 
 def _notify_offer_selected(off: Offer):
     _notify_link(
@@ -384,7 +497,12 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
         # السماح للموظف برؤية الطلب الجديد غير المُسنَّد لكن مع إخفاء بيانات العميل
         if getattr(user, "role", None) == "employee" and _is_new_unassigned(req):
             return True
+        # السماح للموظف الذي لديه عرض (حتى لو لم يُسنّد له الطلب) برؤية الطلب مع إخفاء بيانات العميل
+        if getattr(user, "role", None) == "employee":
+            if req.offers.filter(employee=user).exists():
+                return True
         return False
+
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -420,9 +538,17 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
         ctx["client_phone_safe"] = _mask_value(client_phone) if should_redact else client_phone
         ctx["client_address_safe"] = _mask_value(client_address) if should_redact else client_address
 
+        # تمرير selected_offer دائمًا
+        ctx["selected_offer"] = getattr(req, "selected_offer", None)
+
+        # تمرير my_offer دائمًا (إذا كان المستخدم موظفًا)
+        my_offer = None
+        if u.is_authenticated and getattr(u, "role", None) == "employee":
+            my_offer = req.offers.filter(employee=u).order_by("-id").first()
+        ctx["my_offer"] = my_offer
+
         # ------------ تقديم عرض (موظف فقط وعلى NEW وغير مُسنَّد) ------------
         ctx["can_offer"] = False
-        ctx["my_offer"] = None
         ctx["offer_form"] = None
         if (
             u.is_authenticated
@@ -430,10 +556,9 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
             and getattr(req, "status", None) == getattr(Request.Status, "NEW", "new")
             and getattr(req, "assigned_employee_id", None) is None
         ):
-            my_offer = req.offers.filter(employee=u, status=getattr(Offer.Status, "PENDING", "pending")).first()
-            ctx["my_offer"] = my_offer
-            ctx["can_offer"] = my_offer is None
-            if my_offer is None:
+            pending_offer = req.offers.filter(employee=u, status=getattr(Offer.Status, "PENDING", "pending")).first()
+            ctx["can_offer"] = pending_offer is None
+            if pending_offer is None:
                 ctx["offer_form"] = OfferCreateForm()
 
         # إنشاء/فتح الاتفاقية (بعد اختيار العرض)
@@ -454,6 +579,15 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
             "to_completed": True,
             "cancel": True,
         }
+        # تمرير المبلغ الإجمالي للعميل في العرض المختار (إن وجد)
+        selected_offer = ctx["selected_offer"]
+        if selected_offer:
+            try:
+                ctx["selected_offer_client_total"] = selected_offer.client_total_amount
+                selected_offer.client_total = selected_offer.client_total_amount
+            except Exception:
+                ctx["selected_offer_client_total"] = None
+                selected_offer.client_total = None
         return ctx
 
     # إرسال عرض من نفس صفحة التفاصيل (للموظف)
@@ -562,6 +696,13 @@ class OfferCreateView(LoginRequiredMixin, EmployeeOnlyMixin, CreateView):
         form.instance.request = self.req_obj
         form.instance.employee = self.request.user
         return form
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        fee, vat = FinanceSettings.current_rates()
+        context["platform_fee_percent"] = float(fee)
+        context["vat_percent"] = float(vat)
+        return context
 
     def form_valid(self, form):
         try:
@@ -1013,3 +1154,31 @@ def offer_detail(request, offer_id):
             return HttpResponseForbidden("غير مسموح")
 
     return render(request, "marketplace/offer_detail.html", {"off": off, "req": off.request})
+
+# مثال داخل منطق إنشاء الفاتورة من عرض معيّن
+from finance.utils import calculate_financials
+
+def create_invoice_from_offer(offer):
+    settings = FinanceSettings.get_solo()
+    data = calculate_financials(
+        net_amount=offer.proposed_price,
+        platform_fee_percent=settings.platform_fee_percent,
+        vat_percent=settings.vat_percent,
+    )
+
+    invoice = Invoice.objects.create(
+        offer=offer,
+        net_amount=data["net_for_employee"],
+        platform_fee_amount=data["platform_fee"],
+        vat_amount=data["vat_amount"],
+        total_amount=data["client_total"],  # هذا ما يدفعه العميل
+        # + أي حقول أخرى مطلوبة
+    )
+    return invoice
+
+
+@login_required
+@staff_member_required
+def all_requests_admin(request):
+    requests = Request.objects.select_related('client', 'assigned_employee').order_by('-created_at')
+    return render(request, "marketplace/all_requests.html", {"requests": requests})

@@ -4,31 +4,489 @@
 {% block title %}إعدادات المالية{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6" dir="rtl">
-  <div class="mb-4">
-    <h1 class="text-2xl font-extrabold">إعدادات المالية</h1>
-    <p class="text-sm text-gray-600 mt-1">قِيَم بين 0 و 1 (مثال 0.10 = 10٪، 0.15 = 15٪).</p>
-  </div>
-
-  <div class="rounded-2xl shadow bg-white p-4">
-    <form method="post" class="space-y-4">
-      {% csrf_token %}
-      <div>
-        <label class="text-sm text-gray-600">نسبة عمولة المنصة (0..1)</label>
-        {{ form.platform_fee_percent }}
+<section class="page-section finance-settings">
+  <div class="container">
+    
+    {# ===== رأس الصفحة ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        ⚙️ إعدادات المالية
       </div>
-      <div>
-        <label class="text-sm text-gray-600">نسبة ضريبة القيمة المضافة VAT (0..1)</label>
-        {{ form.vat_rate }}
-      </div>
-      <button class="btn">حفظ</button>
-    </form>
+      <h1 class="section-title">
+        إعدادات المالية
+      </h1>
+      <p class="section-description">
+        قِيَم بين 0 و 1 (مثال 0.10 = 10٪، 0.15 = 15٪)
+      </p>
+    </div>
 
-    <div class="mt-6 p-3 rounded-lg bg-gray-50 text-sm">
-      <div>القيم الحالية في الكاش:</div>
-      <div class="mt-1">عمولة المنصة: {{ cached_fee }}</div>
-      <div>الضريبة VAT: {{ cached_vat }}</div>
+    <div class="settings-container" style="max-width: 600px; margin: 0 auto;">
+      
+      {# ===== بطاقة الإعدادات ===== #}
+      <div class="profile-section">
+        <form method="post" class="settings-form" id="settingsForm">
+          {% csrf_token %}
+          
+          {# ===== نسبة عمولة المنصة ===== #}
+          <div class="form-field">
+            <label for="{{ form.platform_fee_percent.id_for_label }}" class="form-label">
+              💼 نسبة عمولة المنصة (0..1)
+            </label>
+            <div class="input-with-preview">
+              {{ form.platform_fee_percent }}
+              <div class="preview-value" id="feePreview">
+                {{ form.platform_fee_percent.value|default:0|floatformat:4 }}
+              </div>
+            </div>
+            {% if form.platform_fee_percent.errors %}
+              <div class="field-error">
+                {{ form.platform_fee_percent.errors|join:", " }}
+              </div>
+            {% endif %}
+            <div class="preview-percent" id="feePercent">
+              {{ form.platform_fee_percent.value|default:0|floatformat:2 }}%
+            </div>
+          </div>
+
+          {# ===== نسبة ضريبة القيمة المضافة ===== #}
+          <div class="form-field">
+            <label for="{{ form.vat_rate.id_for_label }}" class="form-label">
+              🏛️ نسبة ضريبة القيمة المضافة VAT (0..1)
+            </label>
+            <div class="input-with-preview">
+              {{ form.vat_rate }}
+              <div class="preview-value" id="vatPreview">
+                {{ form.vat_rate.value|default:0|floatformat:4 }}
+              </div>
+            </div>
+            {% if form.vat_rate.errors %}
+              <div class="field-error">
+                {{ form.vat_rate.errors|join:", " }}
+              </div>
+            {% endif %}
+            <div class="preview-percent" id="vatPercent">
+              {{ form.vat_rate.value|default:0|floatformat:2 }}%
+            </div>
+          </div>
+
+          {# ===== أزرار الإجراءات ===== #}
+          <div class="form-actions employee-actions" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--dark-200);">
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+              💾 حفظ الإعدادات
+            </button>
+            <button type="reset" class="btn btn-outline" id="resetBtn">
+              🔄 إعادة تعيين
+            </button>
+          </div>
+        </form>
+
+        {# ===== القيم الحالية ===== #}
+        <div class="current-values profile-section" style="background: var(--primary-50); border-color: var(--primary-200); margin-top: 2rem;">
+          <div class="card-section-title" style="color: var(--primary-700);">
+            📊 القيم الحالية في الكاش
+          </div>
+          <div class="values-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+            <div class="value-item">
+              <div class="value-label">عمولة المنصة:</div>
+              <div class="value-amount">{{ cached_fee }}</div>
+            </div>
+            <div class="value-item">
+              <div class="value-label">الضريبة VAT:</div>
+              <div class="value-amount">{{ cached_vat }}</div>
+            </div>
+          </div>
+          <p class="card-section-note" style="margin-top: 1rem;">
+            هذه القيم مستخدمة حاليًا في حسابات النظام
+          </p>
+        </div>
+      </div>
+
+      {# ===== معلومات مساعدة ===== #}
+      <div class="help-section profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200); margin-top: 1.5rem;">
+        <div class="card-section-title" style="color: var(--secondary-700);">
+          💡 أمثلة توضيحية
+        </div>
+        <div class="examples-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+          <div class="example-item">
+            <div class="example-value">0.05 = 5%</div>
+            <div class="example-desc">عمولة منخفضة</div>
+          </div>
+          <div class="example-item">
+            <div class="example-value">0.10 = 10%</div>
+            <div class="example-desc">عمولة متوسطة</div>
+          </div>
+          <div class="example-item">
+            <div class="example-value">0.15 = 15%</div>
+            <div class="example-desc">عمولة مرتفعة</div>
+          </div>
+          <div class="example-item">
+            <div class="example-value">0.00 = 0%</div>
+            <div class="example-desc">بدون عمولة</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
-</div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تهيئة تأثيرات الأزرار
+    if (typeof initButtonEffects === 'function') {
+      initButtonEffects();
+    }
+
+    const form = document.getElementById('settingsForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    
+    // عناصر الإدخال والمعاينة
+    const feeInput = document.getElementById('{{ form.platform_fee_percent.id_for_label }}');
+    const vatInput = document.getElementById('{{ form.vat_rate.id_for_label }}');
+    const feePreview = document.getElementById('feePreview');
+    const vatPreview = document.getElementById('vatPreview');
+    const feePercent = document.getElementById('feePercent');
+    const vatPercent = document.getElementById('vatPercent');
+
+    // تحديث المعاينة
+    function updatePreview(input, preview, percent) {
+      if (!input || !preview || !percent) return;
+      
+      const value = parseFloat(input.value) || 0;
+      preview.textContent = value.toFixed(4);
+      percent.textContent = (value * 100).toFixed(2) + '%';
+      
+      // تغيير اللون حسب القيمة
+      if (value > 0.15) {
+        percent.style.color = '#ef4444';
+      } else if (value > 0.10) {
+        percent.style.color = '#f59e0b';
+      } else if (value > 0.05) {
+        percent.style.color = '#10b981';
+      } else {
+        percent.style.color = 'var(--dark-500)';
+      }
+    }
+
+    // التحقق من صحة القيم
+    function validateInput(input) {
+      const value = parseFloat(input.value);
+      if (isNaN(value)) {
+        input.style.borderColor = '#ef4444';
+        return false;
+      }
+      
+      if (value < 0 || value > 1) {
+        input.style.borderColor = '#ef4444';
+        return false;
+      }
+      
+      input.style.borderColor = '#10b981';
+      return true;
+    }
+
+    // معالجة أحداث الإدخال
+    if (feeInput) {
+      feeInput.addEventListener('input', function() {
+        updatePreview(feeInput, feePreview, feePercent);
+        validateInput(feeInput);
+        
+        // تأثير بسيط
+        this.style.transform = 'scale(1.02)';
+        setTimeout(() => {
+          this.style.transform = 'scale(1)';
+        }, 150);
+      });
+      
+      feeInput.addEventListener('blur', function() {
+        validateInput(feeInput);
+      });
+    }
+
+    if (vatInput) {
+      vatInput.addEventListener('input', function() {
+        updatePreview(vatInput, vatPreview, vatPercent);
+        validateInput(vatInput);
+        
+        // تأثير بسيط
+        this.style.transform = 'scale(1.02)';
+        setTimeout(() => {
+          this.style.transform = 'scale(1)';
+        }, 150);
+      });
+      
+      vatInput.addEventListener('blur', function() {
+        validateInput(vatInput);
+      });
+    }
+
+    // التحقق من النموذج قبل الإرسال
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        if (!validateInput(feeInput)) isValid = false;
+        if (!validateInput(vatInput)) isValid = false;
+        
+        if (!isValid) {
+          e.preventDefault();
+          if (typeof showToast === 'function') {
+            showToast('يرجى إدخال قيم صحيحة بين 0 و 1', 'error');
+          }
+          return false;
+        }
+
+        // تعطيل الزر أثناء المعالجة
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '⏳ جاري الحفظ...';
+        }
+
+        // استخدام نظام التوست
+        if (typeof showToast === 'function') {
+          showToast('جاري حفظ الإعدادات المالية...', 'info');
+        }
+      });
+    }
+
+    // إعادة التعيين
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function() {
+        if (typeof showToast === 'function') {
+          showToast('تم إعادة تعيين القيم', 'info');
+        }
+        
+        // إعادة المعاينة بعد فترة قصيرة
+        setTimeout(() => {
+          if (feeInput) updatePreview(feeInput, feePreview, feePercent);
+          if (vatInput) updatePreview(vatInput, vatPreview, vatPercent);
+        }, 100);
+      });
+    }
+
+    // تأثيرات التركيز
+    const inputs = form.querySelectorAll('input');
+    inputs.forEach(input => {
+      input.addEventListener('focus', function() {
+        this.style.borderColor = 'var(--primary-500)';
+        this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+      });
+      
+      input.addEventListener('blur', function() {
+        this.style.boxShadow = '';
+      });
+    });
+
+    // التهيئة الأولية للمعاينة
+    setTimeout(() => {
+      if (feeInput) updatePreview(feeInput, feePreview, feePercent);
+      if (vatInput) updatePreview(vatInput, vatPreview, vatPercent);
+    }, 100);
+
+  })();
+  </script>
+
+  <style>
+  .finance-settings .settings-container {
+    max-width: 600px;
+  }
+
+  .finance-settings .form-field {
+    margin-bottom: 2rem;
+    position: relative;
+  }
+
+  .finance-settings .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .finance-settings .input-with-preview {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .finance-settings .input-with-preview input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .finance-settings .input-with-preview input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .finance-settings .preview-value {
+    padding: 0.5rem 1rem;
+    background: var(--dark-100);
+    border-radius: var(--radius);
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--dark-700);
+    min-width: 80px;
+    text-align: center;
+  }
+
+  .finance-settings .preview-percent {
+    margin-top: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: color 0.3s ease;
+  }
+
+  .finance-settings .field-error {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .finance-settings .values-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .finance-settings .value-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--primary-200);
+  }
+
+  .finance-settings .value-label {
+    color: var(--primary-600);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .finance-settings .value-amount {
+    color: var(--primary-700);
+    font-weight: 700;
+    font-family: monospace;
+    font-size: 1rem;
+  }
+
+  .finance-settings .examples-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .finance-settings .example-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--secondary-200);
+  }
+
+  .finance-settings .example-value {
+    font-weight: 700;
+    color: var(--secondary-700);
+    margin-bottom: 0.25rem;
+    font-family: monospace;
+  }
+
+  .finance-settings .example-desc {
+    color: var(--secondary-600);
+    font-size: 0.875rem;
+  }
+
+  .finance-settings .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+  }
+
+  @media (max-width: 768px) {
+    .finance-settings .input-with-preview {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .finance-settings .preview-value {
+      order: -1;
+      margin-bottom: 0.5rem;
+    }
+    
+    .finance-settings .values-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .finance-settings .examples-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .finance-settings .form-actions {
+      flex-direction: column;
+    }
+    
+    .finance-settings .form-actions .btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .finance-settings .examples-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .finance-settings .value-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+  }
+
+  /* تأثيرات الحركة */
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .finance-settings .profile-section {
+    animation: slideInUp 0.6s ease-out;
+  }
+
+  .finance-settings .form-field:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+
+  .finance-settings .form-field:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .finance-settings .current-values {
+    animation-delay: 0.3s;
+  }
+
+  .finance-settings .help-section {
+    animation-delay: 0.4s;
+  }
+  </style>
 {% endblock %}

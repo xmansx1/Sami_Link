@@ -1,202 +1,248 @@
 {# agreements/templates/agreements/reject_reason.html #}
 {% extends "base.html" %}
 {% load static %}
+
 {% block title %}سبب رفض الاتفاقية #{{ agreement.id }}{% endblock %}
 
 {% block extra_css %}
 <style>
-  .fade-in{animation:fadeIn .6s ease-in-out}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-  .glass{background:rgba(255,255,255,.85);backdrop-filter:blur(18px);border:1px solid rgba(15,23,42,.06)}
-  .dark .glass{background:rgba(30,41,59,.85);border-color:rgba(255,255,255,.08)}
-  .grad{background:linear-gradient(135deg,#fecaca 0%,#fed7aa 50%,#fef3c7 100%)}
-  .dark .grad{background:linear-gradient(135deg,#7f1d1d 0%,#9a3412 50%,#78350f 100%)}
-  .btn-glow{transition:all .25s ease;box-shadow:0 4px 10px rgba(0,0,0,.08)}
-  .btn-glow:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(0,0,0,.12)}
-  .pulse{animation:pulse 2s infinite}
-  @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
-  .textarea-focus:focus{box-shadow:0 0 0 3px rgba(244,63,94,.12);border-color:#f43f5e}
-  .info-card{background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);border-left:4px solid #f43f5e}
-  .dark .info-card{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);border-left-color:#e11d48}
-  .hint{font-size:.75rem;color:#94a3b8}
-  .error-box{background:#fef2f2;border:1px solid #fecaca}
-  .dark .error-box{background:#7f1d1d33;border-color:#fecaca33}
-  .counter-ok{color:#16a34a}
-  .counter-bad{color:#f43f5e}
+  .reject-counter {
+    font-size: 0.8rem;
+    color: var(--dark-400);
+  }
+  .reject-counter-ok {
+    color: #16a34a;
+  }
+  .reject-counter-bad {
+    color: #f43f5e;
+  }
+  .reject-error-box {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-lg);
+  }
+  .reject-info-box {
+    background: var(--dark-50);
+    border-radius: var(--radius-lg);
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<section class="max-w-2xl mx-auto rtl py-10 px-4" dir="rtl">
+<section class="page-section request-detail-page">
+  <div class="container">
+    <div class="request-detail-card profile-section">
 
-  {# شريط علوي / مسار تنقّل بسيط #}
-  <nav class="text-sm text-slate-500 dark:text-slate-400 mb-4">
-    <a href="{% url 'agreements:list' %}" class="hover:underline">الاتفاقيات</a>
-    <span class="mx-1">/</span>
-    <a href="{% url 'agreements:detail' agreement.id %}" class="hover:underline">تفاصيل #{{ agreement.id }}</a>
-    <span class="mx-1">/</span>
-    <span>رفض الاتفاقية</span>
-  </nav>
-
-  <div class="rounded-2xl glass shadow-xl fade-in overflow-hidden">
-    <header class="grad p-6 md:p-8">
-      <div class="flex items-center">
-        <div class="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center ml-4 pulse">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.293 18.293A1 1 0 005 19h14a1 1 0 00.894-1.447L12.894 4.553a1 1 0 00-1.788 0L4.106 17.553a1 1 0 00.187 1.147z"/>
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">رفض الاتفاقية #{{ agreement.id }}</h1>
-          <p class="text-slate-700 dark:text-slate-300 text-sm mt-1">
-            رجاءً اكتب سببًا واضحًا ومحددًا ليقوم الموظف بتعديل الاتفاقية وإعادة إرسالها.
-          </p>
-        </div>
-      </div>
-    </header>
-
-    {# معلومات مختصرة عن الاتفاقية #}
-    <section class="p-6 border-b border-slate-200 dark:border-slate-700">
-      <div class="info-card p-4 rounded-lg">
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <div class="text-slate-500 dark:text-slate-400 text-xs">عنوان الاتفاقية</div>
-            <div class="font-semibold text-slate-800 dark:text-slate-200 truncate">{{ agreement.title }}</div>
+      {# هيدر بسيط + مسار تنقل #}
+      <div class="card-header request-header-section">
+        <div class="request-header">
+          <div class="request-header-main">
+            <div class="request-title-row">
+              <h1 class="request-title profile-name">
+                رفض الاتفاقية #{{ agreement.id }}
+              </h1>
+              <div class="request-badges">
+                <span class="badge badge-default">
+                  الطلب #{{ agreement.request.id }}
+                </span>
+                <span class="badge badge-rejected">
+                  ❌ رفض الاتفاقية
+                </span>
+              </div>
+            </div>
+            <div class="request-meta">
+              <div class="employee-location">
+                <a href="{% url 'marketplace:request_detail' agreement.request.id %}"
+                   class="link">
+                  رجوع لصفحة الطلب
+                </a>
+                <span> / </span>
+                <a href="{% url 'agreements:detail' agreement.id %}"
+                   class="link">
+                  تفاصيل الاتفاقية
+                </a>
+              </div>
+            </div>
           </div>
-          <div>
-            <div class="text-slate-500 dark:text-slate-400 text-xs">المبلغ</div>
-            <div class="font-semibold text-slate-800 dark:text-slate-200">{{ agreement.total_amount|floatformat:2 }} ر.س</div>
-          </div>
-          <div>
-            <div class="text-slate-500 dark:text-slate-400 text-xs">المدة</div>
-            <div class="font-semibold text-slate-800 dark:text-slate-200">{{ agreement.duration_days }} يوم</div>
-          </div>
-          <div>
-            <div class="text-slate-500 dark:text-slate-400 text-xs">الموظف</div>
-            <div class="font-semibold text-slate-800 dark:text-slate-200">{{ agreement.employee_display }}</div>
+          <div class="request-updated-at">
+            <span class="text-muted">
+              رقم الاتفاقية: {{ agreement.id }}
+            </span>
           </div>
         </div>
       </div>
-    </section>
 
-    {# رسائل النظام (Django messages) إن وُجدت #}
-    {% if messages %}
-      <div class="px-6 pt-6">
-        {% for m in messages %}
-          <div class="mb-4 p-3 rounded-lg {% if m.tags == 'error' %}error-box text-rose-700 dark:text-rose-300{% else %}bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300{% endif %}">
-            {{ m }}
+      <div class="card-body request-detail-body">
+
+        {# معلومات مختصرة عن الاتفاقية #}
+        <div class="profile-section">
+          <div class="card-section-title">📄 بيانات الاتفاقية</div>
+          <div class="summary-grid-inner" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;">
+            <div class="profile-section" style="background:var(--dark-50);">
+              <div class="card-subtitle">عنوان الاتفاقية</div>
+              <div class="card-text">{{ agreement.title }}</div>
+            </div>
+            <div class="profile-section" style="background:var(--dark-50);">
+              <div class="card-subtitle">المبلغ</div>
+              <div class="card-text">
+                {{ agreement.grand_total|floatformat:2 }} <span>ريال</span>
+              </div>
+            </div>
+            <div class="profile-section" style="background:var(--dark-50);">
+              <div class="card-subtitle">المدة</div>
+              <div class="card-text">
+                {{ agreement.duration_days }} يوم
+              </div>
+            </div>
+            <div class="profile-section" style="background:var(--dark-50);">
+              <div class="card-subtitle">الموظف</div>
+              <div class="card-text">
+                {{ agreement.employee_display }}
+              </div>
+            </div>
           </div>
-        {% endfor %}
-      </div>
-    {% endif %}
+        </div>
 
-    {# نموذج سبب الرفض #}
-    <form method="post" class="p-6 space-y-6" id="reject-form" action="">
-      {% csrf_token %}
-
-      {# عند استخدام Form في السياق، اعرض أخطاءه #}
-      {% if form and form.errors %}
-        <div class="error-box text-rose-700 dark:text-rose-300 p-4 rounded-lg">
-          <ul class="list-disc pr-5 text-sm">
-            {% for field, errs in form.errors.items %}
-              {% for e in errs %}<li>{{ e }}</li>{% endfor %}
+        {# رسائل النظام (Django messages) إن وُجدت #}
+        {% if messages %}
+          <div class="profile-section">
+            {% for m in messages %}
+              <div class="card-text {% if m.tags == 'error' %}reject-error-box{% else %}profile-section{% endif %}"
+                   style="margin-bottom:0.75rem;padding:0.75rem 1rem;">
+                {{ m }}
+              </div>
             {% endfor %}
-          </ul>
+          </div>
+        {% endif %}
+
+        {# نموذج سبب الرفض #}
+        <div class="profile-section">
+          <div class="card-header-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <div class="card-section-title">📝 سبب الرفض</div>
+            <div class="card-section-note">
+              رجاءً اكتب سببًا واضحًا ليقوم الموظف بتعديل الاتفاقية وإعادة إرسالها.
+            </div>
+          </div>
+
+          {% if form and form.errors %}
+            <div class="reject-error-box" style="padding:1rem;margin-bottom:1rem;">
+              <ul class="list-disc" style="padding-right:1.25rem;font-size:0.9rem;">
+                {% for field, errs in form.errors.items %}
+                  {% for e in errs %}
+                    <li>{{ e }}</li>
+                  {% endfor %}
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          <form method="post" id="reject-form" action="{% url 'agreements:reject' agreement.id %}">
+            {% csrf_token %}
+            <div class="form-group" style="margin-bottom:1rem;">
+              <label for="id_reason" class="form-label" style="font-weight:600;margin-bottom:0.5rem;display:block;">
+                سبب الرفض
+              </label>
+
+              <div class="relative" style="position:relative;">
+                <textarea
+                  id="id_reason"
+                  name="reason"
+                  rows="6"
+                  minlength="5"
+                  maxlength="1000"
+                  required
+                  class="input"
+                  style="width:100%;min-height:140px;resize:vertical;"
+                  placeholder="اكتب ملاحظاتك الدقيقة على البنود أو المبلغ أو المدة...&#10;&#10;مثال:&#10;- تعديل عدد الصفحات إلى 10&#10;- تقسيم الدفعات إلى 3 مراحل&#10;- تمديد المدة إلى 14 يومًا">{{ reason|default_if_none:'' }}</textarea>
+
+                <div style="position:absolute;bottom:8px;left:10px;display:flex;gap:0.75rem;align-items:center;">
+                  <span id="char-counter" class="reject-counter">0 / 1000</span>
+                  <span class="card-section-note" style="font-size:0.8rem;">
+                    سيتم إرسال السبب للموظف لتنفيذ التعديلات
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="reject-info-box" style="padding:0.75rem 1rem;margin-bottom:1rem;">
+              <div class="card-text" style="font-size:0.85rem;">
+                • اذكر ما تريد تعديله بدقة. • اقترح بديلاً واضحًا إن أمكن. • تجنّب العبارات العامة.
+              </div>
+            </div>
+
+            <div class="employee-actions" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
+              <button type="submit"
+                      class="btn btn-danger btn-sm"
+                      id="submit-btn">
+                ❌ تأكيد الرفض وإرسال السبب
+              </button>
+
+              <a href="{% url 'agreements:detail' agreement.id %}"
+                 class="btn btn-outline btn-sm">
+                الرجوع لتفاصيل الاتفاقية
+              </a>
+            </div>
+          </form>
         </div>
-      {% endif %}
 
-      <div>
-        <label for="id_reason" class="block text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">
-          سبب الرفض
-        </label>
-
-        <div class="relative">
-          <textarea
-            id="id_reason"
-            name="reason"
-            rows="7"
-            minlength="5"
-            maxlength="1000"
-            required
-            class="textarea-focus w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 transition-all"
-            placeholder="اكتب ملاحظاتك الدقيقة على البنود أو المبلغ أو المدة...&#10;&#10;مثال:&#10;- تعديل عدد الصفحات إلى 10&#10;- تقسيم الدفعات إلى 3 مراحل&#10;- تمديد المدة إلى 14 يومًا">{{ reason|default_if_none:'' }}</textarea>
-
-          <div class="absolute bottom-3 left-3 flex items-center gap-3">
-            <span id="char-counter" class="hint">0 / 1000</span>
-            <span class="hint">سيُرسل السبب للموظف لتنفيذ التعديلات</span>
+        {# ماذا يحدث بعد الرفض؟ #}
+        <div class="profile-section">
+          <div class="card-section-title">ℹ️ ماذا يحدث بعد الرفض؟</div>
+          <div class="card-text">
+            <ul style="padding-right:1.25rem;margin:0;font-size:0.9rem;list-style:disc;">
+              <li>يستلم الموظف سبب الرفض ويجري التعديلات المطلوبة.</li>
+              <li>تعاد الاتفاقية إليك للمراجعة والاعتماد.</li>
+              <li>يمكنك متابعة حالة الاتفاقية من صفحة التفاصيل.</li>
+            </ul>
           </div>
         </div>
 
-        <div class="mt-3 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-          <div class="text-blue-800 dark:text-blue-300 text-xs leading-6">
-            • اذكر ما تريد تعديله بدقة. • اقترح بديلاً واضحًا إن أمكن. • تجنّب العبارات العامة.
-          </div>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-3 pt-2">
-        <button type="submit" class="btn-glow px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center" id="submit-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-          تأكيد الرفض وإرسال السبب
-        </button>
-
-        <a href="{% url 'agreements:detail' agreement.id %}"
-           class="px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium">
-          العودة للتفاصيل
-        </a>
-      </div>
-    </form>
-  </div>
-
-  {# ماذا بعد؟ #}
-  <div class="mt-6 p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-    <div class="flex items-start">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-500 ml-3 mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-      </svg>
-      <div>
-        <h3 class="font-semibold text-slate-800 dark:text-slate-200 mb-2">ماذا يحدث بعد الرفض؟</h3>
-        <ul class="text-slate-600 dark:text-slate-400 text-sm space-y-2 list-disc pr-4">
-          <li>يستلم الموظف السبب ويجري التعديلات المطلوبة.</li>
-          <li>تعاد الاتفاقية إليك للمراجعة والاعتماد.</li>
-          <li>يمكنك متابعة الحالة من صفحة تفاصيل الاتفاقية.</li>
-        </ul>
-      </div>
+      </div> {# /card-body #}
     </div>
   </div>
-
 </section>
+{% endblock %}
 
+{% block extra_scripts %}
+{{ block.super }}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const textarea = document.getElementById('id_reason');
-    const counter = document.getElementById('char-counter');
-    const submitBtn = document.getElementById('submit-btn');
-    const form = document.getElementById('reject-form');
+    var textarea = document.getElementById('id_reason');
+    var counter = document.getElementById('char-counter');
+    var submitBtn = document.getElementById('submit-btn');
+    var form = document.getElementById('reject-form');
 
-    function updateCounter(){
-      if(!textarea || !counter) return;
-      const max = parseInt(textarea.getAttribute('maxlength')) || 1000;
-      const min = parseInt(textarea.getAttribute('minlength')) || 5;
-      const len = textarea.value.length;
+    function updateCounter() {
+      if (!textarea || !counter) {
+        return;
+      }
+      var max = parseInt(textarea.getAttribute('maxlength')) || 1000;
+      var min = parseInt(textarea.getAttribute('minlength')) || 5;
+      var len = textarea.value.length;
+
       counter.textContent = len + ' / ' + max;
-      counter.classList.remove('counter-ok','counter-bad');
-      if(len >= min){ counter.classList.add('counter-ok') } else { counter.classList.add('counter-bad') }
+      counter.classList.remove('reject-counter-ok', 'reject-counter-bad');
+
+      if (len >= min) {
+        counter.classList.add('reject-counter-ok');
+      } else {
+        counter.classList.add('reject-counter-bad');
+      }
     }
 
-    textarea?.addEventListener('input', updateCounter);
-    updateCounter();
+    if (textarea) {
+      textarea.addEventListener('input', updateCounter);
+      updateCounter();
+    }
 
-    {# منع الإرسال المكرر وحماية تجربة المستخدم #}
-    form?.addEventListener('submit', function(e){
-      if(submitBtn){ submitBtn.disabled = true; submitBtn.classList.add('opacity-60','cursor-not-allowed') }
-    });
-
-    {# تأثير تحذيري على زر الإرسال #}
-    submitBtn?.addEventListener('mouseenter', function(){ this.classList.add('pulse') });
-    submitBtn?.addEventListener('mouseleave', function(){ this.classList.remove('pulse') });
+    if (form) {
+      form.addEventListener('submit', function () {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.classList.add('btn-disabled');
+        }
+      });
+    }
   });
 </script>
 {% endblock %}

@@ -73,8 +73,13 @@ urlpatterns += [
 if hasattr(views, "detail"):
     urlpatterns.append(path("<int:pk>/", _wrap_pk("detail"), name="detail"))
 
+
 if hasattr(views, "edit"):
     urlpatterns.append(path("<int:pk>/edit/", _wrap_pk("edit"), name="edit"))
+
+# إضافة مسار رفض الاتفاقية عبر pk (POST)
+if hasattr(views, "reject"):
+    urlpatterns.append(path("<int:pk>/reject/", _wrap_pk("reject"), name="reject"))
 
 # دعم finalize_clauses أو finalize أيهما متوفر
 _finalize_attr = "finalize_clauses" if hasattr(views, "finalize_clauses") else ("finalize" if hasattr(views, "finalize") else None)

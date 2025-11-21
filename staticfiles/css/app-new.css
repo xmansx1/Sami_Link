@@ -100,6 +100,97 @@ body {
 }
 
 /* ===============================
+   Marketplace Request Detail Styles
+   =============================== */
+.card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--dark-200);
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+}
+.card-lg {
+  max-width: 900px;
+  margin: 0 auto 2rem auto;
+  padding: 2.5rem 2rem;
+}
+.card-header {
+  border-bottom: 1px solid var(--dark-100);
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+}
+.request-detail-card {
+  background: var(--surface-alt);
+  box-shadow: var(--shadow-lg);
+}
+.request-detail-page {
+  background: #f8fafc;
+  padding: 2rem 0 4rem 0;
+}
+.request-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.request-header-main {
+  flex: 1;
+}
+.request-title-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.request-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--primary-700);
+  margin-left: 1rem;
+}
+.request-meta {
+  color: var(--dark-500);
+  font-size: 1rem;
+}
+.request-updated-at {
+  color: var(--dark-400);
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
+}
+.request-steps {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.5rem 0 1rem 0;
+}
+.step-pill {
+  background: var(--dark-100);
+  color: var(--dark-500);
+  border-radius: var(--radius-full);
+  padding: 0.4rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 1px solid var(--dark-200);
+  transition: background 0.2s, color 0.2s;
+}
+.step-pill-active {
+  background: var(--primary-100);
+  color: var(--primary-700);
+  border: 1px solid var(--primary-300);
+}
+.step-separator {
+  width: 32px;
+  height: 4px;
+  background: var(--dark-200);
+  border-radius: 2px;
+  display: inline-block;
+}
+}
+
+/* ===============================
    الهيدر المحسن
    =============================== */
 .main-header {

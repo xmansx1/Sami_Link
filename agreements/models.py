@@ -116,38 +116,47 @@ class Agreement(models.Model):
     # ------------------------- خصائص مشتقة مالية -------------------------
     @property
     def p_amount(self) -> Decimal:
-        """قيمة المشروع الأساسية P بعد التقريب إلى خانتين عشريتين."""
-        return Decimal(self.total_amount or 0).quantize(
-            Decimal("0.01"),
-            rounding=ROUND_HALF_UP,
-        )
+        """
+        قيمة المشروع الأساسية P بعد التقريب إلى خانتين عشريتين (تعتمد فقط على المبلغ المدخل).
+        """
+        return Decimal(self.total_amount or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     @property
     def fee_amount(self) -> Decimal:
-        """قيمة عمولة المنصّة على الاتفاقية (محسوبة من FinanceSettings)."""
-        fee = self.p_amount * self.platform_fee_percent()
-        return fee.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        """
+        لا يوجد أي حساب تلقائي للعمولة، تعيد نفس مبلغ المشروع الأساسي.
+        """
+        return self.p_amount
 
     @property
     def vat_base(self) -> Decimal:
-        """الأساس الخاضع للضريبة = P + عمولة المنصّة."""
-        base = self.p_amount + self.fee_amount
-        return base.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        """
+        الأساس الخاضع للضريبة = المبلغ المدخل فقط.
+        """
+        return self.p_amount
 
     @property
     def vat_amount(self) -> Decimal:
-        """قيمة الضريبة على (P + عمولة المنصّة)."""
-        vat = self.vat_base * self.vat_percent()
-        return vat.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        """
+        لا يوجد أي حساب تلقائي للضريبة، تعيد نفس مبلغ المشروع الأساسي.
+        """
+        return self.p_amount
 
     @property
     def grand_total(self) -> Decimal:
         """
-        الإجمالي النهائي (نظري) = الأساس + الضريبة.
-        ملاحظة: الفاتورة نفسها ستعيد حساب الإجمالي حسب FinanceSettings أيضًا.
+        الإجمالي النهائي = المبلغ المدخل فقط.
         """
-        total = self.vat_base + self.vat_amount
-        return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return self.p_amount
+
+    @property
+    def employee_net_amount(self) -> Decimal | None:
+        """
+        صافي الموظف = المبلغ المدخل فقط.
+        """
+        if self.p_amount is None:
+            return None
+        return self.p_amount
 
     # ------------------------- منطق سير التنفيذ -------------------------
     def mark_started(self, when=None, save: bool = True) -> None:
@@ -237,7 +246,17 @@ class Agreement(models.Model):
         if completed_value is None:
             completed_value = "completed"
 
-        if self.started_at and self.status == self.Status.ACCEPTED:
+        # شرط إضافي: لا تحول الطلب إلى قيد التنفيذ إلا إذا كانت الفاتورة مدفوعة فعلاً
+        invoice_paid = False
+        try:
+            invoice = getattr(self, "invoice", None)
+            if invoice and hasattr(invoice, "status"):
+                PAID_VAL = getattr(getattr(invoice.__class__, "Status", None), "PAID", "paid")
+                invoice_paid = (getattr(invoice, "status", None) or "").lower() == (PAID_VAL or "").lower()
+        except Exception:
+            pass
+
+        if self.started_at and self.status == self.Status.ACCEPTED and invoice_paid:
             if self.all_milestones_approved:
                 new_state = completed_value
             else:

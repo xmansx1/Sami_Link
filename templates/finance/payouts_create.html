@@ -4,27 +4,484 @@
 {% block title %}إنشاء أمر صرف{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6" dir="rtl">
-  <div class="mb-4">
-    <h1 class="text-2xl font-extrabold">إنشاء أمر صرف</h1>
-    <p class="text-sm text-gray-600 mt-1">نموذج توضيحي — يفعّل عند إضافة view للمسار.</p>
-  </div>
+<section class="page-section payout-create-page">
+  <div class="container">
+    
+    {# ===== رأس الصفحة ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        💸 إنشاء أمر صرف
+      </div>
+      <h1 class="section-title">
+        إنشاء أمر صرف
+      </h1>
+      <p class="section-description">
+        نموذج توضيحي — يفعّل عند إضافة view للمسار
+      </p>
+    </div>
 
-  <div class="rounded-2xl shadow bg-white p-4">
-    <form method="post">
-      {% csrf_token %}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="text-sm text-gray-600">الموظف</label>
-          <input type="text" class="w-full border rounded-lg px-3 py-2" placeholder="Employee ID">
-        </div>
-        <div>
-          <label class="text-sm text-gray-600">المبلغ</label>
-          <input type="number" step="0.01" class="w-full border rounded-lg px-3 py-2" placeholder="0.00">
+    {# ===== بطاقة النموذج ===== #}
+    <div class="profile-section" style="max-width: 600px; margin: 0 auto;">
+      
+      {# ===== تنبيه تجريبي ===== #}
+      <div class="demo-alert profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200); margin-bottom: 2rem;">
+        <div class="card-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+          <span class="alert-icon" style="color: var(--secondary-600); font-size: 1.2rem;">🧪</span>
+          <div class="alert-content">
+            <div class="card-section-title" style="color: var(--secondary-700); margin-bottom: 0.25rem;">
+              نموذج تجريبي
+            </div>
+            <p class="card-section-note" style="color: var(--secondary-600);">
+              هذا النموذج توضيحي وسيتم تفعيله بالكامل عند إضافة الـ view المناسب للمسار
+            </p>
+          </div>
         </div>
       </div>
-      <button class="btn mt-3">حفظ</button>
-    </form>
+
+      <form method="post" class="payout-form" id="payoutForm">
+        {% csrf_token %}
+
+        <div class="form-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+          
+          {# ===== حقل الموظف ===== #}
+          <div class="form-field">
+            <label class="form-label">
+              👤 الموظف
+            </label>
+            <input type="text" 
+                   name="employee" 
+                   class="input"
+                   placeholder="ادخل معرف الموظف"
+                   required
+                   id="employeeInput">
+            <p class="field-hint">
+              يمكنك استخدام رقم الموظف أو البريد الإلكتروني
+            </p>
+          </div>
+
+          {# ===== حقل المبلغ ===== #}
+          <div class="form-field">
+            <label class="form-label">
+              💰 المبلغ
+            </label>
+            <div class="amount-input-wrapper">
+              <input type="number" 
+                     step="0.01" 
+                     min="0"
+                     name="amount" 
+                     class="input"
+                     placeholder="0.00"
+                     required
+                     id="amountInput">
+              <span class="currency-symbol">ر.س</span>
+            </div>
+            <p class="field-hint">
+              المبلغ يجب أن يكون أكبر من الصفر
+            </p>
+          </div>
+        </div>
+
+        {# ===== حقل الوصف (اختياري) ===== #}
+        <div class="form-field">
+          <label class="form-label">
+            📝 الوصف (اختياري)
+          </label>
+          <textarea name="description" 
+                    class="input"
+                    rows="3"
+                    placeholder="وصف مختصر لأمر الصرف..."
+                    id="descriptionInput"></textarea>
+          <p class="field-hint">
+            مثلاً: مستحقات مشروع #123 أو تسوية رصيد
+          </p>
+        </div>
+
+        {# ===== معاينة المبلغ ===== #}
+        <div class="amount-preview profile-section" style="background: var(--primary-50); border-color: var(--primary-200); margin: 1.5rem 0; display: none;" id="amountPreview">
+          <div class="card-section-title" style="color: var(--primary-700);">معاينة المبلغ</div>
+          <div class="preview-content" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="preview-label" style="color: var(--primary-600);">المبلغ المدخل:</div>
+            <div class="preview-amount" style="font-size: 1.5rem; font-weight: 800; color: var(--primary-700);" id="previewAmount">0.00 ر.س</div>
+          </div>
+        </div>
+
+        {# ===== أزرار الإجراءات ===== #}
+        <div class="form-actions employee-actions" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--dark-200);">
+          <button type="submit" class="btn btn-primary" id="submitBtn">
+            💾 حفظ أمر الصرف
+          </button>
+          <a href="{% url 'finance:home' %}" class="btn btn-outline">
+            🚫 إلغاء
+          </a>
+        </div>
+
+      </form>
+    </div>
+
+    {# ===== معلومات مساعدة ===== #}
+    <div class="help-section profile-section" style="max-width: 600px; margin: 2rem auto 0; background: var(--dark-50);">
+      <div class="card-section-title">💡 معلومات مساعدة</div>
+      <div class="help-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div class="help-item">
+          <div class="help-icon">⏱️</div>
+          <div class="help-content">
+            <div class="help-title">المعالجة</div>
+            <div class="help-text">يتم معالجة أوامر الصرف خلال 24-48 ساعة</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-icon">📋</div>
+          <div class="help-content">
+            <div class="help-title">المستندات</div>
+            <div class="help-text">يُفضّل إرفاق مستندات داعمة إن وجدت</div>
+          </div>
+        </div>
+        <div class="help-item">
+          <div class="help-icon">🔒</div>
+          <div class="help-content">
+            <div class="help-title">الأمان</div>
+            <div class="help-text">جميع العمليات مسجلة ومؤمنة</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
-</div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تهيئة تأثيرات الأزرار
+    if (typeof initButtonEffects === 'function') {
+      initButtonEffects();
+    }
+
+    const form = document.getElementById('payoutForm');
+    const employeeInput = document.getElementById('employeeInput');
+    const amountInput = document.getElementById('amountInput');
+    const descriptionInput = document.getElementById('descriptionInput');
+    const amountPreview = document.getElementById('amountPreview');
+    const previewAmount = document.getElementById('previewAmount');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // تنسيق المبلغ
+    function formatAmount(amount) {
+      return new Intl.NumberFormat('ar-SA', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount);
+    }
+
+    // تحديث معاينة المبلغ
+    function updateAmountPreview() {
+      const amount = parseFloat(amountInput.value) || 0;
+      
+      if (amount > 0) {
+        previewAmount.textContent = `${formatAmount(amount)} ر.س`;
+        amountPreview.style.display = 'block';
+        
+        // تأثير ظهور
+        amountPreview.style.opacity = '0';
+        amountPreview.style.transform = 'translateY(-10px)';
+        
+        setTimeout(() => {
+          amountPreview.style.opacity = '1';
+          amountPreview.style.transform = 'translateY(0)';
+        }, 10);
+      } else {
+        amountPreview.style.display = 'none';
+      }
+    }
+
+    // التحقق من صحة النموذج
+    function validateForm() {
+      const employee = employeeInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+      
+      if (!employee) {
+        if (typeof showToast === 'function') {
+          showToast('يرجى إدخال معرف الموظف', 'error');
+        }
+        employeeInput.focus();
+        return false;
+      }
+      
+      if (!amount || amount <= 0) {
+        if (typeof showToast === 'function') {
+          showToast('يرجى إدخال مبلغ صحيح أكبر من الصفر', 'error');
+        }
+        amountInput.focus();
+        return false;
+      }
+      
+      return true;
+    }
+
+    // أحداث الحقول
+    if (amountInput) {
+      amountInput.addEventListener('input', updateAmountPreview);
+      amountInput.addEventListener('focus', function() {
+        this.style.borderColor = 'var(--primary-500)';
+        this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+      });
+      amountInput.addEventListener('blur', function() {
+        this.style.borderColor = '';
+        this.style.boxShadow = '';
+      });
+    }
+
+    if (employeeInput) {
+      employeeInput.addEventListener('focus', function() {
+        this.style.borderColor = 'var(--primary-500)';
+        this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+      });
+      employeeInput.addEventListener('blur', function() {
+        this.style.borderColor = '';
+        this.style.boxShadow = '';
+      });
+    }
+
+    if (descriptionInput) {
+      descriptionInput.addEventListener('focus', function() {
+        this.style.borderColor = 'var(--primary-500)';
+        this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+      });
+      descriptionInput.addEventListener('blur', function() {
+        this.style.borderColor = '';
+        this.style.boxShadow = '';
+      });
+    }
+
+    // حدث إرسال النموذج
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!validateForm()) {
+          return false;
+        }
+
+        // تأكيد قبل الإرسال
+        const amount = parseFloat(amountInput.value);
+        const employee = employeeInput.value.trim();
+        
+        const confirmMsg = `هل أنت متأكد من إنشاء أمر صرف للموظف ${employee} بمبلغ ${formatAmount(amount)} ريال؟`;
+        
+        if (!confirm(confirmMsg)) {
+          return false;
+        }
+
+        // تعطيل الزر وإظهار حالة التحميل
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '⏳ جاري إنشاء أمر الصرف...';
+          
+          // تأثير النقر
+          if (typeof animateButtonClick === 'function') {
+            animateButtonClick(submitBtn);
+          }
+        }
+
+        // استخدام نظام التوست
+        if (typeof showToast === 'function') {
+          showToast('جاري إنشاء أمر الصرف...', 'info');
+        }
+
+        // محاكاة الإرسال (سيتم استبدالها بالوظيفة الفعلية)
+        setTimeout(() => {
+          // هذا مجرد نموذج توضيحي
+          if (typeof showToast === 'function') {
+            showToast('تم إنشاء أمر الصرف بنجاح (نموذج تجريبي)', 'success');
+          }
+          
+          // إعادة تعيين النموذج
+          form.reset();
+          amountPreview.style.display = 'none';
+          
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '💾 حفظ أمر الصرف';
+          }
+        }, 2000);
+
+        return false; // منع الإرسال الفعلي في النموذج التجريبي
+      });
+    }
+
+    // تأثيرات على عناصر المساعدة
+    document.querySelectorAll('.help-item').forEach((item, index) => {
+      item.style.animationDelay = `${index * 0.2}s`;
+      item.classList.add('scroll-reveal');
+    });
+
+  })();
+  </script>
+
+  <style>
+  .payout-create-page .form-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .payout-create-page .form-field {
+    margin-bottom: 1.5rem;
+  }
+
+  .payout-create-page .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .payout-create-page .input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .payout-create-page .input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .payout-create-page textarea.input {
+    min-height: 80px;
+    resize: vertical;
+  }
+
+  .payout-create-page .field-hint {
+    color: var(--dark-500);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .payout-create-page .amount-input-wrapper {
+    position: relative;
+  }
+
+  .payout-create-page .currency-symbol {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--dark-500);
+    font-weight: 600;
+  }
+
+  .payout-create-page .amount-input-wrapper .input {
+    padding-left: 3rem;
+  }
+
+  .payout-create-page .amount-preview {
+    transition: all 0.3s ease;
+  }
+
+  .payout-create-page .help-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .payout-create-page .help-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+  }
+
+  .payout-create-page .help-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .payout-create-page .help-content {
+    flex: 1;
+  }
+
+  .payout-create-page .help-title {
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.25rem;
+  }
+
+  .payout-create-page .help-text {
+    color: var(--dark-600);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .payout-create-page .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+  }
+
+  @media (max-width: 768px) {
+    .payout-create-page .form-grid-2 {
+      grid-template-columns: 1fr;
+    }
+    
+    .payout-create-page .form-actions {
+      flex-direction: column;
+    }
+    
+    .payout-create-page .form-actions .btn {
+      width: 100%;
+    }
+    
+    .payout-create-page .help-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .payout-create-page .help-item {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+
+  /* تأثيرات الحركة */
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .payout-create-page .profile-section {
+    animation: slideInUp 0.6s ease-out;
+  }
+
+  /* تأثيرات خاصة للمبالغ */
+  @keyframes amountPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .payout-create-page .preview-amount {
+    animation: amountPulse 0.5s ease-in-out;
+  }
+  </style>
 {% endblock %}

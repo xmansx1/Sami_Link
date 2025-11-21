@@ -1,237 +1,649 @@
 {% extends "base.html" %}
 {% block title %}طلباتي{% endblock %}
 {% block content %}
-<section class="py-8 max-w-7xl mx-auto rtl" dir="rtl">
 
-  {# ===== العنوان وشريط الأدوات ===== #}
-  <div class="mb-6 flex items-center justify-between gap-3 flex-wrap">
-    <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">طلباتي</h1>
-    <a href="{% url 'marketplace:request_create' %}"
-       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 shadow">
-      <span>طلب جديد</span>
-    </a>
-  </div>
-
-  {# ===== فلاتر البحث / الفرز ===== #}
-  <form method="get" class="rounded-2xl border bg-white/70 dark:bg-slate-800/60 backdrop-blur p-4 shadow-sm mb-6">
-    <div class="grid md:grid-cols-4 gap-3">
-      <div>
-        <label class="block text-sm text-slate-600 dark:text-slate-300 mb-1">بحث</label>
-        <input type="text" name="q" value="{{ request.GET.q }}" class="input w-full" placeholder="عنوان الطلب أو الكلمات المفتاحية">
+<section class="page-section my-requests-page">
+  <div class="container">
+    
+    {# ===== العنوان وشريط الأدوات ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        📋 طلباتي
       </div>
-
-      <div>
-        <label class="block text-sm text-slate-600 dark:text-slate-300 mb-1">الحالة</label>
-        <select name="status" class="input w-full">
-          <option value="">الكل</option>
-          <option value="new" {% if request.GET.status == 'new' %}selected{% endif %}>جديد</option>
-          <option value="offer_selected" {% if request.GET.status == 'offer_selected' %}selected{% endif %}>تم اختيار عرض</option>
-          <option value="agreement_pending" {% if request.GET.status == 'agreement_pending' %}selected{% endif %}>بانتظار اتفاقية</option>
-          <option value="in_progress" {% if request.GET.status == 'in_progress' %}selected{% endif %}>قيد التنفيذ</option>
-          <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>مكتمل</option>
-          <option value="disputed" {% if request.GET.status == 'disputed' %}selected{% endif %}>نزاع</option>
-          <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>ملغي</option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-sm text-slate-600 dark:text-slate-300 mb-1">الترتيب</label>
-        <select name="sort" class="input w-full">
-          <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>الأحدث أولاً</option>
-          <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>الأقدم أولاً</option>
-          <option value="-updated_at" {% if request.GET.sort == '-updated_at' %}selected{% endif %}>آخر تحديث</option>
-        </select>
-      </div>
-
-      <div class="flex items-end gap-2">
-        <button class="px-4 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800">تطبيق</button>
-        <a href="." class="px-4 py-2 rounded-xl border hover:bg-slate-50 dark:hover:bg-slate-700">إعادة ضبط</a>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+        <h1 class="section-title" style="margin: 0;">
+          طلباتي
+        </h1>
+        <a href="{% url 'marketplace:request_create' %}"
+           class="btn btn-primary">
+          ➕ طلب جديد
+        </a>
       </div>
     </div>
-  </form>
 
-  {# ===== عرض هجين: بطاقات على الجوال + جدول على سطح المكتب ===== #}
-  {% if requests %}
+    {# ===== فلاتر البحث / الفرز ===== #}
+    <div class="profile-section" style="margin-bottom: 2rem;">
+      <form method="get" class="filter-form">
+        <div class="form-grid-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+          <div class="form-field">
+            <label class="form-label">🔍 بحث</label>
+            <input type="text" name="q" value="{{ request.GET.q }}" class="input" placeholder="عنوان الطلب أو الكلمات المفتاحية">
+          </div>
 
-    {# --- بطاقات (جوال) --- #}
-    <div class="grid gap-4 md:hidden">
-      {% for r in requests %}
-        <a href="{% url 'marketplace:request_detail' r.pk %}"
-           class="rounded-2xl border bg-white/80 dark:bg-slate-800/60 backdrop-blur p-4 hover:shadow transition">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <div class="font-bold text-slate-900 dark:text-white truncate">{{ r.title|default:"—" }}</div>
-                <span class="px-2 py-1 rounded-xl text-xs border
-                             {% if r.status == 'new' %}bg-sky-100 text-sky-700 border-sky-200
-                             {% elif r.status == 'offer_selected' %}bg-amber-100 text-amber-700 border-amber-200
-                             {% elif r.status == 'agreement_pending' %}bg-indigo-100 text-indigo-700 border-indigo-200
-                             {% elif r.status == 'in_progress' %}bg-emerald-100 text-emerald-700 border-emerald-200
-                             {% elif r.status == 'completed' %}bg-emerald-200 text-emerald-800 border-emerald-300
-                             {% elif r.status == 'disputed' %}bg-rose-100 text-rose-700 border-rose-200
-                             {% elif r.status == 'cancelled' %}bg-slate-200 text-slate-700 border-slate-300
-                             {% else %}bg-slate-100 text-slate-700 border-slate-200{% endif %}">
-                  {{ r.get_status_display|default:r.status }}
-                </span>
-              </div>
+          <div class="form-field">
+            <label class="form-label">📊 الحالة</label>
+            <select name="status" class="input">
+              <option value="">الكل</option>
+              <option value="new" {% if request.GET.status == 'new' %}selected{% endif %}>جديد</option>
+              <option value="offer_selected" {% if request.GET.status == 'offer_selected' %}selected{% endif %}>تم اختيار عرض</option>
+              <option value="agreement_pending" {% if request.GET.status == 'agreement_pending' %}selected{% endif %}>بانتظار اتفاقية</option>
+              <option value="in_progress" {% if request.GET.status == 'in_progress' %}selected{% endif %}>قيد التنفيذ</option>
+              <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>مكتمل</option>
+              <option value="disputed" {% if request.GET.status == 'disputed' %}selected{% endif %}>نزاع</option>
+              <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>ملغي</option>
+            </select>
+          </div>
 
-              <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                {% if r.selected_offer %}
-                  <span class="px-2 py-1 rounded-lg border bg-amber-50 text-amber-800">مدة العرض: <b>{{ r.selected_offer.proposed_duration_days|default:"—" }}</b> يوم</span>
-                  <span class="px-2 py-1 rounded-lg border bg-amber-50 text-amber-800">مبلغ العرض: <b>{{ r.selected_offer.proposed_price|default:"—" }}</b> ريال</span>
-                {% else %}
-                  <span class="px-2 py-1 rounded-lg border bg-sky-50 text-sky-800">مدة العميل: <b>{{ r.estimated_duration_days|default:"—" }}</b> يوم</span>
-                  <span class="px-2 py-1 rounded-lg border bg-sky-50 text-sky-800">مبلغ العميل: <b>{{ r.estimated_price|default:"—" }}</b> ريال</span>
-                {% endif %}
-              </div>
+          <div class="form-field">
+            <label class="form-label">🔄 الترتيب</label>
+            <select name="sort" class="input">
+              <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>الأحدث أولاً</option>
+              <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>الأقدم أولاً</option>
+              <option value="-updated_at" {% if request.GET.sort == '-updated_at' %}selected{% endif %}>آخر تحديث</option>
+            </select>
+          </div>
 
-              {% if r.details %}
-                <p class="mt-2 text-slate-600 dark:text-slate-300 text-sm line-clamp-2">{{ r.details }}</p>
-              {% endif %}
+          <div class="form-field" style="display: flex; align-items: flex-end; gap: 0.5rem;">
+            <button class="btn btn-primary" style="flex: 1;">
+              🔍 تطبيق
+            </button>
+            <a href="." class="btn btn-outline">
+              🔄 إعادة ضبط
+            </a>
+          </div>
+        </div>
+      </form>
+    </div>
 
-              <div class="mt-2 text-slate-500 dark:text-slate-400 text-xs">
-                تاريخ الطلب: {{ r.created_at|date:"Y-m-d H:i" }}
-                {% if r.updated_at %} • آخر تحديث: {{ r.updated_at|date:"Y-m-d H:i" }}{% endif %}
-                {% if r.assigned_employee %} • الموظف: {{ r.assigned_employee }}{% elif r.selected_offer %} • الموظف: {{ r.selected_offer.employee }}{% endif %}
+    {# ===== عرض هجين: بطاقات على الجوال + جدول على سطح المكتب ===== #}
+    {% if requests %}
+
+      {# --- بطاقات (جوال) --- #}
+      <div class="mobile-cards employees-grid">
+        {% for r in requests %}
+          <div class="employee-card scroll-reveal">
+            <div class="status-indicator 
+                      {% if r.status == 'new' %}status-new
+                      {% elif r.status == 'offer_selected' %}status-offer-selected
+                      {% elif r.status == 'agreement_pending' %}status-agreement
+                      {% elif r.status == 'in_progress' %}status-in-progress
+                      {% elif r.status == 'completed' %}status-completed
+                      {% elif r.status == 'disputed' %}status-disputed
+                      {% elif r.status == 'cancelled' %}status-cancelled
+                      {% else %}status-default{% endif %}">
+            </div>
+
+            <div class="employee-card-header">
+              <div class="employee-basic-info">
+                <div class="employee-name">
+                  {{ r.title|default:"—" }}
+                </div>
+                <div class="employee-title">
+                  <span class="badge 
+                             {% if r.status == 'new' %}badge-default
+                             {% elif r.status == 'offer_selected' %}badge-pending
+                             {% elif r.status == 'agreement_pending' %}badge-pending
+                             {% elif r.status == 'in_progress' %}badge-pending
+                             {% elif r.status == 'completed' %}badge-verified
+                             {% elif r.status == 'disputed' %}badge-rejected
+                             {% elif r.status == 'cancelled' %}badge-rejected
+                             {% else %}badge-default{% endif %}">
+                    {{ r.get_status_display|default:r.status }}
+                  </span>
+                </div>
+                <div class="employee-location">
+                  <span>#{{ r.pk }}</span>
+                </div>
               </div>
             </div>
-            <div class="shrink-0 text-slate-500 dark:text-slate-400 text-xs">#{{ r.pk }}</div>
-          </div>
-        </a>
-      {% endfor %}
-    </div>
 
-    {# --- جدول (سطح المكتب) --- #}
-    <div class="hidden md:block rounded-2xl border bg-white/80 dark:bg-slate-800/60 backdrop-blur shadow-sm overflow-hidden">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300">
-          <tr>
-            <th class="p-3 text-right">#</th>
-            <th class="p-3 text-right">العنوان</th>
-            <th class="p-3 text-right">الحالة</th>
-            <th class="p-3 text-right">المدة/المبلغ</th>
-            <th class="p-3 text-right">الموظف</th>
-            <th class="p-3 text-right">تاريخ الإنشاء</th>
-            <th class="p-3 text-right">آخر تحديث</th>
-            <th class="p-3 text-left">إجراءات</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y">
-          {% for r in requests %}
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/20">
-              <td class="p-3 text-slate-500">#{{ r.pk }}</td>
-
-              <td class="p-3">
-                <div class="font-semibold text-slate-900 dark:text-white">{{ r.title|default:"—" }}</div>
-                {% if r.details %}
-                  <div class="text-slate-500 dark:text-slate-400 text-xs line-clamp-1">{{ r.details }}</div>
-                {% endif %}
-              </td>
-
-              <td class="p-3">
-                <span class="px-2 py-1 rounded-xl text-xs border
-                             {% if r.status == 'new' %}bg-sky-100 text-sky-700 border-sky-200
-                             {% elif r.status == 'offer_selected' %}bg-amber-100 text-amber-700 border-amber-200
-                             {% elif r.status == 'agreement_pending' %}bg-indigo-100 text-indigo-700 border-indigo-200
-                             {% elif r.status == 'in_progress' %}bg-emerald-100 text-emerald-700 border-emerald-200
-                             {% elif r.status == 'completed' %}bg-emerald-200 text-emerald-800 border-emerald-300
-                             {% elif r.status == 'disputed' %}bg-rose-100 text-rose-700 border-rose-200
-                             {% elif r.status == 'cancelled' %}bg-slate-200 text-slate-700 border-slate-300
-                             {% else %}bg-slate-100 text-slate-700 border-slate-200{% endif %}">
-                  {{ r.get_status_display|default:r.status }}
+            {# معلومات المدة والسعر #}
+            <div class="employee-stats">
+              <div class="employee-stat">
+                <span class="stat-number">
+                  {% if r.selected_offer %}
+                    {{ r.selected_offer.proposed_duration_days|default:"—" }}
+                  {% else %}
+                    {{ r.estimated_duration_days|default:"—" }}
+                  {% endif %}
                 </span>
-              </td>
+                <span class="stat-label">أيام</span>
+              </div>
+              <div class="employee-stat">
+                <span class="stat-number">
+                  {% if r.selected_offer %}
+                    {{ r.selected_offer.proposed_price|default:"—" }}
+                  {% else %}
+                    {{ r.estimated_price|default:"—" }}
+                  {% endif %}
+                </span>
+                <span class="stat-label">ريال</span>
+              </div>
+              <div class="employee-stat">
+                <span class="stat-number">{{ r.created_at|date:"d/m" }}</span>
+                <span class="stat-label">التاريخ</span>
+              </div>
+            </div>
 
-              <td class="p-3">
-                {% if r.selected_offer %}
-                  <div class="flex flex-col gap-1">
-                    <span class="px-2 py-1 rounded-lg border bg-amber-50 text-amber-800 inline-block">مدة العرض: <b>{{ r.selected_offer.proposed_duration_days|default:"—" }}</b> يوم</span>
-                    <span class="px-2 py-1 rounded-lg border bg-amber-50 text-amber-800 inline-block">مبلغ العرض: <b>{{ r.selected_offer.proposed_price|default:"—" }}</b> ريال</span>
+            {# الموظف المسند #}
+            <div class="employee-skills">
+              <div class="skills-title">الموظف المسند:</div>
+              <div class="skills-tags">
+                <span class="skill-tag-small">
+                  {% if r.assigned_employee %}
+                    👤 {{ r.assigned_employee }}
+                  {% elif r.selected_offer %}
+                    👤 {{ r.selected_offer.employee }}
+                  {% else %}
+                    ⏳ لم يُسند بعد
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+
+            {# تفاصيل مختصرة #}
+            {% if r.details %}
+              <div class="employee-skills">
+                <div class="skills-title">تفاصيل:</div>
+                <div class="skills-tags">
+                  <div class="request-preview">
+                    {{ r.details|truncatewords:15 }}
                   </div>
-                {% else %}
-                  <div class="flex flex-col gap-1">
-                    <span class="px-2 py-1 rounded-lg border bg-sky-50 text-sky-800 inline-block">مدة العميل: <b>{{ r.estimated_duration_days|default:"—" }}</b> يوم</span>
-                    <span class="px-2 py-1 rounded-lg border bg-sky-50 text-sky-800 inline-block">مبلغ العميل: <b>{{ r.estimated_price|default:"—" }}</b> ريال</span>
-                  </div>
-                {% endif %}
-              </td>
+                </div>
+              </div>
+            {% endif %}
 
-              <td class="p-3 text-slate-700 dark:text-slate-200">
-                {% if r.assigned_employee %}
-                  {{ r.assigned_employee }}
-                {% elif r.selected_offer %}
-                  {{ r.selected_offer.employee }}
-                {% else %}
-                  —
-                {% endif %}
-              </td>
+            {# أزرار الإجراءات #}
+            <div class="employee-actions">
+              <a href="{% url 'marketplace:request_detail' r.pk %}"
+                 class="btn-view-profile">
+                👁️ عرض التفاصيل
+              </a>
 
-              <td class="p-3 text-slate-600 dark:text-slate-300">{{ r.created_at|date:"Y-m-d H:i" }}</td>
-              <td class="p-3 text-slate-600 dark:text-slate-300">{% if r.updated_at %}{{ r.updated_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
+              {% if r.status == 'offer_selected' or r.status == 'agreement_pending' %}
+                <a href="{% url 'agreements:open_by_request' r.pk %}"
+                   class="btn-contact"
+                   title="الاتفاقية">
+                  📝 اتفاقية
+                </a>
+              {% endif %}
+            </div>
 
-              <td class="p-3 text-left">
-                <a href="{% url 'marketplace:request_detail' r.pk %}"
-                   class="px-3 py-1.5 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800">عرض</a>
+            {# معلومات إضافية #}
+            <div class="availability" style="margin-top: 1rem; padding: 0.5rem; background: var(--dark-50); border-radius: var(--radius);">
+              <span class="availability-dot 
+                         {% if r.status == 'completed' %}available
+                         {% elif r.status == 'cancelled' %}offline
+                         {% else %}busy{% endif %}"></span>
+              <span style="font-size: 0.8rem; color: var(--dark-500);">
+                {{ r.created_at|date:"Y-m-d H:i" }}
+                {% if r.updated_at %} • آخر تحديث: {{ r.updated_at|date:"Y-m-d H:i" }}{% endif %}
+              </span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
 
-                {% if r.status == 'offer_selected' or r.status == 'agreement_pending' %}
-                  <a href="{% url 'agreements:open_by_request' r.pk %}"
-                     class="ml-2 px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">الاتفاقية</a>
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+      {# --- جدول (سطح المكتب) --- #}
+      <div class="desktop-table profile-section">
+        <div class="table-wrapper">
+          <table class="table table-clean">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>العنوان</th>
+                <th>الحالة</th>
+                <th>المدة/المبلغ</th>
+                <th>الموظف</th>
+                <th>تاريخ الإنشاء</th>
+                <th>آخر تحديث</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in requests %}
+                <tr class="scroll-reveal">
+                  <td class="text-muted">#{{ r.pk }}</td>
 
-    {# ===== ترقيم الصفحات ===== #}
-    {% if is_paginated %}
-      <div class="mt-6 flex items-center justify-center gap-2">
-        {% if page_obj.has_previous %}
-          <a class="px-3 py-1.5 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800"
-             href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">
-            السابق
-          </a>
-        {% else %}
-          <span class="px-3 py-1.5 rounded-lg border text-slate-400">السابق</span>
-        {% endif %}
+                  <td>
+                    <div class="table-cell-main">
+                      <div class="table-cell-title">{{ r.title|default:"—" }}</div>
+                      {% if r.details %}
+                        <div class="table-cell-subtitle">{{ r.details|truncatewords:10 }}</div>
+                      {% endif %}
+                    </div>
+                  </td>
 
-        <span class="px-3 py-1.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
-          الصفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
-        </span>
+                  <td>
+                    <span class="badge 
+                               {% if r.status == 'new' %}badge-default
+                               {% elif r.status == 'offer_selected' %}badge-pending
+                               {% elif r.status == 'agreement_pending' %}badge-pending
+                               {% elif r.status == 'in_progress' %}badge-pending
+                               {% elif r.status == 'completed' %}badge-verified
+                               {% elif r.status == 'disputed' %}badge-rejected
+                               {% elif r.status == 'cancelled' %}badge-rejected
+                               {% else %}badge-default{% endif %}">
+                      {{ r.get_status_display|default:r.status }}
+                    </span>
+                  </td>
 
-        {% if page_obj.has_next %}
-          <a class="px-3 py-1.5 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800"
-             href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">
-            التالي
-          </a>
-        {% else %}
-          <span class="px-3 py-1.5 rounded-lg border text-slate-400">التالي</span>
-        {% endif %}
+                  <td>
+                    <div class="price-duration-info">
+                      <div class="info-item">
+                        <span class="info-label">المدة:</span>
+                        <span class="info-value">
+                          {% if r.selected_offer %}
+                            {{ r.selected_offer.proposed_duration_days|default:"—" }} يوم
+                          {% else %}
+                            {{ r.estimated_duration_days|default:"—" }} يوم
+                          {% endif %}
+                        </span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-label">المبلغ:</span>
+                        <span class="info-value">
+                          {% if r.selected_offer %}
+                            {{ r.selected_offer.proposed_price|default:"—" }} ريال
+                          {% else %}
+                            {{ r.estimated_price|default:"—" }} ريال
+                          {% endif %}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td>
+                    <div class="employee-info">
+                      {% if r.assigned_employee %}
+                        👤 {{ r.assigned_employee }}
+                      {% elif r.selected_offer %}
+                        👤 {{ r.selected_offer.employee }}
+                      {% else %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </div>
+                  </td>
+
+                  <td class="text-muted">{{ r.created_at|date:"Y-m-d H:i" }}</td>
+                  <td class="text-muted">{% if r.updated_at %}{{ r.updated_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</td>
+
+                  <td>
+                    <div class="table-actions">
+                      <a href="{% url 'marketplace:request_detail' r.pk %}"
+                         class="btn btn-outline btn-sm">
+                        عرض
+                      </a>
+
+                      {% if r.status == 'offer_selected' or r.status == 'agreement_pending' %}
+                        <a href="{% url 'agreements:open_by_request' r.pk %}"
+                           class="btn btn-secondary btn-sm">
+                          الاتفاقية
+                        </a>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# ===== ترقيم الصفحات ===== #}
+      {% if is_paginated %}
+        <div class="pagination profile-section" style="text-align: center; padding: 1.5rem;">
+          <div class="pagination-inner employee-actions">
+            {% if page_obj.has_previous %}
+              <a class="btn btn-outline btn-sm"
+                 href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">
+                ‹ السابق
+              </a>
+            {% else %}
+              <span class="btn btn-outline btn-sm" style="opacity: 0.5; cursor: not-allowed;">‹ السابق</span>
+            {% endif %}
+
+            <span class="pagination-info badge badge-default">
+              الصفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+              <a class="btn btn-outline btn-sm"
+                 href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">
+                التالي ›
+              </a>
+            {% else %}
+              <span class="btn btn-outline btn-sm" style="opacity: 0.5; cursor: not-allowed;">التالي ›</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+    {% else %}
+      {# ===== حالة عدم وجود طلبات ===== #}
+      <div class="profile-section text-center" style="padding: 4rem 2rem; background: var(--dark-50);">
+        <div class="text-6xl mb-4 opacity-40" aria-hidden="true">📝</div>
+        <h3 class="card-section-title" style="margin-bottom: 1rem;">لا توجد طلبات بعد</h3>
+        <p class="card-section-note" style="font-size: 1rem; margin-bottom: 2rem;">
+          ابدأ بطلب جديد وحدد التفاصيل التي ترغب بها.
+        </p>
+        <a href="{% url 'marketplace:request_create' %}"
+           class="btn btn-primary">
+          ➕ إنشاء طلب جديد
+        </a>
       </div>
     {% endif %}
 
-  {% else %}
-    {# ===== حالة عدم وجود طلبات ===== #}
-    <div class="rounded-2xl border bg-white/80 dark:bg-slate-800/60 backdrop-blur p-10 text-center">
-      <div class="text-3xl mb-3" aria-hidden="true">📝</div>
-      <h3 class="text-lg font-bold mb-2 text-slate-900 dark:text-white">لا توجد طلبات بعد</h3>
-      <p class="text-slate-600 dark:text-slate-400 mb-4">ابدأ بطلب جديد وحدد التفاصيل التي ترغب بها.</p>
-      <a href="{% url 'marketplace:request_create' %}"
-         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">إنشاء طلب جديد</a>
+    {# ===== تلميحات الحالة ===== #}
+    <div class="profile-section" style="background: var(--dark-50); margin-top: 2rem;">
+      <div class="card-section-title">🔖 دليل الحالات</div>
+      <div class="status-guide" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+        <span class="badge badge-default">جديد</span>
+        <span class="badge badge-pending">تم اختيار عرض</span>
+        <span class="badge badge-pending">بانتظار اتفاقية</span>
+        <span class="badge badge-pending">قيد التنفيذ</span>
+        <span class="badge badge-verified">مكتمل</span>
+        <span class="badge badge-rejected">نزاع</span>
+        <span class="badge badge-rejected">ملغي</span>
+      </div>
     </div>
-  {% endif %}
 
-  {# ===== تلميحات الحالة (اختياري) ===== #}
-  <div class="mt-8 text-xs text-slate-500 dark:text-slate-400">
-    <span class="px-2 py-1 rounded bg-sky-100 text-sky-700">جديد</span>
-    <span class="px-2 py-1 rounded bg-amber-100 text-amber-700">تم اختيار عرض</span>
-    <span class="px-2 py-1 rounded bg-indigo-100 text-indigo-700">بانتظار اتفاقية</span>
-    <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700">قيد التنفيذ</span>
-    <span class="px-2 py-1 rounded bg-emerald-200 text-emerald-800">مكتمل</span>
-    <span class="px-2 py-1 rounded bg-rose-100 text-rose-700">نزاع</span>
-    <span class="px-2 py-1 rounded bg-slate-200 text-slate-700">ملغي</span>
   </div>
-
 </section>
+
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تبديل بين العرض الجدولي والبطاقات حسب حجم الشاشة
+    function toggleView() {
+      const mobileCards = document.querySelector('.mobile-cards');
+      const desktopTable = document.querySelector('.desktop-table');
+      
+      if (window.innerWidth < 768) {
+        if (mobileCards) mobileCards.style.display = 'grid';
+        if (desktopTable) desktopTable.style.display = 'none';
+      } else {
+        if (mobileCards) mobileCards.style.display = 'none';
+        if (desktopTable) desktopTable.style.display = 'block';
+      }
+    }
+
+    // التهيئة الأولية
+    toggleView();
+    window.addEventListener('resize', toggleView);
+
+    // تأثيرات إضافية للبطاقات
+    if (typeof initEmployeeCards === 'function') {
+      initEmployeeCards();
+    }
+
+    // تأثيرات على الأزرار
+    document.querySelectorAll('.btn').forEach(button => {
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+      });
+    });
+
+    // تحسين تجربة الفلاتر
+    const filterForm = document.querySelector('.filter-form');
+    if (filterForm) {
+      const inputs = filterForm.querySelectorAll('input, select');
+      inputs.forEach(input => {
+        input.addEventListener('change', function() {
+          // إضافة تأثير عند التغيير
+          this.style.borderColor = 'var(--primary-500)';
+          setTimeout(() => {
+            this.style.borderColor = '';
+          }, 500);
+        });
+        
+        input.addEventListener('focus', function() {
+          this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+        });
+        
+        input.addEventListener('blur', function() {
+          this.style.boxShadow = '';
+        });
+      });
+    }
+
+    // تأثيرات على صفوف الجدول
+    document.querySelectorAll('.table-clean tbody tr').forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.background = 'var(--primary-50)';
+        this.style.transform = 'translateX(5px)';
+      });
+      
+      row.addEventListener('mouseleave', function() {
+        this.style.background = '';
+        this.style.transform = 'translateX(0)';
+      });
+    });
+
+  })();
+  </script>
+
+  <style>
+  .my-requests-page .form-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .my-requests-page .form-field {
+    margin-bottom: 0;
+  }
+
+  .my-requests-page .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .my-requests-page .input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .my-requests-page .input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .my-requests-page .table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--dark-200);
+  }
+
+  .my-requests-page .table-clean {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .my-requests-page .table-clean th {
+    background: var(--dark-50);
+    color: var(--dark-700);
+    font-weight: 600;
+    padding: 1rem;
+    text-align: right;
+    border-bottom: 1px solid var(--dark-200);
+  }
+
+  .my-requests-page .table-clean td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--dark-100);
+    vertical-align: top;
+    transition: all 0.3s ease;
+  }
+
+  .my-requests-page .table-clean tr:last-child td {
+    border-bottom: none;
+  }
+
+  .my-requests-page .table-cell-main {
+    min-width: 200px;
+  }
+
+  .my-requests-page .table-cell-title {
+    font-weight: 600;
+    color: var(--dark-900);
+    margin-bottom: 0.25rem;
+  }
+
+  .my-requests-page .table-cell-subtitle {
+    color: var(--dark-600);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .my-requests-page .price-duration-info {
+    min-width: 120px;
+  }
+
+  .my-requests-page .info-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+  }
+
+  .my-requests-page .info-label {
+    color: var(--dark-500);
+    font-size: 0.875rem;
+  }
+
+  .my-requests-page .info-value {
+    color: var(--dark-700);
+    font-weight: 600;
+  }
+
+  .my-requests-page .employee-info {
+    min-width: 120px;
+    font-size: 0.9rem;
+  }
+
+  .my-requests-page .table-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .my-requests-page .text-muted {
+    color: var(--dark-500);
+  }
+
+  .my-requests-page .pagination-inner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .my-requests-page .pagination-info {
+    padding: 0.5rem 1rem;
+  }
+
+  .my-requests-page .status-guide {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .my-requests-page .request-preview {
+    color: var(--dark-600);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-height: 3em;
+    overflow: hidden;
+  }
+
+  .my-requests-page .mobile-cards {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .my-requests-page .form-grid-4 {
+      grid-template-columns: 1fr;
+    }
+    
+    .my-requests-page .employees-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .my-requests-page .table-actions {
+      flex-direction: column;
+    }
+    
+    .my-requests-page .table-actions .btn {
+      width: 100%;
+    }
+    
+    .my-requests-page .employee-stats {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    
+    .my-requests-page .pagination-inner {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .my-requests-page .employee-stats {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .my-requests-page .stat-number {
+      font-size: 1rem;
+    }
+    
+    .my-requests-page .stat-label {
+      font-size: 0.7rem;
+    }
+  }
+
+  /* تأثيرات الحركة */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .my-requests-page .scroll-reveal {
+    animation: fadeInUp 0.6s ease-out;
+  }
+  </style>
 {% endblock %}

@@ -1,725 +1,1111 @@
 {# marketplace/templates/marketplace/request_detail.html #}
 {% extends "base.html" %}
+
 {% block title %}طلب #{{ req.pk }}{% endblock %}
 
 {% block content %}
-<section class="py-8 max-w-6xl mx-auto rtl" dir="rtl">
-  <div class="rounded-2xl border bg-white/80 dark:bg-slate-800/70 backdrop-blur shadow-glass-lg overflow-hidden">
 
-    {# ===== Toasts ===== #}
-    {% if messages %}
-    <div class="p-4 border-b bg-gradient-to-l from-emerald-50 to-sky-50 dark:from-slate-800 dark:to-slate-900" aria-live="polite">
-      <div class="space-y-2" id="messages-area">
-        {% for message in messages %}
-          <div class="rounded-xl border px-4 py-3 text-sm flex items-start gap-2
-                      {% if message.tags == 'success' %} bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-900 dark:text-emerald-200
-                      {% elif message.tags == 'warning' %} bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-900 dark:text-amber-200
-                      {% elif message.tags == 'error' %} bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-900/20 dark:border-rose-200
-                      {% else %} bg-slate-50 border-slate-200 text-slate-800 dark:bg-slate-900/30 dark:border-slate-800 dark:text-slate-200 {% endif %}">
-            <div class="mt-0.5" aria-hidden="true">•</div>
-            <div class="whitespace-pre-line">{{ message }}</div>
-            <button type="button" class="ms-auto text-xs text-slate-500 hover:underline" data-close-alert aria-label="إغلاق التنبيه">إغلاق</button>
+{# ===== عرض إجمالي العميل للعرض المختار بشكل بارز أعلى الصفحة ===== #}
+
+<section class="page-section request-detail-page">
+  <div class="container">
+    <div class="request-detail-card profile-section">
+
+      {# ===== الهيدر ===== #}
+      <div class="card-header request-header-section">
+        <div class="request-header">
+          <div class="request-header-main">
+            <div class="request-title-row">
+              <h1 class="request-title profile-name">
+                {{ req.title }}
+              </h1>
+              <div class="request-badges">
+                <span class="badge badge-default">#{{ req.pk }}</span>
+                <span class="badge
+                  {% if req.status == 'completed' %}badge-verified
+                  {% elif req.status == 'in_progress' %}badge-pending
+                  {% elif req.status == 'cancelled' %}badge-rejected
+                  {% else %}badge-default{% endif %}">
+                  {{ req.get_status_display|default:req.status }}
+                </span>
+                {% if req.agreement_overdue %}
+                  <span class="badge badge-rejected">
+                    ⚠️ تجاوزت مهلة إرسال الاتفاقية
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="request-meta">
+              <div class="employee-location">
+                <span>👤 العميل: <strong>{{ req.client }}</strong></span>
+                {% if req.assigned_employee %}
+                  <span> — 🛠️ الموظف: <strong>{{ req.assigned_employee }}</strong></span>
+                {% endif %}
+              </div>
+            </div>
           </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
+          <div class="request-updated-at">
+            <span class="text-muted">آخر تحديث: {{ req.updated_at|date:"Y-m-d H:i" }}</span>
+          </div>
+        </div>
 
-    {# ===== Header ===== #}
-    <div class="p-6 border-b bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-slate-800 dark:to-slate-900">
-      <div class="flex items-start justify-between gap-6">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2 flex-wrap">
-            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white truncate">{{ req.title }}</h1>
-            <span class="px-2 py-1 rounded-lg text-xs border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">#{{ req.pk }}</span>
-            <span class="px-2 py-1 rounded-lg text-xs border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
-              {{ req.get_status_display|default:req.status }}
+        {# ===== شريط تقدّم الحالة ===== #}
+        <div class="request-steps employee-stats" style="margin-top: 1.25rem;">
+          <div class="employee-stat">
+            <span class="badge {% if current_step >= 0 %}badge-verified{% else %}badge-muted{% endif %}">
+              ١. طلب
             </span>
-            {% if req.agreement_overdue %}
-              <span class="px-2 py-1 rounded-lg text-xs bg-red-50 text-red-700 border border-red-200">تجاوزت مهلة إرسال الاتفاقية</span>
+          </div>
+          <div class="step-separator"></div>
+          <div class="employee-stat">
+            <span class="badge {% if current_step >= 1 %}badge-verified{% else %}badge-muted{% endif %}">
+              ٢. عرض مختار
+            </span>
+          </div>
+          <div class="step-separator"></div>
+          <div class="employee-stat">
+            <span class="badge {% if current_step >= 2 %}badge-verified{% else %}badge-muted{% endif %}">
+              ٣. اتفاقية
+            </span>
+          </div>
+          <div class="step-separator"></div>
+          <div class="employee-stat">
+            <span class="badge {% if current_step >= 3 %}badge-pending{% else %}badge-muted{% endif %}">
+              ٤. تنفيذ/تسليم
+            </span>
+          </div>
+          <div class="step-separator"></div>
+          <div class="employee-stat">
+            <span class="badge {% if current_step >= 4 %}badge-verified{% else %}badge-muted{% endif %}">
+              ٥. إكمال
+            </span>
+          </div>
+        </div>
+
+        {# ===== شريط الإجراءات العام ===== #}
+        {% if request.user.is_authenticated %}
+          <div class="request-header-actions employee-actions">
+            {% if request.user.id == req.client_id or request.user.id == req.assigned_employee_id or request.user.is_staff or request.user.role == 'admin' %}
+              <a href="{% url 'disputes:open_by_request' req.pk %}"
+                 class="btn btn-danger btn-sm"
+                 rel="nofollow">
+                ⚡ فتح نزاع
+              </a>
+            {% endif %}
+
+            {% if request.user.is_staff or request.user.role == 'admin' %}
+              <div class="request-status-panel">
+                <span class="status-panel-label">تغيير الحالة:</span>
+
+                <form method="post"
+                      action="{% url 'marketplace:request_change_status' req.pk %}"
+                      class="inline-form"
+                      onsubmit="return confirm('سيتم تعليم الطلب «قيد التنفيذ». متابعة؟');">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="in_progress">
+                  <button class="btn btn-secondary btn-sm" aria-label="تعيين قيد التنفيذ">
+                    🚀 قيد التنفيذ
+                  </button>
+                </form>
+
+                <form method="post"
+                      action="{% url 'marketplace:request_change_status' req.pk %}"
+                      class="inline-form"
+                      onsubmit="return confirm('سيتم تعليم الطلب «بانتظار اتفاقية». متابعة؟');">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="agreement_pending">
+                  <button class="btn btn-secondary btn-sm" aria-label="تعيين بانتظار اتفاقية">
+                    📝 بانتظار اتفاقية
+                  </button>
+                </form>
+
+                <form method="post"
+                      action="{% url 'marketplace:request_change_status' req.pk %}"
+                      class="inline-form"
+                      onsubmit="return confirm('تعليم الطلب «مكتمل» يدويًا؟ يُفضَّل اكتماله تلقائيًا بعد السداد.');">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="completed">
+                  <button class="btn btn-success btn-sm" aria-label="تعيين مكتمل">
+                    ✅ مكتمل
+                  </button>
+                </form>
+
+                <form method="post"
+                      action="{% url 'marketplace:request_cancel' req.pk %}"
+                      class="inline-form request-cancel-form"
+                      onsubmit="return !!this.querySelector('[name=reason]').value || (alert('فضلاً أدخل سبب الإلغاء.'), false)">
+                  {% csrf_token %}
+                  <div class="input-group">
+                    <input type="text"
+                           name="reason"
+                           class="input input-sm"
+                           placeholder="سبب الإلغاء"
+                           required>
+                    <button class="btn btn-danger btn-sm">
+                      🗑️ إلغاء
+                    </button>
+                  </div>
+                </form>
+              </div>
+            {% elif request.user.id == req.assigned_employee_id %}
+              <div class="request-status-panel">
+                <span class="status-panel-label">تغيير الحالة:</span>
+                <form method="post"
+                      action="{% url 'marketplace:request_change_status' req.pk %}"
+                      class="inline-form"
+                      onsubmit="return confirm('سيتم تعليم الطلب «قيد التنفيذ». متابعة؟');">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="in_progress">
+                  <button class="btn btn-secondary btn-sm">
+                    🚀 قيد التنفيذ
+                  </button>
+                </form>
+              </div>
             {% endif %}
           </div>
-          <p class="text-slate-600 dark:text-slate-300 text-sm mt-2">
-            العميل: <b>{{ req.client }}</b>
-            {% if req.assigned_employee %} — الموظف: <b>{{ req.assigned_employee }}</b>{% endif %}
-          </p>
-        </div>
-        <div class="text-slate-500 dark:text-slate-400 text-sm shrink-0">
-          آخر تحديث: {{ req.updated_at|date:"Y-m-d H:i" }}
-        </div>
-      </div>
-
-      {# ===== شريط تقدّم الحالة ===== #}
-      <div class="mt-4">
-        <div class="flex items-center gap-2 text-[11px]">
-          <span class="px-2 py-1 rounded-lg border {% if req.status == 'new' or req.status == 'offer_selected' or req.status == 'agreement_pending' or req.status == 'in_progress' or req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">طلب</span>
-          <div class="h-px w-6 bg-slate-300 dark:bg-slate-700"></div>
-          <span class="px-2 py-1 rounded-lg border {% if req.status == 'offer_selected' or req.status == 'agreement_pending' or req.status == 'in_progress' or req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">عرض مختار</span>
-          <div class="h-px w-6 bg-slate-300 dark:bg-slate-700"></div>
-          <span class="px-2 py-1 rounded-lg border {% if req.status == 'agreement_pending' or req.status == 'in_progress' or req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">اتفاقية</span>
-          <div class="h-px w-6 bg-slate-300 dark:bg-slate-700"></div>
-          <span class="px-2 py-1 rounded-lg border {% if req.status == 'in_progress' or req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">تنفيذ/تسليم</span>
-          <div class="h-px w-6 bg-slate-300 dark:bg-slate-700"></div>
-          <span class="px-2 py-1 rounded-lg border {% if req.status == 'completed' %} bg-emerald-600 text-white {% endif %}">إكمال</span>
-        </div>
-      </div>
-
-      {# ===== شريط إجراءات عام ===== #}
-      {% if request.user.is_authenticated %}
-        <div class="mt-4 flex flex-wrap items-center gap-2">
-
-          {% if request.user.id == req.client_id or request.user.id == req.assigned_employee_id or request.user.is_staff or request.user.role == 'admin' %}
-            <a href="{% url 'disputes:open_by_request' req.pk %}" class="btn btn-danger" rel="nofollow">فتح نزاع</a>
-          {% endif %}
-
-          {% if request.user.is_staff or request.user.role == 'admin' %}
-            <div class="rounded-xl border bg-white/70 dark:bg-slate-900/40 p-2 flex flex-wrap items-center gap-2">
-              <span class="text-xs text-slate-600 dark:text-slate-300">تغيير الحالة:</span>
-
-              <form method="post" action="{% url 'marketplace:request_change_status' req.pk %}" class="inline"
-                    onsubmit="return confirm('سيتم تعليم الطلب «قيد التنفيذ». متابعة؟');">
-                {% csrf_token %}
-                <input type="hidden" name="status" value="in_progress">
-                <button class="btn btn-secondary btn-xs" aria-label="تعيين قيد التنفيذ">قيد التنفيذ</button>
-              </form>
-
-              <form method="post" action="{% url 'marketplace:request_change_status' req.pk %}" class="inline"
-                    onsubmit="return confirm('سيتم تعليم الطلب «بانتظار اتفاقية». متابعة؟');">
-                {% csrf_token %}
-                <input type="hidden" name="status" value="agreement_pending">
-                <button class="btn btn-secondary btn-xs" aria-label="تعيين بانتظار اتفاقية">بانتظار اتفاقية</button>
-              </form>
-
-              <form method="post" action="{% url 'marketplace:request_change_status' req.pk %}" class="inline"
-                    onsubmit="return confirm('تعليم الطلب «مكتمل» يدويًا؟ يُفضَّل اكتماله تلقائيًا بعد السداد.');">
-                {% csrf_token %}
-                <input type="hidden" name="status" value="completed">
-                <button class="btn btn-success btn-xs" aria-label="تعيين مكتمل">مكتمل</button>
-              </form>
-
-              <form method="post" action="{% url 'marketplace:request_cancel' req.pk %}" class="inline flex items-center gap-2"
-                    onsubmit="return !!this.querySelector('[name=reason]').value || (alert('فضلاً أدخل سبب الإلغاء.'), false)">
-                {% csrf_token %}
-                <input type="text" name="reason" class="input !py-1 !text-xs" placeholder="سبب الإلغاء" required>
-                <button class="btn btn-danger btn-xs">إلغاء</button>
-              </form>
-            </div>
-          {% elif request.user.id == req.assigned_employee_id %}
-            <div class="rounded-xl border bg-white/70 dark:bg-slate-900/40 p-2 flex flex-wrap items-center gap-2">
-              <span class="text-xs text-slate-600 dark:text-slate-300">تغيير الحالة:</span>
-              <form method="post" action="{% url 'marketplace:request_change_status' req.pk %}" class="inline"
-                    onsubmit="return confirm('سيتم تعليم الطلب «قيد التنفيذ». متابعة؟');">
-                {% csrf_token %}
-                <input type="hidden" name="status" value="in_progress">
-                <button class="btn btn-secondary btn-xs">قيد التنفيذ</button>
-              </form>
-            </div>
-          {% endif %}
-
-        </div>
-      {% endif %}
-    </div>
-
-    <div class="p-6 space-y-6">
-
-      {# ===== لوحة تحكم المدير العام ===== #}
-      {% if request.user.is_authenticated %}
-        {% if request.user.role == 'admin' or request.user.is_staff %}
-        <div class="rounded-xl border bg-amber-50 dark:bg-amber-900/20 p-4">
-          <div class="flex items-center justify-between gap-3">
-            <div class="text-slate-800 dark:text-amber-200 font-semibold">لوحة تحكم المدير العام</div>
-          </div>
-          <div class="mt-3 flex flex-wrap items-center gap-2">
-            {# تم توحيد الاسم إلى marketplace:request_reset_to_new مع توفير Alias للقديم #}
-            <form method="post" action="{% url 'marketplace:request_reset_to_new' req.pk %}"
-                  onsubmit="return confirm('سيُعاد الطلب كجديد: سيتم إزالة الإسناد ورفض العروض الحالية للأرشفة. تأكيد؟');">
-              {% csrf_token %}
-              <button class="px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800">إرجاع كجديد</button>
-            </form>
-
-            <a class="px-3 py-2 rounded-lg border bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800"
-               href="{% url 'marketplace:admin_request_reassign' req.pk %}">
-              إعادة إسناد لموظف آخر
-            </a>
-
-            <form method="post" action="{% url 'marketplace:admin_request_delete' req.pk %}"
-                  onsubmit="return confirm('سيتم شطب الطلب نهائيًا ولا يمكن التراجع. تأكيد؟');">
-              {% csrf_token %}
-              <button class="px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700">شطب نهائي</button>
-            </form>
-          </div>
-          <p class="text-xs text-slate-600 dark:text-slate-400 mt-2">هذه الإجراءات متاحة للمدير العام فقط.</p>
-        </div>
         {% endif %}
-      {% endif %}
-
-      {# 🟦 تقديم عرض #}
-      {% if can_offer %}
-      <div class="rounded-xl border bg-indigo-50 dark:bg-indigo-900/20 p-4">
-        <div class="flex items-center justify-between gap-3">
-          <div class="text-slate-700 dark:text-slate-200 text-sm">
-            يمكنك تقديم <b>عرض واحد فقط</b> لهذا الطلب. حالة الطلب الحالية: جديد.
-          </div>
-          <a class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
-             href="{% url 'marketplace:offer_create_cbv' req.pk %}">
-            تقديم عرض
-          </a>
-        </div>
       </div>
-      {% elif my_offer %}
-      <div class="rounded-xl border bg-slate-50 dark:bg-slate-900/40 p-4">
-        <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-slate-900 dark:text-white font-bold truncate">عرضك المقدم</div>
-            <div class="text-slate-500 dark:text-slate-400 text-sm truncate">
-              الحالة: {{ my_offer.get_status_display|default:my_offer.status }} — المدة: {{ my_offer.proposed_duration_days }} — المبلغ: {{ my_offer.proposed_price }}
-            </div>
-          </div>
-          <span class="px-2 py-1 rounded-lg text-xs border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">قدّمت عرضًا بالفعل</span>
-        </div>
-      </div>
-      {% endif %}
 
-      {# بطاقات معلومات سريعة #}
-      <div class="grid sm:grid-cols-2 gap-4">
-        {# المدة/المبلغ #}
-        <div class="p-4 rounded-xl border bg-white dark:bg-slate-800">
-          <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">المدة/المبلغ</div>
-          <div class="grid grid-cols-1 gap-3">
-            <div class="rounded-lg border border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-900/20 p-3">
-              <div class="text-xs text-sky-700 dark:text-sky-300 mb-1">مقدّمة من العميل</div>
-              <div class="flex items-center gap-4 text-slate-800 dark:text-slate-100">
-                <div>المدة: <b>{{ req.estimated_duration_days|default:"—" }}</b> يوم</div>
-                <div>المبلغ: <b>{{ req.estimated_price|default:"—" }}</b> <span class="text-xs text-slate-500">ريال</span></div>
+      <div class="card-body request-detail-body">
+
+        {# ===== لوحة تحكم المدير العام ===== #}
+        {% if request.user.is_authenticated %}
+          {% if request.user.role == 'admin' or request.user.is_staff %}
+            <div class="admin-panel profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200);">
+              <div class="admin-panel-header">
+                <div class="admin-panel-title card-section-title">👑 لوحة تحكم المدير العام</div>
               </div>
-            </div>
+              <div class="admin-panel-actions employee-actions">
+                <form method="post"
+                      action="{% url 'marketplace:request_reset_to_new' req.pk %}"
+                      onsubmit="return confirm('سيُعاد الطلب كجديد: سيتم إزالة الإسناد ورفض العروض الحالية للأرشفة. تأكيد؟');">
+                  {% csrf_token %}
+                  <button class="btn btn-outline btn-sm">
+                    🔄 إرجاع كجديد
+                  </button>
+                </form>
 
-            {% if req.selected_offer %}
-            <div class="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-3">
-              <div class="text-xs text-amber-800 dark:text-amber-200 mb-1">العرض المختار</div>
-              <div class="flex items-center gap-4 text-slate-800 dark:text-slate-100">
-                <div>المدة: <b>{{ req.selected_offer.proposed_duration_days }}</b> يوم</div>
-                <div>المبلغ: <b>{{ req.selected_offer.proposed_price }}</b> <span class="text-xs text-slate-500">ريال</span></div>
-              </div>
-            </div>
-            {% endif %}
-
-            {% if req.agreement %}
-            <div class="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-900/20 p-3">
-              <div class="text-xs text-emerald-800 dark:text-emerald-200 mb-1">الاتفاقية</div>
-              <div class="flex items-center gap-4 text-slate-800 dark:text-slate-100">
-                <div>المدة: <b>{{ req.agreement.duration_days }}</b> يوم</div>
-                <div>المبلغ: <b>{{ req.agreement.total_amount }}</b> <span class="text-xs text-slate-500">ريال</span></div>
-              </div>
-            </div>
-            {% endif %}
-          </div>
-        </div>
-
-        {# الموظف المسند #}
-        <div class="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
-          <div class="font-bold text-slate-800 dark:text-white mb-1">الموظف المسند</div>
-          <div class="text-slate-700 dark:text-slate-200">
-            {% if req.assigned_employee %}{{ req.assigned_employee }}
-            {% elif req.selected_offer %}{{ req.selected_offer.employee }}
-            {% else %}— لا يوجد إسناد بعد —{% endif %}
-          </div>
-        </div>
-      </div>
-
-      {# تفاصيل الطلب #}
-      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
-        <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">التفاصيل</div>
-        <div class="prose prose-slate dark:prose-invert max-w-none whitespace-pre-line text-slate-800 dark:text-slate-100">
-          {{ req.details|default:"—"|urlize|linebreaksbr }}
-        </div>
-      </div>
-
-      {% if req.links %}
-      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
-        <div class="text-slate-500 dark:text-slate-400 text-sm mb-2">روابط مرتبطة</div>
-        <div class="whitespace-pre-line text-slate-800 dark:text-slate-100">
-          {{ req.links|urlize|linebreaksbr }}
-        </div>
-      </div>
-      {% endif %}
-
-      {# ===== بيانات التواصل ===== #}
-      {% if req.status != 'new' %}
-      <div class="rounded-2xl border bg-white dark:bg-slate-800 p-4">
-        <div class="flex items-center justify-between mb-4">
-          <div class="text-slate-800 dark:text-white font-bold">بيانات التواصل</div>
-          <div class="text-xs text-slate-500 dark:text-slate-400">تظهر بعد اختيار عرض من العميل</div>
-        </div>
-
-        <div class="grid md:grid-cols-2 gap-4">
-          <div class="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
-            <div class="font-semibold text-slate-800 dark:text-white mb-2">العميل</div>
-            <div class="space-y-2 text-slate-700 dark:text-slate-200">
-              <div>الاسم: <b>{{ req.client }}</b></div>
-              {% if req.client.phone %}
-              <div class="flex items-center gap-2">
-                <span>الجوال:</span>
-                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" dir="ltr" href="tel:{{ req.client.phone }}">{{ req.client.phone }}</a>
-                <a class="text-emerald-700 dark:text-emerald-300 hover:underline" target="_blank" rel="noopener noreferrer nofollow"
-                   href="https://api.whatsapp.com/send?phone={{ req.client.phone|urlencode }}">واتساب</a>
-              </div>
-              {% endif %}
-              {% if req.client.email %}
-              <div>الإيميل:
-                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" href="mailto:{{ req.client.email|urlencode }}">
-                  {{ req.client.email }}
+                <a class="btn btn-outline btn-sm"
+                   href="{% url 'marketplace:admin_request_reassign' req.pk %}">
+                  👥 إعادة إسناد لموظف آخر
                 </a>
+
+                <form method="post"
+                      action="{% url 'marketplace:admin_request_delete' req.pk %}"
+                      onsubmit="return confirm('سيتم شطب الطلب نهائيًا ولا يمكن التراجع. تأكيد؟');">
+                  {% csrf_token %}
+                  <button class="btn btn-danger btn-sm">
+                    🗑️ شطب نهائي
+                  </button>
+                </form>
               </div>
-              {% endif %}
+              <p class="admin-panel-note card-section-note">
+                هذه الإجراءات متاحة للمدير العام فقط.
+              </p>
             </div>
-          </div>
-
-          {% if req.assigned_employee or req.selected_offer %}
-          <div class="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
-            <div class="font-semibold text-slate-800 dark:text-white mb-2">الموظف المسند</div>
-            <div class="space-y-2 text-slate-700 dark:text-slate-200">
-              <div>الاسم:
-                <b>{% if req.assigned_employee %}{{ req.assigned_employee }}{% else %}{{ req.selected_offer.employee }}{% endif %}</b>
-              </div>
-
-              {% if req.assigned_employee and req.assigned_employee.phone %}
-              <div class="flex items-center gap-2">
-                <span>الجوال:</span>
-                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" dir="ltr" href="tel:{{ req.assigned_employee.phone }}">{{ req.assigned_employee.phone }}</a>
-                <a class="text-emerald-700 dark:text-emerald-300 hover:underline" target="_blank" rel="noopener noreferrer nofollow"
-                   href="https://api.whatsapp.com/send?phone={{ req.assigned_employee.phone|urlencode }}">واتساب</a>
-              </div>
-              {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.phone %}
-              <div class="flex items-center gap-2">
-                <span>الجوال:</span>
-                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" dir="ltr" href="tel:{{ req.selected_offer.employee.phone }}">{{ req.selected_offer.employee.phone }}</a>
-                <a class="text-emerald-700 dark:text-emerald-300 hover:underline" target="_blank" rel="noopener noreferrer nofollow"
-                   href="https://api.whatsapp.com/send?phone={{ req.selected_offer.employee.phone|urlencode }}">واتساب</a>
-              </div>
-              {% endif %}
-
-              {% if req.assigned_employee and req.assigned_employee.email %}
-              <div>الإيميل:
-                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" href="mailto:{{ req.assigned_employee.email|urlencode }}">
-                  {{ req.assigned_employee.email }}
-                </a>
-              </div>
-              {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.email %}
-              <div>الإيميل:
-                <a class="text-indigo-700 dark:text-indigo-300 hover:underline" href="mailto:{{ req.selected_offer.employee.email|urlencode }}">
-                  {{ req.selected_offer.employee.email }}
-                </a>
-              </div>
-              {% endif %}
-            </div>
-          </div>
           {% endif %}
-        </div>
-      </div>
-      {% endif %}
+        {% endif %}
 
-      {# الملاحظات #}
-      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-slate-500 dark:text-slate-400 text-sm">الملاحظات</div>
-        </div>
-
-        <div class="space-y-3">
-          {% for n in req.notes.all %}
-          <div class="rounded-lg border bg-slate-50 dark:bg-slate-900/40 p-3">
-            <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">{{ n.author }} — {{ n.created_at|date:"Y-m-d H:i" }}</div>
-            <div class="text-slate-800 dark:text-slate-100 whitespace-pre-line">{{ n.text }}</div>
+        {# 🟦 تقديم عرض #}
+        {% if can_offer %}
+          <div class="profile-section" style="background: var(--primary-50); border-color: var(--primary-200);">
+            <div class="card-row" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+              <div class="card-text">
+                يمكنك تقديم <strong>عرض واحد</strong> لهذا الطلب.
+              </div>
+              <a class="btn btn-primary btn-sm"
+                 href="{% url 'marketplace:offer_create_cbv' req.pk %}">
+                📨 تقديم عرض
+              </a>
+            </div>
           </div>
-          {% empty %}
-          <div class="text-slate-500 dark:text-slate-400 text-sm">لا توجد ملاحظات بعد.</div>
-          {% endfor %}
-        </div>
-
-        <form class="mt-4" method="post" action="{% url 'marketplace:request_add_note' req.pk %}"
-              onsubmit="return confirm('سيتم إضافة الملاحظة لهذا الطلب. تأكيد الإرسال؟');">
-          {% csrf_token %}
-          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <textarea name="text" rows="2" class="input" placeholder="أضف ملاحظة"></textarea>
-            <button class="btn btn-primary">حفظ</button>
+        {% elif my_offer %}
+          <div class="profile-section" style="background: var(--dark-50);">
+            <div class="card-row" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+              <div class="card-text-main">
+                <div class="card-title-small">عرضك المقدم</div>
+                <div class="card-subtext">
+                  الحالة: {{ my_offer.get_status_display|default:my_offer.status }}
+                  — المدة: {{ my_offer.proposed_duration_days }} يوم
+                  — صافي الموظف:
+                    <strong class="my-offer-net"
+                            data-net="{{ my_offer.net_for_employee }}">
+                      {{ my_offer.net_for_employee }}
+                    </strong> ر.س
+                  — العرض:
+                    <strong class="my-offer-total"
+                            data-total="{{ my_offer.client_total_amount|default_if_none:'' }}">
+                      {{ my_offer.client_total_amount|default_if_none:"—" }}
+                    </strong> ر.س
+                </div>
+              </div>
+              <span class="badge badge-muted">
+                📋 قدّمت عرضًا بالفعل
+              </span>
+            </div>
           </div>
-        </form>
-      </div>
+        {% endif %}
 
-      {# العروض #}
-      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-slate-500 dark:text-slate-400 text-sm">العروض</div>
-        </div>
-
-        <div class="space-y-3">
-          {% for off in req.offers.all %}
-          <div class="rounded-lg border p-3 {% if off.status == 'selected' %}bg-green-50 border-green-200 dark:bg-emerald-900/20 dark:border-emerald-900{% else %}bg-slate-50 dark:bg-slate-900/40{% endif %}">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <div class="text-slate-900 dark:text-white font-bold">{{ off.employee }}</div>
-                <div class="text-slate-600 dark:text-slate-300 text-sm mt-1">
-                  الحالة: {{ off.get_status_display|default:off.status }}
-                </div>
-                {% if off.note %}
-                <div class="mt-2 text-slate-800 dark:text-slate-100 whitespace-pre-line">
-                  {{ off.note|urlize|linebreaksbr }}
-                </div>
-                {% endif %}
-                <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
-                  <span class="px-2 py-1 rounded-lg border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">المدة: <b>{{ off.proposed_duration_days }}</b> يوم</span>
-                  <span class="px-2 py-1 rounded-lg border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">المبلغ: <b>{{ off.proposed_price }}</b> ريال</span>
+        {# بطاقات معلومات سريعة #}
+        <div class="request-summary-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+          {# المدة/المبلغ #}
+          <div class="profile-section">
+            <div class="card-section-title">📊 المدة/المبلغ</div>
+            <div class="summary-grid-inner">
+              <div class="summary-box" style="background: var(--primary-50); padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 1rem;">
+                <div class="summary-box-label">مقدّمة من العميل</div>
+                <div class="summary-box-values">
+                  <div>المدة: <strong>{{ req.estimated_duration_days|default:"—" }}</strong> يوم</div>
+                  <div>المبلغ: <strong>{{ req.estimated_price|default:"—" }}</strong>
+                    <span class="summary-unit">ريال</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="shrink-0">
-                {% if req.client_id == request.user.id and req.status == 'new' and off.status != 'selected' %}
-                  <form method="post" action="{% url 'marketplace:offer_select' off.pk %}"
-                        onsubmit="return confirm('سيتم اختيار هذا العرض والانتقال لمرحلة الاتفاقية. تأكيد؟');">
-                    {% csrf_token %}
-                    <button class="btn btn-primary">اختيار العرض</button>
-                  </form>
-                {% elif off.status == 'selected' %}
-                  <span class="px-2 py-1 rounded-lg text-xs bg-green-100 text-green-800 border border-green-200">العرض المختار</span>
+              {% if req.selected_offer %}
+                {# ⭐ مربع العرض المختار المحسّن #}
+                <div class="summary-box selected-offer-box"
+                     style="background: #fffbeb; padding: 1.25rem 1.5rem; border-radius: var(--radius-xl); margin-bottom: 1rem; border: 1px solid #facc15; box-shadow: 0 6px 14px rgba(250, 204, 21, 0.12);">
+                  <div class="summary-box-header"
+                       style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div class="summary-box-label"
+                         style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; color: #92400e;">
+                      <span>🏆</span>
+                      <span>العرض المختار</span>
+                    </div>
+                    <span class="badge badge-muted"
+                          style="background: rgba(250, 204, 21, 0.15); color: #92400e;">
+                      السعر النهائي للعميل
+                    </span>
+                  </div>
+
+                  <div class="summary-box-values">
+                    <div style="margin-bottom: 0.5rem; color: #78350f; font-size: 0.95rem;">
+                      المدة:
+                      <strong>
+                        {{ selected_offer.proposed_duration_days|default:"—" }}
+                      </strong>
+                      يوم
+                    </div>
+
+                    <div style="font-size: 1.25em; font-weight: 800; color: #166534; background: #f0fdf4; padding: 10px 14px; border-radius: 999px; display: inline-flex; align-items: baseline; gap: 0.35rem; margin-top: 0.25rem;">
+                      <span>العرض للعميل:</span>
+                      <span class="sel-total">
+                        {{ selected_offer.client_total_amount|default_if_none:"—"|floatformat:2 }}
+                      </span>
+                      <span class="summary-unit">ريال</span>
+                    </div>
+                   
+                  </div>
+                </div>
+              {% endif %}
+
+              {% if req.agreement %}
+                <div class="summary-box"
+                     style="background: #ecfdf5; padding: 1rem; border-radius: var(--radius-lg); border: 1px solid #bbf7d0;">
+                  <div class="summary-box-label">الاتفاقية</div>
+                  <div class="summary-box-values">
+                    <div>المدة: <strong>{{ req.agreement.duration_days }}</strong> يوم</div>
+                    <div>
+                      المبلغ:
+                      <strong>
+                        {% if selected_offer_client_total %}
+                          {{ selected_offer_client_total|floatformat:2 }}
+                        {% elif req.agreement.grand_total %}
+                          {{ req.agreement.grand_total|floatformat:2 }}
+                        {% else %}
+                          {{ req.agreement.total_amount|floatformat:2 }}
+                        {% endif %}
+                      </strong>
+                      <span class="summary-unit">ريال</span>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          {# الموظف المسند #}
+          <div class="profile-section" style="background: var(--dark-50);">
+            <div class="card-section-title">👤 الموظف المسند</div>
+            <div class="card-text">
+              {% if req.assigned_employee %}
+                <div class="employee-name">{{ req.assigned_employee }}</div>
+                {% if req.assigned_employee.phone %}
+                  <div class="employee-location">
+                    📞 {{ req.assigned_employee.phone }}
+                  </div>
+                {% endif %}
+              {% elif req.selected_offer %}
+                <div class="employee-name">{{ req.selected_offer.employee }}</div>
+              {% else %}
+                <div class="text-muted">— لا يوجد إسناد بعد —</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# تفاصيل الطلب #}
+        <div class="profile-section">
+          <div class="card-section-title">📄 التفاصيل</div>
+          <div class="card-text prose-text">
+            {{ req.details|default:"—"|urlize|linebreaksbr }}
+          </div>
+        </div>
+
+        {% if req.links %}
+          <div class="profile-section">
+            <div class="card-section-title">🔗 روابط مرتبطة</div>
+            <div class="card-text prose-text">
+              {{ req.links|urlize|linebreaksbr }}
+            </div>
+          </div>
+        {% endif %}
+
+        {# ===== بيانات التواصل ===== #}
+        {% if req.status != 'new' %}
+          <div class="profile-section">
+            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <div class="card-section-title">📞 بيانات التواصل</div>
+              <div class="card-section-note">تظهر بعد الإسناد أو اختيار عرض.</div>
+            </div>
+
+            <div class="request-contacts-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="profile-section" style="background: var(--dark-50);">
+                <div class="card-subtitle">العميل</div>
+                <div class="card-text">
+                  <div>الاسم: <strong>{{ req.client }}</strong></div>
+
+                  {% if req.client.phone %}
+                    <div class="contact-row" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0;">
+                      <span>📱:</span>
+                      <a class="link" dir="ltr"
+                         href="tel:{{ req.client.phone }}">{{ req.client.phone }}</a>
+                      <a class="btn btn-outline btn-sm" target="_blank"
+                         rel="noopener noreferrer nofollow"
+                         href="https://api.whatsapp.com/send?phone={{ req.client.phone|urlencode }}">
+                        💬 واتساب
+                      </a>
+                    </div>
+                  {% endif %}
+
+                  {% if req.client.email %}
+                    <div>
+                      📧:
+                      <a class="link"
+                         href="mailto:{{ req.client.email|urlencode }}">
+                        {{ req.client.email }}
+                      </a>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              {% if req.assigned_employee or req.selected_offer %}
+                <div class="profile-section" style="background: var(--dark-50);">
+                  <div class="card-subtitle">الموظف المسند</div>
+                  <div class="card-text">
+                    <div>
+                      الاسم:
+                      <strong>
+                        {% if req.assigned_employee %}
+                          {{ req.assigned_employee }}
+                        {% else %}
+                          {{ req.selected_offer.employee }}
+                        {% endif %}
+                      </strong>
+                    </div>
+
+                    {% if req.assigned_employee and req.assigned_employee.phone %}
+                      <div class="contact-row" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0%;">
+                        <span>📱:</span>
+                        <a class="link" dir="ltr"
+                           href="tel:{{ req.assigned_employee.phone }}">{{ req.assigned_employee.phone }}</a>
+                        <a class="btn btn-outline btn-sm" target="_blank"
+                           rel="noopener noreferrer nofollow"
+                           href="https://api.whatsapp.com/send?phone={{ req.assigned_employee.phone|urlencode }}">
+                          💬 واتساب
+                        </a>
+                      </div>
+                    {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.phone %}
+                      <div class="contact-row" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0;">
+                        <span>📱:</span>
+                        <a class="link" dir="ltr"
+                           href="tel:{{ req.selected_offer.employee.phone }}">{{ req.selected_offer.employee.phone }}</a>
+                        <a class="btn btn-outline btn-sm" target="_blank"
+                           rel="noopener noreferrer nofollow"
+                           href="https://api.whatsapp.com/send?phone={{ req.selected_offer.employee.phone|urlencode }}">
+                          💬 واتساب
+                        </a>
+                      </div>
+                    {% endif %}
+
+                    {% if req.assigned_employee and req.assigned_employee.email %}
+                      <div>
+                        📧:
+                        <a class="link"
+                           href="mailto:{{ req.assigned_employee.email|urlencode }}">
+                          {{ req.assigned_employee.email }}
+                        </a>
+                      </div>
+                    {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.email %}
+                      <div>
+                        📧:
+                        <a class="link"
+                           href="mailto:{{ req.selected_offer.employee.email|urlencode }}">
+                          {{ req.selected_offer.employee.email }}
+                        </a>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+
+        {# الملاحظات #}
+        <div class="profile-section">
+          <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div class="card-section-title">📝 الملاحظات</div>
+          </div>
+
+          <div class="notes-list">
+            {% for n in req.notes.all %}
+              <div class="note-item profile-section" style="margin-bottom: 1rem; padding: 1rem; background: var(--dark-50);">
+                <div class="note-meta" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">
+                  👤 {{ n.author }} — {{ n.created_at|date:"Y-m-d H:i" }}
+                </div>
+                <div class="note-text">
+                  {{ n.text }}
+                </div>
+              </div>
+            {% empty %}
+              <div class="card-section-note">لا توجد ملاحظات بعد.</div>
+            {% endfor %}
+          </div>
+
+          <form class="note-form"
+                method="post"
+                action="{% url 'marketplace:request_add_note' req.pk %}"
+                onsubmit="return confirm('سيتم إضافة الملاحظة لهذا الطلب. تأكيد الإرسال؟');">
+            {% csrf_token %}
+            <div class="note-form-row" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+              <textarea name="text"
+                        rows="2"
+                        class="input"
+                        placeholder="أضف ملاحظة..."
+                        style="flex: 1;"></textarea>
+              <button class="btn btn-primary btn-sm">
+                💾 حفظ
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {# العروض #}
+        <div class="profile-section">
+          <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div class="card-section-title">📨 العروض</div>
+          </div>
+
+          <div class="offers-list">
+            {% for off in req.offers.all %}
+              <div class="offer-item profile-section {% if off.status == 'selected' %}offer-selected{% endif %}"
+                   style="{% if off.status == 'selected' %}border-left: 4px solid var(--primary-500); background: var(--primary-50);{% endif %} margin-bottom: 1rem; padding: 1rem;">
+                <div class="offer-main">
+                  <div class="offer-title" style="font-weight: 600; margin-bottom: 0.5rem;">
+                    👤 {{ off.employee }}
+                  </div>
+                  <div class="offer-meta" style="color: var(--dark-500); margin-bottom: 0.5rem;">
+                    الحالة: {{ off.get_status_display|default:off.status }}
+                  </div>
+
+                  {% if off.note %}
+                    <div class="offer-note" style="background: var(--white); padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem;">
+                      {{ off.note|urlize|linebreaksbr }}
+                    </div>
+                  {% endif %}
+
+                  <div class="offer-tags" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span class="badge badge-muted">
+                      ⏱️ المدة:
+                      <strong>{{ off.proposed_duration_days }}</strong> يوم
+                    </span>
+
+                    {# إجمالي العميل فقط للعميل، يشمل كل شيء #}
+                    <span class="badge badge-primary" style="font-size: 1.1em; background: #f0fdf4; color: #166534; display: flex; flex-direction: column; align-items: flex-start;">
+                      <span>
+العرض :
+                        <strong class="off-total"
+                                data-total="{{ off.client_total_amount_cache|default_if_none:off.client_total_amount|default_if_none:'' }}">
+                          {% if off.client_total_amount_cache or off.client_total_amount %}
+                            {{ off.client_total_amount_cache|default_if_none:off.client_total_amount|floatformat:2 }}
+                          {% else %}
+                            —
+                          {% endif %}
+                        </strong>
+                        ريال
+                      </span>
+                      <span class="field-hint" style="font-size: 0.85em; color: #166534; margin-top: 2px;">
+                      </span>
+                    </span>
+                  </div>
+
+                  {# صافي الموظف مخفي للحساب فقط #}
+                  <span class="off-net"
+                        data-net="{{ off.proposed_price }}"
+                        style="display:none;"></span>
+                </div>
+
+                <div class="offer-actions" style="margin-top: 1rem;">
+                  {% if req.client_id == request.user.id and req.status == 'new' and off.status != 'selected' %}
+                    <form method="post"
+                          action="{% url 'marketplace:offer_select' off.pk %}"
+                          onsubmit="return confirm('سيتم اعتماد هذا العرض والانتقال لمرحلة الاتفاقية. تأكيد؟');">
+                      {% csrf_token %}
+                      <button class="btn btn-primary btn-sm">
+                        ✅ اختيار العرض
+                      </button>
+                    </form>
+                  {% elif off.status == 'selected' %}
+                    <span class="badge badge-verified">
+                      🏆 العرض المختار
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+            {% empty %}
+              <div class="card-section-note">
+                لا توجد عروض بعد.
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# ===== الاتفاقية ===== #}
+        {% if req.agreement %}
+          <div class="profile-section">
+            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <div class="card-section-title">📝 الاتفاقية</div>
+              <div class="agreement-meta" style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-muted">
+                  رقم: {{ req.agreement.pk }}
+                </span>
+                {% if req.agreement.status %}
+                  <span class="badge
+                               {% if req.agreement.status == 'accepted' %}badge-verified
+                               {% elif req.agreement.status == 'rejected' %}badge-rejected
+                               {% else %}badge-pending{% endif %}">
+                    {{ req.agreement.get_status_display|default:req.agreement.status }}
+                  </span>
                 {% endif %}
               </div>
             </div>
-          </div>
-          {% empty %}
-          <div class="text-slate-500 dark:text-slate-400 text-sm">لا توجد عروض بعد.</div>
-          {% endfor %}
-        </div>
-      </div>
 
-      {# ===== الاتفاقية ===== #}
-      {% if req.agreement %}
-        <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-slate-500 dark:text-slate-400 text-sm">الاتفاقية</div>
-            <div class="flex items-center gap-2">
-              <span class="px-2 py-1 rounded-lg text-xs bg-slate-100 dark:bg-slate-900 border text-slate-700 dark:text-slate-300">رقم: {{ req.agreement.pk }}</span>
-              {% if req.agreement.status %}
-                <span class="px-2 py-1 rounded-lg text-xs border
-                            {% if req.agreement.status == 'accepted' %}bg-green-50 text-green-800 border-green-200 dark:bg-emerald-900/20 dark:text-emerald-200 dark:border-emerald-900
-                            {% elif req.agreement.status == 'rejected' %}bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-200 dark:border-rose-900
-                            {% else %}bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-200 dark:border-amber-900{% endif %}">
-                  {{ req.agreement.get_status_display|default:req.agreement.status }}
+            <div class="agreement-actions employee-actions">
+              <a class="btn btn-secondary btn-sm"
+                 href="{% url 'agreements:open_by_request' req.pk %}">
+                👁️ عرض/تحرير الاتفاقية
+              </a>
+
+              {% if request.user.id == req.client_id %}
+                {% if req.status == 'agreement_pending' or req.agreement.status == 'pending' %}
+                  <form action="{% url 'agreements:accept_by_request' req.pk %}"
+                        method="post"
+                        class="inline-form"
+                        onsubmit="return confirm('سيتم اعتماد الاتفاقية والانتقال للتنفيذ. تأكيد؟');">
+                    {% csrf_token %}
+                    <button class="btn btn-success btn-sm">
+                      ✅ موافقة
+                    </button>
+                  </form>
+                  <a class="btn btn-danger btn-sm"
+                     href="{% url 'agreements:reject_by_request' req.pk %}"
+                     onclick="return confirm('سيتم رفض الاتفاقية الحالية. هل أنت متأكد؟');">
+                    ❌ رفض
+                  </a>
+                {% endif %}
+              {% endif %}
+
+              {% if req.agreement.status == 'accepted' %}
+                <span class="card-section-note">
+                  ✅ الاتفاقية مقبولة — لا يمكن تعديلها.
                 </span>
               {% endif %}
             </div>
           </div>
 
-          <div class="flex items-center gap-3 flex-wrap">
-            <a class="btn btn-secondary" href="{% url 'agreements:open_by_request' req.pk %}">عرض/تحرير الاتفاقية</a>
-
-            {% if request.user.id == req.client_id %}
-              {% if req.status == 'agreement_pending' or req.agreement.status == 'pending' %}
-                <form action="{% url 'agreements:accept_by_request' req.pk %}" method="post" class="inline"
-                      onsubmit="return confirm('سيتم اعتماد الاتفاقية والانتقال للتنفيذ. تأكيد؟');">
-                  {% csrf_token %}
-                  <button class="btn btn-success">موافقة</button>
-                </form>
-                <a class="btn btn-danger" href="{% url 'agreements:reject_by_request' req.pk %}"
-                   onclick="return confirm('سيتم رفض الاتفاقية الحالية. هل أنت متأكد؟');">رفض</a>
-              {% endif %}
-            {% endif %}
-
-            {% if req.agreement.status == 'accepted' %}
-              <span class="text-xs text-slate-500 dark:text-slate-400">الاتفاقية مقبولة — لا يمكن تعديلها.</span>
-            {% endif %}
-          </div>
-        </div>
-
-        {# ===== المراحل المختصرة ===== #}
-        {% with ag=req.agreement %}
-        <div class="rounded-2xl border bg-white/80 dark:bg-slate-900/40 p-4">
-          <div class="flex items-center justify-between gap-2">
-            <h3 class="font-semibold text-slate-800 dark:text-slate-100">المـراحــل</h3>
-            <div class="text-xs text-slate-500 dark:text-slate-400">تُحدّث تلقائيًا بعد اعتماد العميل لكل مرحلة</div>
-          </div>
-
-          <div class="mt-3 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="text-start text-slate-600 dark:text-slate-300">
-                  <th class="p-2 text-start">#</th>
-                  <th class="p-2 text-start">عنوان المرحلة</th>
-                  <th class="p-2 text-start">تاريخ الاعتماد</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for ms in ag.milestones.all %}
-                <tr class="border-t">
-                  <td class="p-2">{{ forloop.counter }}</td>
-                  <td class="p-2 truncate">{{ ms.title|default:"—" }}</td>
-                  <td class="p-2">
-                    {% if ms.approved_at %}{{ ms.approved_at|date:"Y-m-d H:i" }}{% else %}
-                      <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-xs">غير معتمدة بعد</span>
-                    {% endif %}
-                  </td>
-                </tr>
-                {% empty %}
-                <tr>
-                  <td class="p-2 text-slate-500 dark:text-slate-400" colspan="3">لا توجد مراحل بعد.</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {# ===== بطاقات المراحل التفصيلية ===== #}
-        <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-slate-500 dark:text-slate-400 text-sm">تفاصيل كل مرحلة</div>
-          </div>
-
-          <div class="space-y-4">
-            {% for ms in ag.milestones.all %}
-            <div id="ms-{{ ms.id }}" class="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40 shadow-sm">
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <div class="font-semibold text-slate-800 dark:text-white truncate">{{ ms.title }}</div>
-                    <span class="px-2 py-0.5 rounded-lg text-[11px] border bg-white/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-300">#{{ ms.id }}</span>
-                  </div>
-                  <div class="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                    الترتيب: {{ ms.order }} — المهلة: {{ ms.due_days|default:"—" }} يوم
-                  </div>
-
-                  {% if ms.delivered_note %}
-                    <div class="mt-2 text-xs text-slate-600 dark:text-slate-300">
-                      <span class="font-semibold">ملاحظة التسليم:</span> {{ ms.delivered_note }}
-                    </div>
-                  {% endif %}
-                  {% if ms.rejected_reason %}
-                    <div class="mt-2 text-xs text-rose-600 dark:text-rose-300">
-                      <span class="font-semibold">سبب الرفض:</span> {{ ms.rejected_reason }}
-                    </div>
-                  {% endif %}
-
-                  <div class="mt-2 text-xs text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-2">
-                    {% if ms.invoice %}
-                      <span>الفاتورة:
-                        <a class="text-indigo-700 dark:text-indigo-300 hover:underline" href="{% url 'finance:invoice_detail' ms.invoice.id %}">#{{ ms.invoice.id }}</a>
-                      </span>
-                      <span>الحالة:
-                        {% if ms.invoice.is_paid %}<b class="text-emerald-700 dark:text-emerald-300">مدفوعة</b>
-                        {% elif ms.invoice.is_unpaid %}<b class="text-amber-700 dark:text-amber-300">غير مدفوعة</b>
-                        {% else %}<b>{{ ms.invoice.get_status_display|default:ms.invoice.status }}</b>{% endif %}
-                      </span>
-                      <span>الإصدار: {{ ms.invoice.issued_at|date:"Y-m-d H:i" }}</span>
-                      <span>الاستحقاق: {% if ms.invoice.due_at %}{{ ms.invoice.due_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</span>
-                    {% endif %}
-                  </div>
-                </div>
-
-                <div class="flex items-center flex-wrap gap-2">
-                  {% if ms.invoice and ms.invoice.is_paid %}
-                    <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-200 text-xs">مدفوعة</span>
-                  {% elif ms.is_approved %}
-                    <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-200 text-xs">معتمدة</span>
-                  {% elif ms.is_rejected %}
-                    <span class="px-2 py-1 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:text-rose-200 text-xs">مرفوضة</span>
-                  {% elif ms.is_pending_review %}
-                    <span class="px-2 py-1 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-200 text-xs">بانتظار مراجعة العميل</span>
-                  {% elif ms.is_delivered %}
-                    <span class="px-2 py-1 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/20 dark:text-sky-200 text-xs">تم التسليم</span>
-                  {% else %}
-                    <span class="px-2 py-1 rounded bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 text-xs">جديدة</span>
-                  {% endif %}
+          {# ===== المراحل + الفواتير ===== #}
+          {% with ag=req.agreement %}
+            <div class="profile-section" style="background: var(--dark-50);">
+              <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 class="card-section-title">📋 المـراحــل</h3>
+                <div class="card-section-note">
+                  تُحدّث تلقائيًا بعد اعتماد العميل لكل مرحلة
                 </div>
               </div>
 
-              <div class="mt-4 flex flex-wrap items-start gap-3">
-                {# الموظف: تسليم/إعادة تسليم #}
-                {% if request.user.is_authenticated and request.user.id == req.assigned_employee_id %}
-                  {% if not ms.invoice or not ms.invoice.is_paid %}
-                    {% if not ms.is_approved and not ms.is_pending_review %}
-                      <form method="post" action="{% url 'agreements:milestone_deliver' ag.id ms.id %}#ms-{{ ms.id }}"
-                            class="flex items-start gap-2"
-                            onsubmit="return confirm('سيتم تعليم هذه المرحلة كـ تم التسليم مع حفظ الملاحظة إن وُجدت. تأكيد؟');">
-                        {% csrf_token %}
-                        <textarea name="note" rows="2" class="input !p-2 !text-xs" placeholder="ملاحظة التسليم (اختياري)"></textarea>
-                        <button class="btn btn-secondary">تسليم المرحلة</button>
-                      </form>
-                    {% else %}
-                      <button class="btn btn-secondary opacity-60 cursor-not-allowed" disabled title="لا يمكن التسليم الآن">تسليم المرحلة</button>
-                    {% endif %}
-                  {% else %}
-                    <button class="btn btn-secondary opacity-60 cursor-not-allowed" disabled title="الفاتورة مدفوعة">تسليم المرحلة</button>
-                  {% endif %}
-                {% endif %}
+              <div class="table-wrapper">
+                <table class="table table-clean" style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="border-bottom: 1px solid var(--dark-200);">
+                      <th style="padding: 0.75rem; text-align: right;">#</th>
+                      <th style="padding: 0.75rem; text-align: right;">عنوان المرحلة</th>
+                      <th style="padding: 0.75rem; text-align: right;">تاريخ الاعتماد</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for ms in ag.milestones.all %}
+                      <tr style="border-bottom: 1px solid var(--dark-100);">
+                        <td style="padding: 0.75rem;">{{ forloop.counter }}</td>
+                        <td style="padding: 0.75rem;">{{ ms.title|default:"—" }}</td>
+                        <td style="padding: 0.75rem;">
+                          {% if ms.approved_at %}
+                            {{ ms.approved_at|date:"Y-m-d H:i" }}
+                          {% else %}
+                            <span class="badge badge-pending">
+                              ⏳ غير معتمدة بعد
+                            </span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% empty %}
+                      <tr>
+                        <td colspan="3" style="padding: 1rem; text-align: center; color: var(--dark-500);">
+                          لا توجد مراحل بعد.
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-                {# العميل: اعتماد/رفض — فقط أثناء المراجعة #}
-                {% if request.user.is_authenticated and request.user.id == req.client_id %}
-                  {% if ms.is_pending_review %}
-                    <form method="post" action="{% url 'agreements:milestone_approve' ag.id ms.id %}#ms-{{ ms.id }}"
-                          onsubmit="return confirm('سيتم اعتماد هذه المرحلة والانتقال لإصدار الفاتورة. تأكيد الاعتماد؟');">
-                      {% csrf_token %}
-                      <button class="btn btn-success">اعتماد</button>
-                    </form>
+            {# بطاقات المراحل التفصيلية #}
+            <div class="profile-section">
+              <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="card-section-title">🔍 تفاصيل كل مرحلة</div>
+              </div>
 
-                    <button class="btn btn-danger" data-reject-modal="#rej-{{ ms.id }}">رفض</button>
-
-                    {# مودال الرفض #}
-                    <div id="rej-{{ ms.id }}" class="fixed inset-0 z-50 hidden" aria-hidden="true" role="dialog" aria-labelledby="rej-title-{{ ms.id }}">
-                      <div class="absolute inset-0 bg-black/40" data-close-modal></div>
-                      <div class="mx-auto mt-24 w-[92%] max-w-lg rounded-2xl border bg-white dark:bg-slate-800 shadow-xl overflow-hidden focus:outline-none">
-                        <div class="p-4 border-b bg-rose-50 dark:bg-rose-900/20">
-                          <div id="rej-title-{{ ms.id }}" class="font-semibold text-rose-700 dark:text-rose-200">رفض المرحلة: {{ ms.title }}</div>
+              <div class="milestones-list">
+                {% for ms in ag.milestones.all %}
+                  <div id="ms-{{ ms.id }}" class="milestone-item profile-section" style="margin-bottom: 1.5rem; padding: 1.5rem;">
+                    <div class="milestone-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                      <div class="milestone-main" style="flex: 1;">
+                        <div class="milestone-title-row" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                          <div class="milestone-title" style="font-weight: 600; font-size: 1.1rem;">
+                            {{ ms.title }}
+                          </div>
+                          <span class="badge badge-muted">#{{ ms.id }}</span>
                         </div>
-                        <form method="post" action="{% url 'agreements:milestone_reject' ag.id ms.id %}#ms-{{ ms.id }}"
-                              onsubmit="return confirm('سيتم رفض هذه المرحلة مع السبب المدخل. تأكيد الرفض؟');">
-                          {% csrf_token %}
-                          <div class="p-4 space-y-3">
-                            <label class="text-sm text-slate-700 dark:text-slate-200" for="rej-text-{{ ms.id }}">سبب الرفض</label>
-                            <textarea id="rej-text-{{ ms.id }}" name="reason" rows="4" class="input" placeholder="فضلاً اكتب سببًا واضحًا"></textarea>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">لن يتم قبول الرفض بدون سبب واضح.</p>
+                        <div class="milestone-meta" style="color: var(--dark-500); margin-bottom: 0.75rem;">
+                          الترتيب: {{ ms.order }} — المهلة: {{ ms.due_days|default:"—" }} يوم
+                        </div>
+
+                        {% if ms.delivered_note %}
+                          <div class="milestone-note" style="background: var(--primary-50); padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem;">
+                            <span class="label" style="font-weight: 600;">📝 ملاحظة التسليم:</span> {{ ms.delivered_note }}
                           </div>
-                          <div class="p-4 border-t flex items-center justify-end gap-2">
-                            <button type="button" class="btn btn-ghost" data-close-modal>إلغاء</button>
-                            <button class="btn btn-danger">تأكيد الرفض</button>
+                        {% endif %}
+                        {% if ms.rejected_reason %}
+                          <div class="milestone-note milestone-note-error" style="background: #fef2f2; padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem; border-left: 4px solid #ef4444;">
+                            <span class="label" style="font-weight: 600;">❌ سبب الرفض:</span> {{ ms.rejected_reason }}
                           </div>
-                        </form>
+                        {% endif %}
+
+                        <div class="milestone-invoice-meta" style="display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.875rem; color: var(--dark-600);">
+                          {% if ms.invoice %}
+                            <span>
+                              🧾 الفاتورة:
+                              <a class="link"
+                                 href="{% url 'finance:invoice_detail' ms.invoice.id %}">
+                                #{{ ms.invoice.id }}
+                              </a>
+                            </span>
+                            <span>
+                              ⏰ الاستحقاق:
+                              {% if ms.invoice.due_at %}
+                                {{ ms.invoice.due_at|date:"Y-m-d H:i" }}
+                              {% else %}
+                                —
+                              {% endif %}
+                            </span>
+                          {% endif %}
+                        </div>
+                      </div>
+
+                      <div class="milestone-status-pill">
+                        {% if ms.invoice and ms.invoice.is_paid %}
+                          <span class="badge badge-verified">💰 مدفوعة</span>
+                        {% elif ms.is_approved %}
+                          <span class="badge badge-verified">✅ معتمدة</span>
+                        {% elif ms.is_rejected %}
+                          <span class="badge badge-rejected">❌ مرفوضة</span>
+                        {% elif ms.is_pending_review %}
+                          <span class="badge badge-pending">👀 بانتظار مراجعة العميل</span>
+                        {% elif ms.is_delivered %}
+                          <span class="badge badge-default">📤 تم التسليم</span>
+                        {% else %}
+                          <span class="badge badge-muted">🆕 جديدة</span>
+                        {% endif %}
                       </div>
                     </div>
-                  {% else %}
-                    <button class="btn btn-success opacity-60 cursor-not-allowed" disabled title="لا يمكن الاعتماد الآن">اعتماد</button>
-                    <button class="btn btn-danger opacity-60 cursor-not-allowed" disabled title="لا يمكن الرفض الآن">رفض</button>
-                  {% endif %}
-                {% endif %}
 
-                {% if ms.invoice %}
-                  <a href="{% url 'finance:invoice_detail' ms.invoice.id %}" class="btn btn-ghost">عرض الفاتورة</a>
-                {% endif %}
+                    <div class="milestone-actions employee-actions">
+                      {# الموظف: تسليم/إعادة تسليم #}
+                      {% if request.user.is_authenticated and request.user.id == req.assigned_employee_id %}
+                        {% if not ms.invoice or not ms.invoice.is_paid %}
+                          {% if not ms.is_approved and not ms.is_pending_review %}
+                            <form method="post"
+                                  action="{% url 'agreements:milestone_deliver' ag.id ms.id %}#ms-{{ ms.id }}"
+                                  class="milestone-deliver-form"
+                                  onsubmit="return confirm('سيتم تعليم هذه المرحلة كـ تم التسليم مع حفظ الملاحظة إن وُجدت. تأكيد؟');">
+                              {% csrf_token %}
+                              <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+                                <textarea name="note"
+                                          rows="2"
+                                          class="input input-sm"
+                                          placeholder="ملاحظة التسليم (اختياري)"
+                                          style="flex: 1;"></textarea>
+                                <button class="btn btn-secondary btn-sm">
+                                  📤 تسليم المرحلة
+                                </button>
+                              </div>
+                            </form>
+                          {% else %}
+                            <button class="btn btn-secondary btn-sm btn-disabled" disabled
+                                    title="لا يمكن التسليم الآن">
+                              📤 تسليم المرحلة
+                            </button>
+                          {% endif %}
+                        {% else %}
+                          <button class="btn btn-secondary btn-sm btn-disabled" disabled
+                                  title="الفاتورة مدفوعة">
+                            📤 تسليم المرحلة
+                          </button>
+                        {% endif %}
+                      {% endif %}
+
+                      {# العميل: اعتماد/رفض — فقط أثناء المراجعة #}
+                      {% if request.user.is_authenticated and request.user.id == req.client_id %}
+                        {% if ms.is_pending_review %}
+                          <form method="post"
+                                action="{% url 'agreements:milestone_approve' ag.id ms.id %}#ms-{{ ms.id }}"
+                                onsubmit="return confirm('سيتم اعتماد هذه المرحلة والانتقال لإصدار الفاتورة. تأكيد الاعتماد؟');">
+                            {% csrf_token %}
+                            <button class="btn btn-success btn-sm">
+                              ✅ اعتماد
+                            </button>
+                          </form>
+
+                          <button class="btn btn-danger btn-sm"
+                                  data-reject-modal="#rej-{{ ms.id }}">
+                            ❌ رفض
+                          </button>
+
+                          {# مودال الرفض #}
+                          <div id="rej-{{ ms.id }}"
+                               class="modal-overlay"
+                               aria-hidden="true"
+                               role="dialog"
+                               aria-labelledby="rej-title-{{ ms.id }}"
+                               style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.5);">
+                            <div class="modal-backdrop" data-close-modal style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+                            <div class="modal-card profile-section" style="position: relative; background: var(--white); border-radius: var(--radius-xl); padding: 1.5rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                              <div class="modal-header" style="margin-bottom: 1rem;">
+                                <div id="rej-title-{{ ms.id }}" class="modal-title card-section-title">
+                                  ❌ رفض المرحلة: {{ ms.title }}
+                                </div>
+                              </div>
+                              <form method="post"
+                                    action="{% url 'agreements:milestone_reject' ag.id ms.id %}#ms-{{ ms.id }}"
+                                    onsubmit="return confirm('سيتم رفض هذه المرحلة مع السبب المدخل. تأكيد الرفض؟');">
+                                {% csrf_token %}
+                                <div class="modal-body">
+                                  <label class="form-label" for="rej-text-{{ ms.id }}">
+                                    سبب الرفض
+                                  </label>
+                                  <textarea id="rej-text-{{ ms.id }}"
+                                            name="reason"
+                                            rows="4"
+                                            class="input"
+                                            placeholder="فضلاً اكتب سببًا واضحًا..."
+                                            style="width: 100%; margin-bottom: 0.5rem;"></textarea>
+                                  <p class="field-hint" style="color: var(--dark-500); font-size: 0.875rem;">
+                                    لن يتم قبول الرفض بدون سبب واضح.
+                                  </p>
+                                </div>
+                                <div class="modal-footer employee-actions">
+                                  <button type="button"
+                                          class="btn btn-outline btn-sm"
+                                          data-close-modal>
+                                    إلغاء
+                                  </button>
+                                  <button class="btn btn-danger btn-sm">
+                                    تأكيد الرفض
+                                  </button>
+                                </div>
+                              </form>
+                            </div>
+                          </div>
+                        {% else %}
+                          <button class="btn btn-success btn-sm btn-disabled" disabled
+                                  title="لا يمكن الاعتماد الآن">
+                            ✅ اعتماد
+                          </button>
+                          <button class="btn btn-danger btn-sm btn-disabled" disabled
+                                  title="لا يمكن الرفض الآن">
+                            ❌ رفض
+                          </button>
+                        {% endif %}
+                      {% endif %}
+
+                      {% if ms.invoice %}
+                        <a href="{% url 'finance:invoice_detail' ms.invoice.id %}"
+                           class="btn btn-outline btn-sm">
+                          🧾 عرض الفاتورة
+                        </a>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% empty %}
+                  <div class="card-section-note">
+                    لا توجد دفعات بعد.
+                  </div>
+                {% endfor %}
               </div>
             </div>
-            {% empty %}
-              <div class="text-slate-500 dark:text-slate-400 text-sm">لا توجد دفعات بعد.</div>
-            {% endfor %}
-          </div>
-        </div>
-        {% endwith %}
-      {% else %}
-        {% if req.status == 'offer_selected' %}
-          {% if request.user.id == req.assigned_employee_id or request.user.is_staff or request.user.role == 'admin' %}
-            <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
-              <div class="flex items-center justify-between mb-3">
-                <div class="text-slate-500 dark:text-slate-400 text-sm">الاتفاقية</div>
+          {% endwith %}
+        {% else %}
+          {% if req.status == 'offer_selected' %}
+            {% if request.user.id == req.assigned_employee_id or request.user.is_staff or request.user.role == 'admin' %}
+              <div class="profile-section">
+                <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                  <div class="card-section-title">📝 الاتفاقية</div>
+                </div>
+                <a class="btn btn-primary btn-sm"
+                   href="{% url 'agreements:open_by_request' req.pk %}">
+                  📝 إنشاء/فتح الاتفاقية
+                </a>
               </div>
-              <a class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
-                 href="{% url 'agreements:open_by_request' req.pk %}">
-                إنشاء/فتح الاتفاقية
-              </a>
-              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">يمكن للموظف المسند أو المدير إنشاء الاتفاقية بعد اختيار عرض.</p>
-            </div>
+            {% endif %}
           {% endif %}
         {% endif %}
-      {% endif %}
 
-      {# المرفقات #}
-      {% if uploads %}
-      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-slate-500 dark:text-slate-400 text-sm">المرفقات</div>
-        </div>
-        <ul class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {% for up in uploads %}
-          <li id="up-{{ up.id }}" class="rounded-lg border bg-slate-50 dark:bg-slate-900/40 p-3">
-            <div class="flex items-center justify-between gap-2">
-              <a class="truncate text-indigo-700 dark:text-indigo-300 hover:underline" href="{{ up.file.url }}" target="_blank" rel="noopener noreferrer">تحميل/عرض</a>
-              {% if up.can_delete %}
-              <form method="post" action="{% url 'uploads:delete' up.id %}"
-                    onsubmit="return confirm('سيتم حذف هذا المرفق نهائيًا. متابعة؟');">
-                {% csrf_token %}
-                <button class="text-rose-600 text-sm hover:underline">حذف</button>
-              </form>
-              {% endif %}
+        {# المرفقات #}
+        {% if uploads %}
+          <div class="profile-section">
+            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <div class="card-section-title">📎 المرفقات</div>
             </div>
-            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ up.created_at|date:"Y-m-d H:i" }}</div>
-          </li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endif %}
+            <ul class="attachments-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+              {% for up in uploads %}
+                <li id="up-{{ up.id }}" class="attachment-item profile-section" style="padding: 1rem; text-align: center;">
+                  <div class="attachment-main">
+                    <a class="btn btn-outline btn-sm"
+                       href="{{ up.file.url }}"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                      📥 تحميل/عرض
+                    </a>
+                    {% if up.can_delete %}
+                      <form method="post"
+                            action="{% url 'uploads:delete' up.id %}"
+                            onsubmit="return confirm('سيتم حذف هذا المرفق نهائيًا. متابعة؟');"
+                            style="margin-top: 0.5rem;">
+                        {% csrf_token %}
+                        <button class="btn btn-danger btn-sm">
+                          🗑️ حذف
+                        </button>
+                      </form>
+                    {% endif %}
+                  </div>
+                  <div class="attachment-meta" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--dark-500);">
+                    {{ up.created_at|date:"Y-m-d H:i" }}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
 
-      {# المحادثة #}
-      {% if thread_embed_url %}
-      <div class="rounded-xl border bg-white dark:bg-slate-800 p-4">
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-slate-500 dark:text-slate-400 text-sm">المحادثة</div>
-        </div>
-        <iframe src="{{ thread_embed_url }}" class="w-full h-[540px] rounded-xl border" loading="lazy" referrerpolicy="no-referrer"></iframe>
-      </div>
-      {% endif %}
+        {# المحادثة #}
+        {% if thread_embed_url %}
+          <div class="profile-section">
+            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <div class="card-section-title">💬 المحادثة</div>
+            </div>
+            <iframe src="{{ thread_embed_url }}"
+                    class="thread-iframe"
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                    style="width: 100%; height: 500px; border: 1px solid var(--dark-200); border-radius: var(--radius);"></iframe>
+          </div>
+        {% endif %}
 
+      </div>
     </div>
   </div>
 </section>
+{% endblock %}
 
-<script>
-(function () {
-  // ===== Toasts auto-dismiss =====
-  setTimeout(function() {
-    const msgs = document.querySelectorAll('#messages-area > *');
-    msgs.forEach(function(el) {
-      el.classList.add('transition','duration-500','ease-out');
-      el.style.opacity = '0';
-      setTimeout(function(){ el.remove(); }, 600);
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // نسب العمولة والضريبة
+    var platformFeePercentRaw = "{{ platform_fee_percent|default_if_none:'' }}";
+    var vatPercentRaw = "{{ vat_percent|default_if_none:'' }}";
+
+    function normalizePercent(raw) {
+      if (!raw) return 0;
+      raw = String(raw).replace(',', '.');
+      var num = parseFloat(raw);
+      if (isNaN(num) || !isFinite(num)) return 0;
+      if (num > 1) {
+        return num / 100.0;
+      }
+      return num;
+    }
+
+    var platformFeePercent = normalizePercent(platformFeePercentRaw);
+    var vatPercent = normalizePercent(vatPercentRaw);
+
+    function computeTotal(netVal) {
+      var net = +(netVal).toFixed(2);
+      var fee = +(net * platformFeePercent).toFixed(2);
+      var vat = +((net + fee) * vatPercent).toFixed(2);
+      var total = +(net + fee + vat).toFixed(2);
+      return total;
+    }
+
+    // تحديث إجمالي العميل لكل عرض
+    function updateOfferTotals() {
+      var offerItems = document.querySelectorAll('.offer-item');
+      if (!offerItems || offerItems.length === 0) {
+        return;
+      }
+
+      offerItems.forEach(function (item) {
+        var netEl = item.querySelector('.off-net');
+        var totalEl = item.querySelector('.off-total');
+        if (!netEl || !totalEl) {
+          return;
+        }
+
+        var netRaw = netEl.getAttribute('data-net') || netEl.textContent;
+        var netVal = parseFloat(netRaw);
+        if (isNaN(netVal) || netVal <= 0) {
+          return;
+        }
+
+        var totalRaw = totalEl.getAttribute('data-total');
+        if (totalRaw && String(totalRaw).trim() !== '') {
+          totalEl.textContent = totalRaw;
+          return;
+        }
+
+        var total = computeTotal(netVal);
+        totalEl.textContent = total.toFixed(2);
+      });
+    }
+
+    // إجمالي العرض المختار في الملخص
+    function updateSelectedOfferTotal() {
+      var netEl = document.querySelector('.sel-net');
+      var totalEl = document.querySelector('.sel-total');
+      if (!netEl || !totalEl) {
+        return;
+      }
+
+      var netRaw = netEl.getAttribute('data-net') || netEl.textContent;
+      var netVal = parseFloat(netRaw);
+      if (isNaN(netVal) || netVal <= 0) {
+        return;
+      }
+
+      var totalRaw = totalEl.getAttribute('data-total');
+      if (totalRaw && String(totalRaw).trim() !== '') {
+        totalEl.textContent = parseFloat(totalRaw).toFixed(2);
+        return;
+      }
+
+      var total = computeTotal(netVal);
+      totalEl.textContent = total.toFixed(2);
+    }
+
+    // إجمالي عرض الموظف نفسه
+    function updateMyOfferTotal() {
+      var netEl = document.querySelector('.my-offer-net');
+      var totalEl = document.querySelector('.my-offer-total');
+      if (!netEl || !totalEl) {
+        return;
+      }
+
+      var netRaw = netEl.getAttribute('data-net') || netEl.textContent;
+      var netVal = parseFloat(netRaw);
+      if (isNaN(netVal) || netVal <= 0) {
+        return;
+      }
+
+      var totalRaw = totalEl.getAttribute('data-total');
+      if (totalRaw && String(totalRaw).trim() !== '') {
+        totalEl.textContent = totalRaw;
+        return;
+      }
+
+      var total = computeTotal(netVal);
+      totalEl.textContent = total.toFixed(2);
+    }
+
+    // تشغيل الحسابات بعد التحميل
+    updateOfferTotals();
+    updateSelectedOfferTotal();
+    updateMyOfferTotal();
+
+    // إدارة مودال الرفض (فتح/إغلاق يدوي بدون hidden)
+    document.addEventListener('click', function (e) {
+      var trigger = e.target.closest('[data-reject-modal]');
+      if (trigger) {
+        var modalId = trigger.getAttribute('data-reject-modal');
+        var modal = document.querySelector(modalId);
+        if (modal) {
+          modal.style.display = 'flex';   // إظهار المودال
+          if (typeof showToast === 'function') {
+            showToast('تم فتح نافذة الرفض', 'info');
+          }
+        }
+      }
+
+      if (e.target.matches('[data-close-modal]') || e.target.classList.contains('modal-backdrop')) {
+        var modalOverlay = e.target.closest('.modal-overlay');
+        if (modalOverlay) {
+          modalOverlay.style.display = 'none';  // إخفاء المودال
+        }
+      }
     });
-  }, 4500);
 
-  // Close toast manually
-  document.addEventListener('click', function(e) {
-    const closeAlert = e.target.closest('[data-close-alert]');
-    if (closeAlert) {
-      const wrap = closeAlert.closest('.rounded-xl, .rounded-lg, .rounded-2xl');
-      if (wrap) wrap.remove();
-    }
-  });
+    // إغلاق المودال بالزر Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var openModal = document.querySelector('.modal-overlay[style*="display: flex"]');
+        if (openModal) {
+          openModal.style.display = 'none';
+        }
+      }
+    });
 
-  // ===== Simple modal manager (رفض المرحلة) =====
-  let lastFocused = null;
-  function openModal(modal) {
-    if (!modal) return;
-    lastFocused = document.activeElement;
-    modal.classList.remove('hidden');
-    modal.setAttribute('aria-hidden', 'false');
-    document.documentElement.classList.add('overflow-y-hidden');
-    const ta = modal.querySelector('textarea, [autofocus]');
-    if (ta) { setTimeout(function(){ ta.focus(); if (ta.select) ta.select(); }, 30); }
-  }
-  function closeModal(modal) {
-    if (!modal) return;
-    modal.classList.add('hidden');
-    modal.setAttribute('aria-hidden', 'true');
-    document.documentElement.classList.remove('overflow-y-hidden');
-    if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
-  }
+    // تأثيرات لطيفة للبطاقات
+    var sections = document.querySelectorAll('.profile-section');
+    sections.forEach(function (section, index) {
+      section.style.animationDelay = (index * 0.05) + 's';
+      section.classList.add('scroll-reveal');
+    });
 
-  document.addEventListener('click', function(e) {
-    const openBtn = e.target.closest('[data-reject-modal]');
-    if (openBtn) {
-      const sel = openBtn.getAttribute('data-reject-modal');
-      try {
-        const modal = document.querySelector(sel);
-        if (modal) openModal(modal);
-      } catch(_) {}
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
     }
-    if (e.target.matches('[data-close-modal]')) {
-      const modal = e.target.closest('.fixed.inset-0');
-      if (modal) closeModal(modal);
-    }
-  });
-
-  // ESC to close modal
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      const opened = document.querySelector('.fixed.inset-0:not(.hidden)');
-      if (opened) closeModal(opened);
-    }
-  });
-})();
-</script>
+  })();
+  </script>
 {% endblock %}

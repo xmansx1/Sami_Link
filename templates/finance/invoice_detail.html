@@ -5,59 +5,621 @@
 {% block title %}فاتورة #{{ inv.id }}{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6" dir="rtl">
-  <div class="mb-4">
-    <h1 class="text-2xl font-extrabold">فاتورة #{{ inv.id }}</h1>
-    <p class="text-sm text-gray-600 mt-1">A{{ inv.agreement_id }}{% if inv.agreement and inv.agreement.request_id %} / R{{ inv.agreement.request_id }}{% endif %}</p>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <div class="rounded-2xl shadow bg-white p-4">
-      <h2 class="font-bold mb-3">تفاصيل المبالغ</h2>
-      <div class="grid grid-cols-2 gap-3 text-sm">
-        <div class="text-gray-500">المبلغ الأساسي (P)</div><div>{{ inv.amount|floatformat:2 }}</div>
-        <div class="text-gray-500">عمولة المنصة</div><div>{{ inv.platform_fee_amount|floatformat:2 }} ({{ inv.platform_fee_percent }} × P)</div>
-        <div class="text-gray-500">المجموع الفرعي</div><div>{{ inv.subtotal|floatformat:2 }}</div>
-        <div class="text-gray-500">VAT</div><div>{{ inv.vat_amount|floatformat:2 }} ({{ inv.vat_percent }})</div>
-        <div class="text-gray-700 font-bold">الإجمالي المستحق</div><div class="font-bold">{{ inv.total_amount|floatformat:2 }}</div>
+<section class="page-section invoice-detail-page">
+  <div class="container">
+    
+    {# ===== رأس الصفحة ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        🧾 فاتورة #{{ inv.id }}
       </div>
+      <h1 class="section-title">
+        فاتورة #{{ inv.id }}
+      </h1>
+      <p class="section-description">
+        A{{ inv.agreement_id }}{% if inv.agreement and inv.agreement.request_id %} / R{{ inv.agreement.request_id }}{% endif %}
+      </p>
     </div>
 
-    <div class="rounded-2xl shadow bg-white p-4">
-      <h2 class="font-bold mb-3">الحالة والسداد</h2>
-      <div class="grid grid-cols-2 gap-3 text-sm">
-        <div class="text-gray-500">الحالة</div><div>{{ inv.get_status_display }}</div>
-        <div class="text-gray-500">تاريخ الإصدار</div><div>{% if inv.issued_at %}{{ inv.issued_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</div>
-        <div class="text-gray-500">موعد السداد</div><div>{% if inv.due_at %}{{ inv.due_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</div>
-        <div class="text-gray-500">تاريخ السداد</div><div>{% if inv.paid_at %}{{ inv.paid_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</div>
-        <div class="text-gray-500">طريقة السداد</div><div>{% if inv.method %}{{ inv.method }}{% else %}—{% endif %}</div>
-        <div class="text-gray-500">مرجع العملية</div><div>{% if inv.ref_code %}{{ inv.ref_code }}{% else %}—{% endif %}</div>
-        <div class="text-gray-500">مرجع التحويل البنكي</div><div>{% if inv.paid_ref %}{{ inv.paid_ref }}{% else %}—{% endif %}</div>
-      </div>
-
-      {% if invoice.is_paid %}
-      <div class="mt-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm">الفاتورة مدفوعة.</div>
-      {% else %}
-      <form method="post" action="{% url 'finance:mark_invoice_paid' inv.id %}" class="mt-4">
-        {% csrf_token %}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label class="text-sm text-gray-600">طريقة السداد</label>
-            <input type="text" name="method" class="w-full border rounded-lg px-3 py-2" placeholder="حوالة / مدى / فيزا">
+    <div class="invoice-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+      
+      {# ===== تفاصيل المبالغ ===== #}
+      <div class="profile-section">
+        <div class="card-section-title">💰 تفاصيل المبالغ</div>
+        <div class="amount-breakdown">
+          <div class="amount-row">
+            <span class="amount-label">المبلغ الأساسي (P)</span>
+            <span class="amount-value">{{ breakdown.net_for_employee|floatformat:2 }} ر.س</span>
           </div>
-          <div>
-            <label class="text-sm text-gray-600">مرجع العملية</label>
-            <input type="text" name="ref_code" class="w-full border rounded-lg px-3 py-2" placeholder="REF-...">
+          <div class="amount-row">
+            <span class="amount-label">عمولة المنصة</span>
+            <span class="amount-value">
+              {{ breakdown.platform_fee|floatformat:2 }} ر.س
+            </span>
           </div>
-          <div>
-            <label class="text-sm text-gray-600">مرجع التحويل البنكي</label>
-            <input type="text" name="paid_ref" class="w-full border rounded-lg px-3 py-2" placeholder="IBAN Ref">
+          <div class="amount-row">
+            <span class="amount-label">الضريبة (VAT)</span>
+            <span class="amount-value">
+              {{ breakdown.vat_amount|floatformat:2 }} ر.س
+            </span>
+          </div>
+          <div class="amount-row total-row">
+            <span class="amount-label">الإجمالي المستحق</span>
+            <span class="amount-value">{{ breakdown.client_total|floatformat:2 }} ر.س</span>
           </div>
         </div>
-        <button class="btn mt-3">وسم كمدفوعة</button>
-      </form>
-      {% endif %}
+
+        <div class="quick-summary profile-section" style="background: var(--primary-50); border-color: var(--primary-200); margin-top: 1.5rem;">
+          <div class="card-section-title" style="color: var(--primary-700);">📊 موجز سريع</div>
+          <div class="summary-items">
+            <div class="summary-item">
+              <span class="summary-label">صافي الموظف=</span>
+              <span class="summary-value">
+                {{ breakdown.net_for_employee|floatformat:2 }} ر.س
+              </span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">عمولة المنصة:</span>
+              <span class="summary-value">{{ breakdown.platform_fee|floatformat:2 }} ر.س</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">الضريبة (على المبلغ الأساسي فقط):</span>
+              <span class="summary-value">{{ breakdown.vat_amount|floatformat:2 }} ر.س</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# ===== الحالة والسداد ===== #}
+      <div class="profile-section">
+        <div class="card-section-title">📊 الحالة والسداد</div>
+        
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="status-label">الحالة</span>
+            <span class="status-value">
+              <span class="badge {% if inv.is_paid %}badge-verified{% else %}badge-pending{% endif %}">
+                {{ inv.get_status_display }}
+              </span>
+            </span>
+          </div>
+          
+          <div class="status-item">
+            <span class="status-label">تاريخ الإصدار</span>
+            <span class="status-value">{% if inv.issued_at %}{{ inv.issued_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</span>
+          </div>
+          
+          <div class="status-item">
+            <span class="status-label">موعد السداد</span>
+            <span class="status-value">{% if inv.due_at %}{{ inv.due_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</span>
+          </div>
+          
+          <div class="status-item">
+            <span class="status-label">تاريخ السداد</span>
+            <span class="status-value">{% if inv.paid_at %}{{ inv.paid_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}</span>
+          </div>
+          
+          <div class="status-item">
+            <span class="status-label">طريقة السداد</span>
+            <span class="status-value">{% if inv.method %}{{ inv.method }}{% else %}—{% endif %}</span>
+          </div>
+          
+          <div class="status-item">
+            <span class="status-label">مرجع العملية</span>
+            <span class="status-value">{% if inv.ref_code %}<code>{{ inv.ref_code }}</code>{% else %}—{% endif %}</span>
+          </div>
+          
+          <div class="status-item">
+            <span class="status-label">مرجع التحويل البنكي</span>
+            <span class="status-value">{% if inv.paid_ref %}<code>{{ inv.paid_ref }}</code>{% else %}—{% endif %}</span>
+          </div>
+        </div>
+
+        {% if inv.is_paid %}
+          <div class="payment-status profile-section" style="background: var(--primary-50); border-color: var(--primary-200); margin-top: 1.5rem;">
+            <div class="payment-success" style="text-align: center; padding: 1.5rem;">
+              <div class="success-icon" style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+              <h3 class="card-section-title" style="color: var(--primary-700); margin-bottom: 0.5rem;">
+                الفاتورة مدفوعة
+              </h3>
+              <p class="card-section-note">
+                تم سداد الفاتورة بنجاح في {{ inv.paid_at|date:"Y-m-d H:i" }}
+              </p>
+              {% if inv.method %}
+                <p class="card-section-note" style="margin-top: 0.5rem;">
+                  طريقة السداد: <strong>{{ inv.method }}</strong>
+                </p>
+              {% endif %}
+            </div>
+          </div>
+        {% else %}
+          <div class="payment-form profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200); margin-top: 1.5rem;">
+            <div class="card-section-title" style="color: var(--secondary-700);">💳 تسجيل السداد</div>
+            
+            <form method="post" action="{% url 'finance:mark_invoice_paid' inv.id %}" class="payment-form-inner">
+              {% csrf_token %}
+              
+              <div class="form-grid-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="form-field">
+                  <label class="form-label">طريقة السداد</label>
+                  <input type="text" 
+                         name="method" 
+                         class="input" 
+                         placeholder="حوالة / مدى / فيزا"
+                         required>
+                </div>
+                
+                <div class="form-field">
+                  <label class="form-label">مرجع العملية</label>
+                  <input type="text" 
+                         name="ref_code" 
+                         class="input" 
+                         placeholder="REF-123456">
+                </div>
+                
+                <div class="form-field">
+                  <label class="form-label">مرجع التحويل</label>
+                  <input type="text" 
+                         name="paid_ref" 
+                         class="input" 
+                         placeholder="IBAN Ref">
+                </div>
+              </div>
+              
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                  ✅ وسم كمدفوعة
+                </button>
+              </div>
+            </form>
+          </div>
+        {% endif %}
+      </div>
     </div>
+
+    {# ===== معلومات إضافية ===== #}
+    <div class="additional-info" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+      
+      {% if inv.agreement %}
+      <div class="profile-section">
+        <div class="card-section-title">📝 معلومات الاتفاقية</div>
+        <div class="agreement-info">
+          <div class="info-row">
+            <span class="info-label">رقم الاتفاقية:</span>
+            <span class="info-value">A{{ inv.agreement_id }}</span>
+          </div>
+          {% if inv.agreement.request_id %}
+          <div class="info-row">
+            <span class="info-label">رقم الطلب:</span>
+            <span class="info-value">R{{ inv.agreement.request_id }}</span>
+          </div>
+          {% endif %}
+          {% if inv.agreement.employee %}
+          <div class="info-row">
+            <span class="info-label">الموظف:</span>
+            <span class="info-value">{{ inv.agreement.employee }}</span>
+          </div>
+          {% endif %}
+          {% if inv.agreement.client %}
+          <div class="info-row">
+            <span class="info-label">العميل:</span>
+            <span class="info-value">{{ inv.agreement.client }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="profile-section">
+        <div class="card-section-title">⚡ إجراءات سريعة</div>
+        <div class="quick-actions employee-actions">
+          <a href="{% url 'finance:invoice_list' %}" class="btn btn-outline btn-sm">
+            📋 جميع الفواتير
+          </a>
+          {% if not inv.is_paid %}
+            <a href="{% url 'finance:checkout_agreement' inv.agreement_id %}" class="btn btn-outline btn-sm">
+              💳 صفحة الدفع
+            </a>
+          {% endif %}
+          {% if inv.agreement %}
+            <a href="{% url 'marketplace:request_detail' inv.agreement.request_id %}" class="btn btn-outline btn-sm">
+              👁️ عرض الطلب
+            </a>
+          {% endif %}
+        </div>
+        
+        <div class="due-status profile-section" style="background: var(--dark-50); margin-top: 1.5rem;">
+          <div class="card-section-title">⏰ حالة الاستحقاق</div>
+          <div class="due-info">
+            {% if inv.is_paid %}
+              <div class="due-item paid">
+                <span class="due-icon">✅</span>
+                <span class="due-text">تم السداد في {{ inv.paid_at|date:"Y-m-d" }}</span>
+              </div>
+            {% elif inv.due_at and inv.due_at < now %}
+              <div class="due-item overdue">
+                <span class="due-icon">⚠️</span>
+                <span class="due-text">متأخرة منذ {{ inv.due_at|timesince }}</span>
+              </div>
+            {% elif inv.due_at %}
+              <div class="due-item pending">
+                <span class="due-icon">⏳</span>
+                <span class="due-text">مستحقة خلال {{ inv.due_at|timeuntil }}</span>
+              </div>
+            {% else %}
+              <div class="due-item unknown">
+                <span class="due-icon">📅</span>
+                <span class="due-text">لم يتم تحديد موعد استحقاق</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
-</div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    document.querySelectorAll('.btn').forEach(button => {
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+      });
+    });
+
+    const paymentForm = document.querySelector('.payment-form-inner');
+    if (paymentForm) {
+      const inputs = paymentForm.querySelectorAll('input');
+      const submitBtn = paymentForm.querySelector('button[type="submit"]');
+      
+      inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+          this.style.borderColor = 'var(--primary-500)';
+          this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+        });
+        
+        input.addEventListener('blur', function() {
+          this.style.borderColor = '';
+          this.style.boxShadow = '';
+        });
+        
+        input.addEventListener('input', function() {
+          if (this.value.trim().length > 0) {
+            this.style.background = 'var(--primary-50)';
+          } else {
+            this.style.background = '';
+          }
+        });
+      });
+
+      paymentForm.addEventListener('submit', function(e) {
+        const methodInput = this.querySelector('input[name="method"]');
+        
+        if (!methodInput.value.trim()) {
+          e.preventDefault();
+          if (typeof showToast === 'function') {
+            showToast('يرجى إدخال طريقة السداد', 'error');
+          } else {
+            alert('يرجى إدخال طريقة السداد');
+          }
+          methodInput.focus();
+          return false;
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '⏳ جاري التسجيل...';
+        }
+
+        if (typeof showToast === 'function') {
+          showToast('جاري تسجيل السداد...', 'info');
+        }
+      });
+    }
+
+    document.querySelectorAll('.amount-row').forEach((row, index) => {
+      row.style.animationDelay = `${index * 0.1}s`;
+      row.classList.add('scroll-reveal');
+    });
+
+    document.querySelectorAll('code').forEach(codeElement => {
+      codeElement.style.cursor = 'pointer';
+      codeElement.title = 'انقر للنسخ';
+      codeElement.addEventListener('click', function() {
+        const textToCopy = this.textContent;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          if (typeof showToast === 'function') {
+            showToast('تم نسخ المرجع', 'success');
+          }
+        });
+      });
+    });
+
+  })();
+  </script>
+
+  <style>
+  .invoice-detail-page .invoice-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .invoice-detail-page .amount-breakdown {
+    margin-top: 1rem;
+  }
+
+  .invoice-detail-page .amount-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--dark-100);
+  }
+
+  .invoice-detail-page .amount-row:last-child {
+    border-bottom: none;
+  }
+
+  .invoice-detail-page .amount-label {
+    color: var(--dark-600);
+    font-size: 0.95rem;
+  }
+
+  .invoice-detail-page .amount-value {
+    color: var(--dark-900);
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .invoice-detail-page .amount-percent {
+    color: var(--dark-500);
+    font-size: 0.8rem;
+    font-weight: normal;
+  }
+
+  .invoice-detail-page .subtotal-row {
+    border-top: 2px solid var(--dark-200);
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+  }
+
+  .invoice-detail-page .total-row {
+    background: var(--primary-50);
+    margin: 0 -1rem;
+    padding: 1rem;
+    border-radius: var(--radius);
+    border: none;
+    margin-top: 0.5rem;
+  }
+
+  .invoice-detail-page .total-row .amount-label {
+    color: var(--primary-700);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  .invoice-detail-page .total-row .amount-value {
+    color: var(--primary-700);
+    font-weight: 800;
+    font-size: 1.1rem;
+  }
+
+  .invoice-detail-page .summary-items {
+    margin-top: 1rem;
+  }
+
+  .invoice-detail-page .summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--primary-200);
+  }
+
+  .invoice-detail-page .summary-item:last-child {
+    border-bottom: none;
+  }
+
+  .invoice-detail-page .summary-label {
+    color: var(--primary-600);
+    font-size: 0.9rem;
+  }
+
+  .invoice-detail-page .summary-value {
+    color: var(--primary-700);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .invoice-detail-page .status-grid {
+    margin-top: 1rem;
+  }
+
+  .invoice-detail-page .status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--dark-100);
+  }
+
+  .invoice-detail-page .status-item:last-child {
+    border-bottom: none;
+  }
+
+  .invoice-detail-page .status-label {
+    color: var(--dark-600);
+    font-size: 0.95rem;
+  }
+
+  .invoice-detail-page .status-value {
+    color: var(--dark-900);
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .invoice-detail-page .status-value code {
+    background: var(--dark-100);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    font-family: monospace;
+    font-size: 0.85rem;
+    transition: var(--transition);
+  }
+
+  .invoice-detail-page .status-value code:hover {
+    background: var(--primary-100);
+    color: var(--primary-700);
+  }
+
+  .invoice-detail-page .form-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .invoice-detail-page .form-field {
+    margin-bottom: 0;
+  }
+
+  .invoice-detail-page .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .invoice-detail-page .input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .invoice-detail-page .input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .invoice-detail-page .agreement-info {
+    margin-top: 1rem;
+  }
+
+  .invoice-detail-page .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--dark-100);
+  }
+
+  .invoice-detail-page .info-row:last-child {
+    border-bottom: none;
+  }
+
+  .invoice-detail-page .info-label {
+    color: var(--dark-600);
+    font-size: 0.9rem;
+  }
+
+  .invoice-detail-page .info-value {
+    color: var(--dark-900);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .invoice-detail-page .quick-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .invoice-detail-page .due-info {
+    margin-top: 1rem;
+  }
+
+  .invoice-detail-page .due-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+  }
+
+  .invoice-detail-page .due-item.paid {
+    background: var(--primary-100);
+    color: var(--primary-700);
+    border: 1px solid var(--primary-200);
+  }
+
+  .invoice-detail-page .due-item.overdue {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+  }
+
+  .invoice-detail-page .due-item.pending {
+    background: var(--secondary-100);
+    color: var(--secondary-700);
+    border: 1px solid var(--secondary-200);
+  }
+
+  .invoice-detail-page .due-item.unknown {
+    background: var(--dark-100);
+    color: var(--dark-700);
+    border: 1px solid var(--dark-200);
+  }
+
+  @media (max-width: 1024px) {
+    .invoice-detail-page .invoice-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .invoice-detail-page .form-grid-3 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .invoice-detail-page .additional-info {
+      grid-template-columns: 1fr;
+    }
+    
+    .invoice-detail-page .quick-actions {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+    
+    .invoice-detail-page .amount-row,
+    .invoice-detail-page .status-item,
+    .invoice-detail-page .info-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+  }
+
+  @keyframes pulseSuccess {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .invoice-detail-page .payment-success .success-icon {
+    animation: pulseSuccess 2s infinite;
+  }
+  </style>
 {% endblock %}

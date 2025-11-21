@@ -5,142 +5,542 @@
 {% block title %}الدفع للاتفاقية A{{ agreement.id }}{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6" dir="rtl">
-  <!-- عنوان + معلومات أساسية -->
-  <div class="mb-4">
-    <h1 class="text-2xl font-extrabold">الدفع للاتفاقية A{{ agreement.id }}</h1>
-    <p class="text-sm text-gray-600 mt-1">
-      R{{ agreement.request_id }} — الموظف:
-      {% if agreement.employee %}{{ agreement.employee }}{% else %}—{% endif %}
-    </p>
-  </div>
-
-  <!-- كرت المبلغ الرئيسي (المبلغ النهائي للعميل) -->
-  <div class="mb-6">
-    <div class="rounded-2xl bg-gradient-to-l from-blue-600 to-indigo-600 text-white p-4 shadow-lg flex items-center justify-between gap-4">
-      <div>
-        <div class="text-xs uppercase opacity-80">إجمالي المبلغ المستحق للدفع</div>
-        <div class="text-3xl font-extrabold mt-1">
-          {{ totals.grand_total|floatformat:2 }}
-          <span class="text-sm font-normal opacity-80">ر.س</span>
-        </div>
-        <div class="text-xs mt-1 opacity-90">
-          يشمل قيمة المشروع + عمولة المنصة + ضريبة القيمة المضافة.
-        </div>
+<section class="page-section checkout-page">
+  <div class="container">
+    
+    {# ===== رأس الصفحة ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        💳 الدفع للاتفاقية
       </div>
-      <div class="hidden sm:block text-right text-xs leading-relaxed opacity-95">
-        <div>اتفاقية رقم: A{{ agreement.id }}</div>
-        <div>طلب رقم: R{{ agreement.request_id }}</div>
-      </div>
+      <h1 class="section-title">
+        الدفع للاتفاقية A{{ agreement.id }}
+      </h1>
+      <p class="section-description">
+        R{{ agreement.request_id }} — الموظف: {% if agreement.employee %}{{ agreement.employee }}{% else %}—{% endif %}
+      </p>
     </div>
-  </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- تفصيل السعر -->
-    <div class="rounded-2xl shadow bg-white p-4">
-      <h2 class="font-bold mb-3">تفصيل السعر</h2>
-      <div class="grid grid-cols-2 gap-3 text-sm">
-        <div class="text-gray-500">قيمة المشروع (P)</div>
-        <div>{{ totals.P|floatformat:2 }}</div>
-
-        <div class="text-gray-500">عمولة المنصة</div>
-        <div>
-          {{ totals.platform_fee|floatformat:2 }}
-          <span class="text-xs text-gray-400">({{ totals.fee_percent|floatformat:2 }}٪)</span>
-        </div>
-
-        <div class="text-gray-500">الأساس الخاضع للضريبة</div>
-        <div>{{ totals.taxable|floatformat:2 }}</div>
-
-        <div class="text-gray-500">VAT</div>
-        <div>
-          {{ totals.vat_amount|floatformat:2 }}
-          <span class="text-xs text-gray-400">({{ totals.vat_percent|floatformat:2 }}٪)</span>
-        </div>
-
-        <div class="text-gray-700 font-bold">الإجمالي للدفع</div>
-        <div class="font-bold">{{ totals.grand_total|floatformat:2 }}</div>
-      </div>
-
-      <div class="mt-4 p-3 bg-blue-50 rounded-lg text-sm">
-        <div class="font-semibold mb-1">بيانات التحويل البنكي</div>
-        <div>الرجاء التحويل إلى الحساب البنكي الموضح أدناه ثم إدخال مرجع التحويل البنكي في النموذج المجاور.</div>
-        <div class="mt-2 text-gray-700 space-y-1">
-          <div>البنك: {{ BANK_NAME }}</div>
-          <div>الاسم: {{ BANK_ACCOUNT_NAME }}</div>
-          <div>
-            IBAN:
-            {% if BANK_IBAN_MASKED %}
-              {{ BANK_IBAN_MASKED }}
-            {% else %}
-              {{ BANK_IBAN }}
-            {% endif %}
+    {# ===== بطاقة المبلغ الرئيسي ===== #}
+    <div class="profile-section" style="background: linear-gradient(135deg, var(--primary-600) 0%, #4f46e5 100%); color: white; margin-bottom: 2rem;">
+      <div class="card-row" style="display: flex; align-items: center; justify-content: space-between; gap: 2rem;">
+        <div style="flex: 1;">
+          <div class="card-section-title" style="color: rgba(255,255,255,0.9); font-size: 0.9rem; margin-bottom: 0.5rem;">
+            إجمالي المبلغ المستحق للدفع
           </div>
+          <div class="amount-display" style="font-size: 2.5rem; font-weight: 800; line-height: 1.2;">
+            {{ breakdown.grand_total|floatformat:2 }}
+            <span style="font-size: 1rem; font-weight: 400; opacity: 0.9;">ر.س</span>
+          </div>
+          <div class="card-section-note" style="color: rgba(255,255,255,0.8); margin-top: 0.5rem;">
+            يشمل قيمة المشروع + عمولة المنصة + ضريبة القيمة المضافة
+          </div>
+        </div>
+        <div class="agreement-info" style="text-align: left; opacity: 0.9;">
+          <div style="font-size: 0.9rem;">اتفاقية رقم: A{{ agreement.id }}</div>
+          <div style="font-size: 0.9rem;">طلب رقم: R{{ agreement.request_id }}</div>
         </div>
       </div>
     </div>
 
-    <!-- الفاتورة + مرجع التحويل -->
-    <div class="rounded-2xl shadow bg-white p-4">
-      <h2 class="font-bold mb-3">الفاتورة</h2>
-
-      <div class="text-sm space-y-1">
-        <div>
-          <span class="text-gray-500">رقم الفاتورة:</span>
-          <span class="font-semibold">#{{ invoice.id }}</span>
-        </div>
-        <div>
-          <span class="text-gray-500">الحالة:</span>
-          <span class="font-semibold">{{ invoice.get_status_display }}</span>
-        </div>
-        <div>
-          <span class="text-gray-500">الإجمالي المستحق:</span>
-          <span class="font-semibold">
-            {{ totals.grand_total|floatformat:2 }}
-          </span>
-        </div>
-      </div>
-
-      {% if invoice.is_paid %}
-        <div class="mt-4 p-3 bg-green-50 text-green-700 rounded-lg text-sm">
-          تم سداد الفاتورة. شكرًا لتعاونك 🌿
-        </div>
-      {% else %}
-        <form method="post"
-              action="{% url 'finance:confirm_bank_transfer' invoice.id %}"
-              class="mt-4 space-y-4">
-          {% csrf_token %}
-
-          <div>
-            <label class="text-sm text-gray-600 block mb-1">مرجع التحويل البنكي</label>
-            <input type="text"
-                   name="paid_ref"
-                   minlength="4"
-                   class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                   placeholder="أدخل المرجع البنكي كما يظهر في إيصال البنك"
-                   required>
-            <p class="text-xs text-gray-400 mt-1">
-              مثال: رقم العملية أو رقم التحويل الظاهر في الإيصال البنكي.
-            </p>
+    <div class="checkout-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+      
+      {# ===== تفصيل السعر ===== #}
+      <div class="profile-section">
+        <div class="card-section-title">💰 تفصيل السعر</div>
+        
+        <div class="price-breakdown">
+          <div class="price-row">
+            <span class="price-label">قيمة المشروع (P)</span>
+            <span class="price-value">{{ breakdown.P|floatformat:2 }} ر.س</span>
           </div>
+          <div class="price-row">
+            <span class="price-label">عمولة المنصة</span>
+            <span class="price-value">
+              {{ breakdown.platform_fee|floatformat:2 }} ر.س
+              <span class="price-percent">({{ breakdown.fee_percent|floatformat:2 }}٪)</span>
+            </span>
+          </div>
+          <div class="price-row">
+            <span class="price-label">VAT (على قيمة المشروع فقط)</span>
+            <span class="price-value">
+              {{ breakdown.vat_amount|floatformat:2 }} ر.س
+              <span class="price-percent">({{ breakdown.vat_percent|floatformat:2 }}٪)</span>
+            </span>
+          </div>
+          <div class="price-row total-row">
+            <span class="price-label">الإجمالي للدفع</span>
+            <span class="price-value">{{ breakdown.grand_total|floatformat:2 }} ر.س</span>
+          </div>
+        </div>
 
-          <div class="border-t pt-3">
-            <h3 class="text-sm font-semibold mb-1">إيصال التحويل البنكي</h3>
-            <p class="text-xs text-gray-500 mb-2">
-              يمكنك الاحتفاظ بصورة أو ملف للإيصال لديك حاليًا.  
-              سيتم توفير ميزة رفع الإيصال من داخل المنصّة في مرحلة لاحقة.
-            </p>
-            <div class="inline-flex items-center px-3 py-2 text-xs font-medium rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-400 cursor-not-allowed">
-              رفع إيصال التحويل (قريبًا)
+        {# ===== بيانات التحويل البنكي ===== #}
+        <div class="bank-info profile-section" style="background: var(--primary-50); border-color: var(--primary-200); margin-top: 1.5rem;">
+          <div class="card-section-title" style="color: var(--primary-700);">🏦 بيانات التحويل البنكي</div>
+          <p class="card-section-note" style="margin-bottom: 1rem;">
+            الرجاء التحويل إلى الحساب البنكي الموضح أدناه ثم إدخال مرجع التحويل البنكي في النموذج المجاور.
+          </p>
+          <div class="bank-details">
+            <div class="bank-detail">
+              <span class="bank-label">البنك:</span>
+              <span class="bank-value">{{ BANK_NAME }}</span>
+            </div>
+            <div class="bank-detail">
+              <span class="bank-label">الاسم:</span>
+              <span class="bank-value">{{ BANK_ACCOUNT_NAME }}</span>
+            </div>
+            <div class="bank-detail">
+              <span class="bank-label">IBAN:</span>
+              <span class="bank-value">
+                {% if BANK_IBAN_MASKED %}
+                  {{ BANK_IBAN_MASKED }}
+                {% else %}
+                  {{ BANK_IBAN }}
+                {% endif %}
+              </span>
             </div>
           </div>
+        </div>
+      </div>
 
-          <button type="submit" class="btn mt-1 w-full md:w-auto">
-            إرسال مرجع التحويل للتأكيد
-          </button>
-        </form>
-      {% endif %}
+      {# ===== الفاتورة ومرجع التحويل ===== #}
+      <div class="profile-section">
+        <div class="card-section-title">🧾 الفاتورة</div>
+        
+        <div class="invoice-info">
+          <div class="info-row">
+            <span class="info-label">رقم الفاتورة:</span>
+            <span class="info-value">#{{ invoice.id }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">الحالة:</span>
+            <span class="info-value">
+              <span class="badge {% if invoice.is_paid %}badge-verified{% else %}badge-pending{% endif %}">
+                {{ invoice.get_status_display }}
+              </span>
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">الإجمالي المستحق:</span>
+            <span class="info-value" style="font-weight: 700; color: var(--primary-600);">
+              {{ breakdown.grand_total|floatformat:2 }} ر.س
+            </span>
+          </div>
+        </div>
+
+        {% if invoice.is_paid %}
+          {# ===== حالة الدفع المكتمل ===== #}
+          <div class="payment-success profile-section" style="background: var(--primary-50); border-color: var(--primary-200); margin-top: 1.5rem;">
+            <div class="success-content" style="text-align: center; padding: 1.5rem;">
+              <div class="success-icon" style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+              <h3 class="card-section-title" style="color: var(--primary-700); margin-bottom: 0.5rem;">
+                تم سداد الفاتورة
+              </h3>
+              <p class="card-section-note">
+                شكرًا لتعاونك 🌿 سيتم متابعة الطلب مع الموظف المسند.
+              </p>
+            </div>
+          </div>
+        {% else %}
+          {# ===== نموذج إدخال مرجع التحويل ===== #}
+          <form method="post"
+                action="{% url 'finance:confirm_bank_transfer' invoice.id %}"
+                class="transfer-form"
+                id="transferForm">
+            {% csrf_token %}
+
+            <div class="form-field">
+              <label class="form-label">🔗 مرجع التحويل البنكي</label>
+              <input type="text"
+                     name="paid_ref"
+                     minlength="4"
+                     class="input"
+                     placeholder="أدخل المرجع البنكي كما يظهر في إيصال البنك"
+                     required
+                     id="paidRefInput">
+              <p class="field-hint">
+                مثال: رقم العملية أو رقم التحويل الظاهر في الإيصال البنكي
+              </p>
+            </div>
+
+            {# ===== قسم إيصال التحويل ===== #}
+            <div class="receipt-section profile-section" style="background: var(--dark-50); margin-top: 1.5rem;">
+              <div class="card-section-title">📎 إيصال التحويل البنكي</div>
+              <p class="card-section-note" style="margin-bottom: 1rem;">
+                يمكنك الاحتفاظ بصورة أو ملف للإيصال لديك حاليًا.  
+                سيتم توفير ميزة رفع الإيصال من داخل المنصّة في مرحلة لاحقة.
+              </p>
+              <div class="upload-placeholder" style="text-align: center; padding: 1.5rem; border: 2px dashed var(--dark-300); border-radius: var(--radius-lg); background: var(--white);">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;">📤</div>
+                <div style="color: var(--dark-500); font-size: 0.9rem;">رفع إيصال التحويل (قريبًا)</div>
+              </div>
+            </div>
+
+            <div class="form-actions" style="margin-top: 1.5rem;">
+              <button type="submit" class="btn btn-primary" style="width: 100%;" id="submitBtn">
+                📨 إرسال مرجع التحويل للتأكيد
+              </button>
+            </div>
+          </form>
+        {% endif %}
+      </div>
     </div>
+
+    {# ===== تلميحات وإرشادات ===== #}
+    <div class="profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200); margin-top: 2rem;">
+      <div class="card-section-title" style="color: var(--secondary-700);">💡 تلميحات مهمة</div>
+      <div class="tips-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div class="tip-item">
+          <div class="tip-icon">⏱️</div>
+          <div class="tip-content">
+            <div class="tip-title">المعالجة السريعة</div>
+            <div class="tip-text">سيتم تأكيد التحويل خلال 24 ساعة عمل</div>
+          </div>
+        </div>
+        <div class="tip-item">
+          <div class="tip-icon">🔒</div>
+          <div class="tip-content">
+            <div class="tip-title">دفع آمن</div>
+            <div class="tip-text">جميع التحويلات عبر قنوات بنكية آمنة</div>
+          </div>
+        </div>
+        <div class="tip-item">
+          <div class="tip-icon">📞</div>
+          <div class="tip-content">
+            <div class="tip-title">الدعم الفني</div>
+            <div class="tip-text">للمساعدة، راسلنا على support@samilink.sa</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
-</div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تأثيرات على الأزرار
+    document.querySelectorAll('.btn').forEach(button => {
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+      });
+    });
+
+    // التحقق من نموذج مرجع التحويل
+    const transferForm = document.getElementById('transferForm');
+    const paidRefInput = document.getElementById('paidRefInput');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (transferForm && paidRefInput) {
+      paidRefInput.addEventListener('input', function() {
+        // إضافة تأثير عند الكتابة
+        if (this.value.length >= 4) {
+          this.style.borderColor = 'var(--primary-500)';
+          this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+        } else {
+          this.style.borderColor = '';
+          this.style.boxShadow = '';
+        }
+      });
+
+      transferForm.addEventListener('submit', function(e) {
+        const refValue = paidRefInput.value.trim();
+        
+        if (refValue.length < 4) {
+          e.preventDefault();
+          if (typeof showToast === 'function') {
+            showToast('يرجى إدخال مرجع تحويل صحيح (4 أحرف على الأقل)', 'error');
+          } else {
+            alert('يرجى إدخال مرجع تحويل صحيح (4 أحرف على الأقل)');
+          }
+          paidRefInput.focus();
+          return false;
+        }
+
+        // تعطيل الزر أثناء المعالجة
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '⏳ جاري الإرسال...';
+        }
+
+        // استخدام نظام التوست إذا كان متاحًا
+        if (typeof showToast === 'function') {
+          showToast('جاري إرسال مرجع التحويل للتأكيد...', 'info');
+        }
+      });
+    }
+
+    // تأثيرات على بطاقة المبلغ الرئيسي
+    const mainAmountCard = document.querySelector('.profile-section[style*="background: linear-gradient"]');
+    if (mainAmountCard) {
+      mainAmountCard.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px)';
+        this.style.boxShadow = 'var(--shadow-xl)';
+      });
+      
+      mainAmountCard.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = '';
+      });
+    }
+
+    // نسخ معلومات البنك (يمكن تطويرها لاحقًا)
+    const bankDetails = document.querySelectorAll('.bank-detail');
+    bankDetails.forEach(detail => {
+      detail.style.cursor = 'pointer';
+      detail.addEventListener('click', function() {
+        const textToCopy = this.querySelector('.bank-value').textContent;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          if (typeof showToast === 'function') {
+            showToast('تم نسخ المعلومات', 'success');
+          }
+        });
+      });
+    });
+
+    // تأثيرات على عناصر السعر
+    document.querySelectorAll('.price-row').forEach((row, index) => {
+      row.style.animationDelay = `${index * 0.1}s`;
+      row.classList.add('scroll-reveal');
+    });
+
+  })();
+  </script>
+
+  <style>
+  .checkout-page .checkout-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .checkout-page .price-breakdown {
+    margin-top: 1rem;
+  }
+
+  .checkout-page .price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--dark-100);
+  }
+
+  .checkout-page .price-row:last-child {
+    border-bottom: none;
+  }
+
+  .checkout-page .price-label {
+    color: var(--dark-600);
+    font-size: 0.95rem;
+  }
+
+  .checkout-page .price-value {
+    color: var(--dark-900);
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .checkout-page .price-percent {
+    color: var(--dark-500);
+    font-size: 0.8rem;
+    font-weight: normal;
+  }
+
+  .checkout-page .total-row {
+    background: var(--primary-50);
+    margin: 0 -1rem;
+    padding: 1rem;
+    border-radius: var(--radius);
+    border: none;
+    margin-top: 0.5rem;
+  }
+
+  .checkout-page .total-row .price-label {
+    color: var(--primary-700);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  .checkout-page .total-row .price-value {
+    color: var(--primary-700);
+    font-weight: 800;
+    font-size: 1.1rem;
+  }
+
+  .checkout-page .bank-details {
+    margin-top: 1rem;
+  }
+
+  .checkout-page .bank-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--primary-200);
+  }
+
+  .checkout-page .bank-detail:last-child {
+    border-bottom: none;
+  }
+
+  .checkout-page .bank-label {
+    color: var(--primary-600);
+    font-weight: 600;
+  }
+
+  .checkout-page .bank-value {
+    color: var(--primary-700);
+    font-family: monospace;
+    direction: ltr;
+  }
+
+  .checkout-page .invoice-info {
+    margin-top: 1rem;
+  }
+
+  .checkout-page .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--dark-100);
+  }
+
+  .checkout-page .info-row:last-child {
+    border-bottom: none;
+  }
+
+  .checkout-page .info-label {
+    color: var(--dark-600);
+    font-size: 0.95rem;
+  }
+
+  .checkout-page .info-value {
+    color: var(--dark-900);
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .checkout-page .tips-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .checkout-page .tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--secondary-200);
+  }
+
+  .checkout-page .tip-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .checkout-page .tip-content {
+    flex: 1;
+  }
+
+  .checkout-page .tip-title {
+    font-weight: 600;
+    color: var(--secondary-700);
+    margin-bottom: 0.25rem;
+  }
+
+  .checkout-page .tip-text {
+    color: var(--secondary-600);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .checkout-page .form-field {
+    margin-bottom: 1.5rem;
+  }
+
+  .checkout-page .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .checkout-page .input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .checkout-page .input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .checkout-page .field-hint {
+    color: var(--dark-500);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  @media (max-width: 1024px) {
+    .checkout-page .checkout-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .checkout-page .amount-display {
+      font-size: 2rem;
+    }
+    
+    .checkout-page .agreement-info {
+      display: none;
+    }
+    
+    .checkout-page .tips-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .checkout-page .price-row,
+    .checkout-page .info-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+    
+    .checkout-page .bank-detail {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+  }
+
+  /* تأثيرات الحركة */
+  @keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+  }
+
+  .checkout-page .profile-section[style*="background: linear-gradient"] {
+    animation: pulseGlow 2s infinite;
+  }
+  </style>
 {% endblock %}

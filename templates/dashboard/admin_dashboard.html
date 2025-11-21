@@ -5,25 +5,30 @@
 {% block title %}لوحة تحكم المدير{% endblock %}
 
 {% block page_header %}
-<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4" dir="rtl">
-  <div>
-    <h1 class="text-2xl md:text-3xl font-extrabورد mb-1">لوحة تحكم المدير</h1>
-    <p class="lbl">نظرة عامة سريعة على النظام.</p>
-  </div>
-
-  <form method="get" class="card" style="padding:.7rem 1rem">
-    <div class="flex items-end gap-3">
-      <div>
-        <div class="lbl">من</div>
-  <input class="card" style="padding:.45rem .7rem" type="date" name="from" value="{{ from|date:'Y-m-d' }}">
+<div class="admin-header profile-section" style="background: linear-gradient(135deg, var(--primary-50) 0%, var(--white) 100%);">
+  <div class="admin-header-content" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem;">
+    <div style="flex: 1;">
+      <div class="section-badge" style="margin-bottom: 1rem;">
+        🛠️ لوحة المدير العام
       </div>
-      <div>
-        <div class="lbl">إلى</div>
-  <input class="card" style="padding:.45rem .7rem" type="date" name="to" value="{{ to|date:'Y-m-d' }}">
-      </div>
-      <button class="btn btn-gray" type="submit"><i class="fa fa-filter"></i><span>تصفية</span></button>
+      <h1 class="section-title" style="margin-bottom: 0.5rem;">
+        مرحبًا بك في لوحة التحكّم
+      </h1>
+      <p class="section-description">
+        متابعة أداء المنصّة، الطلبات، الفواتير، الاتفاقيات والنزاعات في نظرة واحدة.
+      </p>
     </div>
-  </form>
+    <div class="admin-meta" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <div class="meta-item profile-section" style="padding: 1rem; min-width: 140px;">
+        <div class="meta-label">📅 تاريخ اليوم</div>
+        <div class="meta-value">{{ today|date:"Y-m-d" }}</div>
+      </div>
+      <div class="meta-item profile-section" style="padding: 1rem; min-width: 140px;">
+        <div class="meta-label">👥 إجمالي المستخدمين</div>
+        <div class="meta-value">{{ users_total|default:0|intcomma }}</div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -36,221 +41,392 @@
 {% url 'accounts:user_list' as users_list_url %}
 {% url 'marketplace:offers_list' as offers_list_url %}
 
-{# تنبيهات تشغيلية #}
-{% if ops_alerts %}
-  <div class="card mb-4">
-    <div class="flex flex-wrap gap-2">
-      {% for a in ops_alerts %}
-        <span class="card" style="border-color:#fed7aa;background:#fff7ed">{{ a }}</span>
-      {% endfor %}
-    </div>
+
+{# ===== بطاقات المؤشرات الرئيسية ===== #}
+<section class="admin-section">
+  <div class="section-header">
+    <h2 class="section-title">📊 المؤشرات الرئيسية</h2>
+    <p class="section-description">نظرة سريعة على أداء المنصة</p>
   </div>
-{% endif %}
-
-{# أزرار سريعة (fallback مباشر بدون firstof/as) #}
-<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
-  {% if urls.invoices|default:inv_list_url %}
-    <a class="btn btn-green w-full justify-center" href="{{ urls.invoices|default:inv_list_url }}"><i class="fa fa-receipt"></i><span>الفواتير</span></a>
-  {% endif %}
-  {% if urls.requests|default:req_list_url %}
-    <a class="btn btn-blue w-full justify-center" href="{{ urls.requests|default:req_list_url }}"><i class="fa fa-list"></i><span>الطلبات</span></a>
-  {% endif %}
-  {% if urls.agreements|default:agreements_list_url %}
-    <a class="btn btn-purple w-full justify-center" href="{{ urls.agreements|default:agreements_list_url }}"><i class="fa fa-file-signature"></i><span>الاتفاقيات</span></a>
-  {% endif %}
-  {% if urls.disputes|default:disputes_list_url %}
-    <a class="btn btn-rose w-full justify-center" href="{{ urls.disputes|default:disputes_list_url }}"><i class="fa fa-scale-balanced"></i><span>النزاعات</span></a>
-  {% endif %}
-  {% if urls.users|default:users_list_url %}
-    <a class="btn btn-gray w-full justify-center" href="{{ urls.users|default:users_list_url }}"><i class="fa fa-users"></i><span>المستخدمون</span></a>
-  {% endif %}
-</div>
-
-{# KPIs #}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-  <div class="card">
-    <div class="lbl">المستخدمون (الإجمالي)</div>
-    <div class="kpi">{{ users_total|default:0|intcomma }}</div>
-    <div class="text-xs text-slate-500 mt-1">طاقم: {{ users_staff|default:0|intcomma }}</div>
-    {% if urls.users|default:users_list_url %}
-      <div class="mt-3">
-        <a href="{{ urls.users|default:users_list_url }}" class="btn btn-blue"><i class="fa fa-user-gear"></i><span>إدارة المستخدمين</span></a>
+  
+  <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+    
+    {# بطاقة الطلبات #}
+    <div class="profile-section kpi-card">
+      <div class="kpi-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <div class="kpi-icon" style="width: 3rem; height: 3rem; background: var(--primary-100); color: var(--primary-600); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+          <a href="/dashboard/requests/" style="color:inherit;text-decoration:none;">📋</a>
+        </div>
+        <div>
+          <h3 class="card-section-title">الطلبات</h3>
+          <p class="card-section-note">توزيع الطلبات حسب الحالة</p>
+        </div>
       </div>
-    {% endif %}
-  </div>
-
-  <div class="card">
-    <div class="lbl">الطلبات (حسب الحالة)</div>
-    <div class="kpi">{% if req_counts %}{{ req_counts|length|intcomma }}{% else %}0{% endif %}</div>
-    <div class="mt-2 text-xs text-slate-500">
-      {% if req_counts %}
-        <ul class="space-y-1">
-          {% for row in req_counts %}
-            <li><span class="font-medium">{{ row.state|default:"غير محدد" }}</span> — {{ row.c|intcomma }}</li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <span>لا توجد بيانات حالة</span>
-      {% endif %}
-    </div>
-    {% if urls.requests|default:req_list_url %}
-      <div class="mt-3">
-        <a href="{{ urls.requests|default:req_list_url }}" class="btn btn-gray"><i class="fa fa-list"></i><span>عرض الطلبات</span></a>
+      <div class="kpi-value" style="font-size: 2.7rem; font-weight: 900; color: var(--primary-700); margin-bottom: 0.5rem; letter-spacing:1px;">
+        {{ req_total|default:'0'|intcomma }}
       </div>
-    {% endif %}
-  </div>
-
-  <div class="card">
-    <div class="lbl">الفواتير (إجمالي/مدفوعة/غير مدفوعة)</div>
-    <div class="kpi">{{ inv_totals.total|default:0|intcomma }}</div>
-    <div class="text-xs text-slate-500 mt-1">مدفوعة: {{ inv_totals.paid|default:0|intcomma }} — غير مدفوعة: {{ inv_totals.unpaid|default:0|intcomma }}</div>
-    {% if urls.invoices|default:inv_list_url %}
-      <div class="mt-3">
-        <a href="{{ urls.invoices|default:inv_list_url }}" class="btn btn-green"><i class="fa fa-receipt"></i><span>إدارة الفواتير</span></a>
+      <div class="kpi-subtitle" style="font-size:1.1rem; color:var(--dark-500); margin-bottom:0.5rem;">إجمالي الطلبات</div>
+      <div class="kpi-details">
+        {% for row in req_counts %}
+          <div class="kpi-row" style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--dark-100);">
+            <span class="kpi-label" style="color: var(--dark-600);">
+              {% if row.state == 'new' %}جديد{% elif row.state == 'completed' %}مكتمل{% elif row.state == 'in_progress' %}قيد التنفيذ{% elif row.state == 'cancelled' %}ملغى{% elif row.state == 'disputed' %}نزاع{% elif row.state == 'offer_selected' %}تم اختيار عرض{% elif row.state == 'agreement_pending' %}بانتظار الاتفاقية{% else %}{{ row.state|default:'غير محدد' }}{% endif %}
+            </span>
+            <span class="kpi-count" style="color: var(--primary-600); font-weight: 700; font-size:1.1rem;">
+              {{ row.c|intcomma }}
+            </span>
+          </div>
+        {% empty %}
+          <div class="kpi-row" style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+            <span class="kpi-label" style="color: var(--dark-600);">لا توجد بيانات</span>
+            <span class="kpi-count" style="color: var(--dark-700); font-weight: 600;">0</span>
+          </div>
+        {% endfor %}
       </div>
-    {% endif %}
-  </div>
-
-  <div class="card">
-    <div class="lbl">العروض / الاتفاقيات</div>
-    <div class="kpi">{{ agreements_total|default:0|intcomma }}</div>
-    <div class="text-xs text-slate-500 mt-1">العروض: {{ offers_total|default:0|intcomma }}</div>
-    <div class="mt-3 flex gap-2">
-      {% if urls.agreements|default:agreements_list_url %}
-        <a href="{{ urls.agreements|default:agreements_list_url }}" class="btn btn-purple"><i class="fa fa-file-signature"></i><span>الاتفاقيات</span></a>
-      {% endif %}
-      {% if urls.offers|default:offers_list_url %}
-        <a href="{{ urls.offers|default:offers_list_url }}" class="btn btn-gray"><i class="fa fa-handshake"></i><span>العروض</span></a>
-      {% endif %}
+      <div class="kpi-actions employee-actions" style="margin-top: 1rem;">
+        <a href="/dashboard/requests/" class="btn btn-outline btn-sm">
+          عرض جميع الطلبات
+        </a>
+      </div>
     </div>
-  </div>
-</div>
 
-{# جداول مختصرة #}
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-  <div class="card">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-lg font-semibold">آخر الطلبات</h2>
-      {% if urls.requests|default:req_list_url %}
-        <a href="{{ urls.requests|default:req_list_url }}" class="text-sm" style="color:var(--brand)">عرض الكل</a>
-      {% endif %}
-    </div>
-    <div class="overflow-auto">
-      <table class="table">
-        <thead><tr><th>#</th><th>العنوان</th><th>العميل</th><th>الحالة</th></tr></thead>
-        <tbody>
-          {% for r in req_recent %}
-          <tr>
-            <td>{{ r.id }}</td>
-            <td>{{ r.title|default:"—" }}</td>
-            <td>{% if r.client %}{{ r.client }}{% else %}—{% endif %}</td>
-            <td>{{ r.state|default:"—" }}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="4">لا توجد طلبات حديثة</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-lg font-semibold">آخر الفواتير</h2>
-      {% if urls.invoices|default:inv_list_url %}
-        <a href="{{ urls.invoices|default:inv_list_url }}" class="text-sm" style="color:var(--ok)">عرض الكل</a>
+    {# بطاقة الفواتير #}
+    <div class="profile-section kpi-card">
+      <div class="kpi-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <div class="kpi-icon" style="width: 3rem; height: 3rem; background: var(--secondary-100); color: var(--secondary-600); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+          💰
+        </div>
+        <div>
+          <h3 class="card-section-title">الفواتير</h3>
+          <p class="card-section-note">إجمالي المبالغ المتداولة</p>
+        </div>
+      </div>
+      <div class="kpi-value" style="font-size: 2.6rem; font-weight: 900; color: #d4a100; margin-bottom: 0.5rem; letter-spacing:1px;">
+        {{ inv_totals.total|default:0|floatformat:2|intcomma }} <span style="font-size:1.1rem; color:#bfa700;">ريال</span>
+      </div>
+      <div class="kpi-breakdown" style="margin-bottom: 1rem;">
+        <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; color: var(--dark-700); font-size: 1rem; font-weight:700;">
+          <span>إجمالي المبالغ</span>
+          <span>{{ inv_totals.total|default:0|floatformat:2|intcomma }} ر.س</span>
+        </div>
+      </div>
+      <div class="kpi-details">
+        <div class="kpi-row" style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--dark-100);">
+          <span class="kpi-label" style="color: var(--dark-600);">مدفوعة</span>
+          <span class="kpi-count" style="color: #16a34a; font-weight: 700;">{{ inv_totals.paid|default:0|floatformat:2|intcomma }}</span>
+        </div>
+        <div class="kpi-row" style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--dark-100);">
+          <span class="kpi-label" style="color: var(--dark-600);">غير مدفوعة</span>
+          <span class="kpi-count" style="color: #eab308; font-weight: 700;">{{ inv_totals.unpaid|default:0|floatformat:2|intcomma }}</span>
+        </div>
+        <div class="kpi-row" style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+          <span class="kpi-label" style="color: var(--dark-600);">متأخرة</span>
+          <span class="kpi-count" style="color: #ef4444; font-weight: 700;">{{ overdue_count|default:0|intcomma }}</span>
+        </div>
+      </div>
+      {% if urls.invoices or inv_list_url %}
+        <div class="kpi-actions employee-actions" style="margin-top: 1rem;">
+          <a href="{{ urls.invoices|default:inv_list_url }}" class="btn btn-outline btn-sm">
+            لوحة الفواتير
+          </a>
+        </div>
       {% endif %}
     </div>
-    <div class="overflow-auto">
-      <table class="table">
-        <thead><tr><th>#</th><th>الاتفاقية</th><th>المبلغ</th><th>الحالة</th></tr></thead>
-        <tbody>
-          {% for inv in inv_recent %}
-          <tr>
-            <td>{{ inv.id }}</td>
-            <td>{% if inv.agreement_id %}A{{ inv.agreement_id }}{% else %}—{% endif %}</td>
-            <td>{{ inv.amount|default:0|intcomma }}</td>
-            <td>{% if inv.is_paid %}مدفوعة{% else %}غير مدفوعة{% endif %}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="4">لا توجد فواتير حديثة</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
 
-  <div class="card">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-lg font-semibold">آخر الاتفاقيات</h2>
-      {% if urls.agreements|default:agreements_list_url %}
-        <a href="{{ urls.agreements|default:agreements_list_url }}" class="text-sm" style="color:var(--brand-2)">عرض الكل</a>
-      {% endif %}
+    {# بطاقة الاتفاقيات والعروض #}
+    <div class="profile-section kpi-card">
+      <div class="kpi-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <div class="kpi-icon" style="width: 3rem; height: 3rem; background: var(--primary-100); color: var(--primary-600); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+          🤝
+        </div>
+        <div>
+          <h3 class="card-section-title">أحدث الاتفاقيات</h3>
+          <p class="card-section-note">أحدث 3 اتفاقيات مضافة</p>
+        </div>
+      </div>
+      <div class="kpi-details" style="margin-bottom: 0.5rem;">
+        {% for ag in agreements_recent|slice:":3" %}
+        <div class="kpi-row" style="display: flex; flex-direction: column; align-items: flex-start; padding: 0.7rem 0; border-bottom: 1px solid var(--dark-100);">
+          <div style="font-weight:700; color:var(--primary-700); font-size:1.1rem; margin-bottom:0.2rem;">
+            {{ ag.title|default:"—" }}
+          </div>
+          <div style="font-size:0.97rem; color:var(--dark-700); margin-bottom:0.1rem;">
+            <span style="color:var(--primary-600); font-weight:600;">الموظف:</span> {{ ag.employee_display|default:"—" }}
+          </div>
+          <div style="font-size:0.97rem; color:var(--dark-700); margin-bottom:0.1rem;">
+            <span style="color:var(--primary-600); font-weight:600;">الحالة:</span> 
+            {% if ag.get_status_display %}
+              <span class="badge badge-default">{{ ag.get_status_display }}</span>
+            {% else %}
+              <span class="badge badge-default">{{ ag.status|default:"غير محددة" }}</span>
+            {% endif %}
+          </div>
+          <div style="font-size:0.95rem; color:var(--dark-500);">
+            <span style="color:var(--primary-600); font-weight:600;">تاريخ الإنشاء:</span> {{ ag.created_at|date:"Y-m-d H:i" }}
+          </div>
+        </div>
+        {% empty %}
+        <div class="kpi-row" style="padding: 0.7rem 0; color:var(--dark-400);">لا توجد اتفاقيات حديثة.</div>
+        {% endfor %}
+      </div>
+      <div class="kpi-actions employee-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+        {% if urls.agreements or agreements_list_url %}
+          <a href="{{ urls.agreements|default:agreements_list_url }}" class="btn btn-outline btn-sm">
+            جميع الاتفاقيات
+          </a>
+        {% endif %}
+      </div>
     </div>
-    <div class="overflow-auto">
-      <table class="table">
-        <thead><tr><th>#</th><th>العنوان</th><th>الحالة</th></tr></thead>
-        <tbody>
-          {% for ag in agreements_recent %}
-          <tr><td>{{ ag.id }}</td><td>{{ ag.title|default:"—" }}</td><td>{{ ag.status|default:"—" }}</td></tr>
-          {% empty %}
-          <tr><td colspan="3">لا توجد اتفاقيات حديثة</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
 
-  <div class="card">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-lg font-semibold">آخر النزاعات</h2>
-      {% if urls.disputes|default:disputes_list_url %}
-        <a href="{{ urls.disputes|default:disputes_list_url }}" class="text-sm" style="color:var(--danger)">عرض الكل</a>
-      {% endif %}
-    </div>
-    <div class="overflow-auto">
-      <table class="table">
-        <thead><tr><th>#</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
-        <tbody>
-          {% for d in disputes_recent %}
-          <tr>
-            <td>{{ d.id }}</td>
-            <td>{{ d.status|default:"—" }}</td>
-            <td>{% if d.title %}{{ d.title }}{% elif d.note %}{{ d.note|truncatechars:60 }}{% else %}—{% endif %}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="3">لا توجد نزاعات حديثة</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    {# بطاقة النزاعات المصغرة #}
+    <div class="profile-section kpi-card">
+      <div class="kpi-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <div class="kpi-icon" style="width: 3rem; height: 3rem; background: var(--danger-100, #fee2e2); color: var(--danger-600, #dc2626); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+          ⚖️
+        </div>
+        <div>
+          <h3 class="card-section-title">أحدث النزاعات</h3>
+          <p class="card-section-note">أحدث 3 نزاعات مضافة</p>
+        </div>
+      </div>
+      <div class="kpi-details" style="margin-bottom: 0.5rem;">
+        {% for d in disputes_recent|slice:":3" %}
+        <div class="kpi-row" style="display: flex; flex-direction: column; align-items: flex-start; padding: 0.7rem 0; border-bottom: 1px solid var(--dark-100);">
+          <div style="font-weight:700; color:var(--danger-700,#b91c1c); font-size:1.1rem; margin-bottom:0.2rem;">
+            {% if d.title %}{{ d.title }}{% elif d.note %}{{ d.note|truncatechars:60 }}{% elif d.reason %}{{ d.reason|truncatechars:60 }}{% else %}—{% endif %}
+          </div>
+          <div style="font-size:0.97rem; color:var(--dark-700); margin-bottom:0.1rem;">
+            <span style="color:var(--danger-600,#dc2626); font-weight:600;">الحالة:</span> 
+            {% if d.status %}
+              <span class="badge badge-rejected">{{ d.status }}</span>
+            {% elif d.state %}
+              <span class="badge badge-rejected">{{ d.state }}</span>
+            {% else %}
+              <span class="badge badge-rejected">غير محددة</span>
+            {% endif %}
+          </div>
+          <div style="font-size:0.95rem; color:var(--dark-500);">
+            <span style="color:var(--danger-600,#dc2626); font-weight:600;">تاريخ الإنشاء:</span> {{ d.created_at|date:"Y-m-d H:i" }}
+          </div>
+        </div>
+        {% empty %}
+        <div class="kpi-row" style="padding: 0.7rem 0; color:var(--dark-400);">لا توجد نزاعات حديثة.</div>
+        {% endfor %}
+      </div>
+      <div class="kpi-actions employee-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+        {% if urls.disputes or disputes_list_url %}
+          <a href="{{ urls.disputes|default:disputes_list_url }}" class="btn btn-outline btn-sm">
+            جميع النزاعات
+          </a>
+        {% endif %}
+      </div>
     </div>
   </div>
-</div>
+</section>
 
-{# تفصيل الأدوار #}
-<div class="card mt-4">
-  <div class="flex items-center justify-between mb-3">
-    <h2 class="text-lg font-semibold">تفصيل أدوار المستخدمين</h2>
-    <div class="flex gap-2">
-      {% url 'dashboard:employees_list' as emp_url %}
-      {% url 'dashboard:clients_list' as cli_url %}
-      {% if emp_url %}<a href="{{ emp_url }}" class="btn btn-gray"><i class="fa fa-id-badge"></i><span>الموظفون</span></a>{% endif %}
-      {% if cli_url %}<a href="{{ cli_url }}" class="btn btn-gray"><i class="fa fa-user"></i><span>العملاء</span></a>{% endif %}
-    </div>
-  </div>
-  {% if role_counts %}
-    <div class="overflow-auto">
-      <table class="table">
-        <thead><tr><th>الدور</th><th>العدد</th></tr></thead>
-        <tbody>
-          {% for row in role_counts %}
-          <tr><td>{{ row.role|default:"—" }}</td><td>{{ row.c|intcomma }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% else %}
-    <p class="lbl">لا تتوفر حقول دور صريحة لعرضها.</p>
-  {% endif %}
-</div>
+
+
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تأثيرات على البطاقات
+    document.querySelectorAll('.profile-section').forEach((card, index) => {
+      card.style.animationDelay = `${index * 0.1}s`;
+      
+      // تأثير hover على البطاقات
+      card.addEventListener('mouseenter', function() {
+        if (this.classList.contains('kpi-card') || this.classList.contains('quick-link')) {
+          this.style.transform = 'translateY(-5px)';
+          this.style.boxShadow = 'var(--shadow-lg)';
+        }
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        if (this.classList.contains('kpi-card') || this.classList.contains('quick-link')) {
+          this.style.transform = 'translateY(0)';
+          this.style.boxShadow = '';
+        }
+      });
+    });
+
+    // تأثيرات على الأزرار
+    document.querySelectorAll('.btn').forEach(button => {
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+      });
+    });
+
+    // تأثيرات على صفوف الجداول
+    document.querySelectorAll('.table-clean tbody tr').forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.background = 'var(--primary-50)';
+      });
+      
+      row.addEventListener('mouseleave', function() {
+        this.style.background = '';
+      });
+    });
+
+    // تحديث حيوي للبيانات (يمكن تطويره لاحقًا)
+    function refreshDashboard() {
+      // يمكن إضافة تحديث تلقائي للبيانات هنا
+      console.log('Refreshing dashboard data...');
+    }
+
+    // تحديث كل 30 ثانية (اختياري)
+    // setInterval(refreshDashboard, 30000);
+
+  })();
+  </script>
+
+  <style>
+  .admin-dashboard .admin-header {
+    margin-bottom: 2rem;
+    border-radius: var(--radius-xl);
+  }
+
+  .admin-dashboard .meta-item {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+    text-align: center;
+  }
+
+  .admin-dashboard .meta-label {
+    font-size: 0.875rem;
+    color: var(--dark-600);
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-dashboard .meta-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--dark-800);
+  }
+
+  .admin-dashboard .kpi-card {
+    transition: all 0.3s ease;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .admin-dashboard .quick-link {
+    transition: all 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    border-radius: var(--radius-xl);
+  }
+
+  .admin-dashboard .quick-link:hover {
+    text-decoration: none;
+  }
+
+  .admin-dashboard .data-card {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .admin-dashboard .table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+    flex: 1;
+  }
+
+  .admin-dashboard .table-clean {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .admin-dashboard .table-clean th {
+    background: var(--dark-50);
+    color: var(--dark-700);
+    font-weight: 600;
+    padding: 1rem;
+    text-align: right;
+    border-bottom: 1px solid var(--dark-200);
+  }
+
+  .admin-dashboard .table-clean td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--dark-100);
+    vertical-align: top;
+  }
+
+  .admin-dashboard .table-clean tr:last-child td {
+    border-bottom: none;
+  }
+
+  .admin-dashboard .text-muted {
+    color: var(--dark-500);
+  }
+
+  .admin-dashboard .text-center {
+    text-align: center;
+  }
+
+  @media (max-width: 1024px) {
+    .admin-dashboard .tables-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .admin-dashboard .kpi-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .admin-dashboard .admin-header-content {
+      flex-direction: column;
+    }
+    
+    .admin-dashboard .admin-meta {
+      width: 100%;
+      justify-content: center;
+    }
+    
+    .admin-dashboard .quick-links-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .admin-dashboard .quick-links-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .admin-dashboard .kpi-value {
+      font-size: 2rem;
+    }
+  }
+
+  /* تأثيرات الحركة */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .admin-dashboard .scroll-reveal {
+    animation: fadeInUp 0.6s ease-out;
+  }
+  </style>
 {% endblock %}

@@ -2,146 +2,374 @@
 {% block title %}الطلبات الجديدة{% endblock %}
 {% block content %}
 
-<section class="py-10 max-w-6xl mx-auto rtl" dir="rtl">
-
-  {# ===== تنبيه إرشادي للموظفين ===== #}
-  <div class="mb-6 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20 p-4 text-amber-900 dark:text-amber-200">
-    <div class="flex items-start gap-3">
-      <span class="text-xl" aria-hidden="true">⚠️</span>
-      <div class="text-sm leading-6">
-        <b>تنبيه للموظفين:</b> يمكنك تقديم <b>عرض واحد فقط</b> لكل طلب جديد.
-        بعد اختيار العميل للعرض، سيتم إسناد الطلب تلقائيًا ولن يظهر هنا.
+<section class="page-section new-requests-page">
+  <div class="container">
+    
+    {# ===== تنبيه إرشادي للموظفين ===== #}
+    <div class="profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200); margin-bottom: 2rem;">
+      <div class="card-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+        <span class="text-xl" style="color: var(--secondary-600);">⚠️</span>
+        <div class="card-text" style="flex: 1;">
+          <div style="font-weight: 600; color: var(--secondary-800); margin-bottom: 0.25rem;">
+            تنبيه للموظفين
+          </div>
+          <div style="color: var(--secondary-700); font-size: 0.95rem;">
+            يمكنك تقديم <strong>عرض واحد فقط</strong> لكل طلب جديد.
+            بعد اختيار العميل للعرض، سيتم إسناد الطلب تلقائيًا ولن يظهر هنا.
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  {# ===== العنوان الرئيسي + العد ===== #}
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-3xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
-      🆕 الطلبات الجديدة
-    </h1>
-    <span class="text-sm text-slate-500 dark:text-slate-400">
-      {{ requests|length }} طلب{% if requests|length != 1 %}ات{% endif %}
-    </span>
-  </div>
+    {# ===== العنوان الرئيسي + العد ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        🆕 الطلبات الجديدة
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+        <h1 class="section-title" style="margin: 0;">
+          الطلبات الجديدة
+        </h1>
+        <span class="badge badge-default" style="font-size: 0.9rem;">
+          {{ requests|length }} طلب{% if requests|length != 1 %}ات{% endif %}
+        </span>
+      </div>
+    </div>
 
-  {% if requests %}
-    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {% for r in requests %}
-        <article class="group relative bg-white/75 dark:bg-slate-800/70 backdrop-blur border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-glass-lg hover:shadow-xl transition-all duration-300">
-
-          {# شريط الحالة الجانبي #}
-          <div class="absolute top-0 right-0 h-full w-1 rounded-l-lg
-                      {% if r.status == 'new' %}bg-sky-400
-                      {% elif r.status == 'offer_selected' %}bg-amber-400
-                      {% elif r.status == 'agreement_pending' %}bg-indigo-500
-                      {% elif r.status == 'in_progress' %}bg-emerald-500
-                      {% elif r.status == 'completed' %}bg-emerald-700
-                      {% elif r.status == 'disputed' %}bg-rose-500
-                      {% else %}bg-slate-400{% endif %}">
-          </div>
-
-          <div class="flex flex-col h-full justify-between">
-            <div>
-              <div class="flex items-start justify-between gap-3 mb-2">
-                <h2 class="text-lg font-extrabold text-slate-900 dark:text-white leading-6 line-clamp-2">
-                  {{ r.title|default:"طلب بدون عنوان" }}
-                </h2>
-                <span class="px-2 py-1 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200 shrink-0">
-                  {{ r.get_status_display|default:r.status }}
-                </span>
-              </div>
-
-              {# عميل الطلب #}
-              <p class="text-slate-700 dark:text-slate-200 text-sm">
-                <span class="font-semibold text-slate-900 dark:text-white">العميل:</span>
-                {% if r.client %}
-                  {{ r.client.name|default:r.client.email|default:"—" }}
-                {% else %}
-                  —
-                {% endif %}
-              </p>
-              {% if r.client and r.client.phone %}
-                <p class="text-slate-500 dark:text-slate-400 text-xs" dir="ltr">{{ r.client.phone }}</p>
-              {% endif %}
-
-              {# القيم المبدئية (مدة/مبلغ) #}
-              <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                <span class="px-2 py-1 rounded-lg border border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-900/30 text-sky-800 dark:text-sky-200">
-                  المدة: <b>{{ r.estimated_duration_days|default:"—" }}</b> يوم
-                </span>
-                <span class="px-2 py-1 rounded-lg border border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-900/30 text-sky-800 dark:text-sky-200">
-                  المبلغ: <b>{{ r.estimated_price|default_if_none:"—"|floatformat:"-2" }}</b> ريال
-                </span>
-              </div>
-
-              {# لمحة من تفاصيل الطلب #}
-              {% if r.details %}
-                <div class="mt-3 text-slate-600 dark:text-slate-300 text-sm whitespace-pre-line line-clamp-3">
-                  {{ r.details|urlize }}
-                </div>
-              {% endif %}
-
-              <p class="text-slate-400 dark:text-slate-500 text-xs mt-3">
-                تم الإنشاء في {{ r.created_at|date:"Y-m-d H:i" }}
-              </p>
+    {% if requests %}
+      <div class="employees-grid">
+        {% for r in requests %}
+          <div class="employee-card scroll-reveal">
+            
+            {# شريط الحالة الجانبي #}
+            <div class="status-indicator 
+                      {% if r.status == 'new' %}status-new
+                      {% elif r.status == 'offer_selected' %}status-offer-selected
+                      {% elif r.status == 'agreement_pending' %}status-agreement
+                      {% elif r.status == 'in_progress' %}status-in-progress
+                      {% elif r.status == 'completed' %}status-completed
+                      {% elif r.status == 'disputed' %}status-disputed
+                      {% else %}status-default{% endif %}">
             </div>
 
+            <div class="employee-card-header">
+              <div class="employee-basic-info">
+                <div class="employee-name">
+                  {{ r.title|default:"طلب بدون عنوان" }}
+                </div>
+                <div class="employee-title">
+                  {{ r.get_status_display|default:r.status }}
+                </div>
+                
+                {# عميل الطلب #}
+                <div class="employee-location">
+                  <span>👤 العميل: 
+                    <strong>
+                      {% if r.client %}
+                        {{ r.client.name|default:r.client.email|default:"—" }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </strong>
+                  </span>
+                </div>
+                
+                {% if r.client and r.client.phone %}
+                  <div class="employee-location" style="margin-top: 0.25rem;">
+                    <span>📞 {{ r.client.phone }}</span>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+
+            {# القيم المبدئية (مدة/مبلغ) #}
+            <div class="employee-stats">
+              <div class="employee-stat">
+                <span class="stat-number">{{ r.estimated_duration_days|default:"—" }}</span>
+                <span class="stat-label">أيام</span>
+              </div>
+              <div class="employee-stat">
+                <span class="stat-number">{{ r.estimated_price|default_if_none:"—"|floatformat:"-2" }}</span>
+                <span class="stat-label">ريال</span>
+              </div>
+              <div class="employee-stat">
+                <span class="stat-number">{{ r.created_at|date:"d/m" }}</span>
+                <span class="stat-label">التاريخ</span>
+              </div>
+            </div>
+
+            {# لمحة من تفاصيل الطلب #}
+            {% if r.details %}
+              <div class="employee-skills">
+                <div class="skills-title">تفاصيل الطلب:</div>
+                <div class="skills-tags">
+                  <div class="request-preview" style="color: var(--dark-600); font-size: 0.9rem; line-height: 1.5; max-height: 4.5em; overflow: hidden;">
+                    {{ r.details|truncatewords:20|urlize }}
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+
             {# ===== أزرار الإجراءات ===== #}
-            <div class="mt-4 grid grid-cols-1 gap-2">
-              {# رابط التفاصيل: يفضّل short_code إن وُجد وإلا pk #}
+            <div class="employee-actions">
+              {# رابط التفاصيل #}
               {% if r.short_code %}
                 <a href="{% url 'marketplace:request_detail_short' r.short_code %}"
-                   class="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl
-                          bg-gradient-to-l from-indigo-600 to-sky-600 text-white text-sm font-semibold
-                          hover:from-indigo-700 hover:to-sky-700 transition">
-                  عرض التفاصيل
+                   class="btn-view-profile">
+                  👁️ عرض التفاصيل
                 </a>
               {% else %}
                 <a href="{% url 'marketplace:request_detail' r.pk %}"
-                   class="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl
-                          bg-gradient-to-l from-indigo-600 to-sky-600 text-white text-sm font-semibold
-                          hover:from-indigo-700 hover:to-sky-700 transition">
-                  عرض التفاصيل
+                   class="btn-view-profile">
+                  👁️ عرض التفاصيل
                 </a>
               {% endif %}
 
-              {# زر تقديم عرض: يظهر للحالة new فقط، ولم يسبق للمستخدم التقديم على هذا الطلب #}
+              {# زر تقديم عرض #}
               {% if r.status == 'new' %}
                 {% if offered_request_ids %}
                   {% if r.pk not in offered_request_ids %}
                     <a href="{% url 'marketplace:offer_create' r.pk %}"
-                       class="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl
-                              border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-slate-900
-                              text-indigo-700 dark:text-indigo-300 text-sm font-semibold
-                              hover:bg-indigo-50 dark:hover:bg-slate-800 transition">
-                      تقديم عرض (عرض واحد فقط)
+                       class="btn-contact"
+                       title="تقديم عرض">
+                      📨 عرض
                     </a>
+                  {% else %}
+                    <button class="btn-contact" disabled style="opacity: 0.6; cursor: not-allowed;" title="لقد قدّمت عرضًا مسبقًا">
+                      ✅ مقدّم
+                    </button>
                   {% endif %}
                 {% else %}
                   <a href="{% url 'marketplace:offer_create' r.pk %}"
-                     class="inline-flex items-center justify-center w-full px-4 py-2 rounded-xl
-                            border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-slate-900
-                            text-indigo-700 dark:text-indigo-300 text-sm font-semibold
-                            hover:bg-indigo-50 dark:hover:bg-slate-800 transition">
-                    تقديم عرض (عرض واحد فقط)
+                     class="btn-contact"
+                     title="تقديم عرض">
+                    📨 عرض
                   </a>
                 {% endif %}
+              {% else %}
+                <button class="btn-contact" disabled style="opacity: 0.6; cursor: not-allowed;" title="غير متاح للتقديم">
+                  ⏸️ مغلق
+                </button>
               {% endif %}
             </div>
-          </div>
-        </article>
-      {% endfor %}
-    </div>
-  {% else %}
-    {# ===== لا توجد طلبات ===== #}
-    <div class="text-center py-16 bg-white/60 dark:bg-slate-800/60 backdrop-blur border border-dashed border-slate-300 dark:border-slate-600 rounded-2xl">
-      <div class="text-6xl mb-3 opacity-40" aria-hidden="true">🗂️</div>
-      <p class="text-lg text-slate-600 dark:text-slate-300 font-medium">لا توجد طلبات جديدة في الوقت الحالي</p>
-      <p class="text-sm text-slate-400 dark:text-slate-500 mt-1">سيتم عرض الطلبات الجديدة هنا فور وصولها</p>
-    </div>
-  {% endif %}
 
+            {# تاريخ الإنشاء #}
+            <div class="availability" style="margin-top: 1rem; padding: 0.5rem; background: var(--dark-50); border-radius: var(--radius);">
+              <span class="availability-dot available"></span>
+              <span style="font-size: 0.8rem; color: var(--dark-500);">
+                تم الإنشاء: {{ r.created_at|date:"Y-m-d H:i" }}
+              </span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {# ===== لا توجد طلبات ===== #}
+      <div class="profile-section text-center" style="padding: 4rem 2rem; background: var(--dark-50); border: 2px dashed var(--dark-300);">
+        <div class="text-6xl mb-4 opacity-40" aria-hidden="true">🗂️</div>
+        <h3 class="card-section-title" style="margin-bottom: 1rem;">لا توجد طلبات جديدة</h3>
+        <p class="card-section-note" style="font-size: 1rem;">
+          سيتم عرض الطلبات الجديدة هنا فور وصولها
+        </p>
+      </div>
+    {% endif %}
+
+  </div>
 </section>
 
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تهيئة تأثيرات البطاقات
+    if (typeof initEmployeeCards === 'function') {
+      initEmployeeCards();
+    }
+
+    // تأثيرات إضافية للبطاقات
+    document.querySelectorAll('.employee-card').forEach((card, index) => {
+      card.style.animationDelay = `${index * 0.1}s`;
+      
+      // تأثير عند المرور على زر العرض
+      const offerBtn = card.querySelector('.btn-contact:not([disabled])');
+      if (offerBtn) {
+        offerBtn.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-2px) scale(1.05)';
+          this.style.background = 'var(--primary-100)';
+          this.style.color = 'var(--primary-700)';
+        });
+        
+        offerBtn.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0) scale(1)';
+          this.style.background = '';
+          this.style.color = '';
+        });
+        
+        offerBtn.addEventListener('click', function() {
+          if (typeof animateButtonClick === 'function') {
+            animateButtonClick(this);
+          }
+        });
+      }
+    });
+
+    // تحديث العداد بشكل حيوي
+    const requestCount = {{ requests|length }};
+    const countBadge = document.querySelector('.badge-default');
+    if (countBadge && requestCount > 0) {
+      countBadge.style.background = 'var(--primary-100)';
+      countBadge.style.color = 'var(--primary-700)';
+      countBadge.style.borderColor = 'var(--primary-200)';
+    }
+
+  })();
+  </script>
+
+  <style>
+  .new-requests-page .employee-card {
+    position: relative;
+    min-height: 380px;
+    transition: all 0.3s ease;
+  }
+
+  .new-requests-page .status-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+  }
+
+  .new-requests-page .status-new {
+    background: var(--primary-400);
+  }
+
+  .new-requests-page .status-offer-selected {
+    background: var(--secondary-400);
+  }
+
+  .new-requests-page .status-agreement {
+    background: #6366f1;
+  }
+
+  .new-requests-page .status-in-progress {
+    background: var(--primary-500);
+  }
+
+  .new-requests-page .status-completed {
+    background: var(--primary-700);
+  }
+
+  .new-requests-page .status-disputed {
+    background: #ef4444;
+  }
+
+  .new-requests-page .status-default {
+    background: var(--dark-400);
+  }
+
+  .new-requests-page .employee-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .new-requests-page .request-preview {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .new-requests-page .employee-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .new-requests-page .btn-view-profile {
+    flex: 1;
+    background: var(--primary-500);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-align: center;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .new-requests-page .btn-view-profile:hover {
+    background: var(--primary-600);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .new-requests-page .btn-contact {
+    background: var(--white);
+    color: var(--primary-600);
+    border: 1px solid var(--primary-300);
+    padding: 0.75rem;
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 50px;
+  }
+
+  .new-requests-page .btn-contact:hover:not([disabled]) {
+    background: var(--primary-50);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  @media (max-width: 768px) {
+    .new-requests-page .employees-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .new-requests-page .employee-card {
+      min-height: auto;
+    }
+    
+    .new-requests-page .employee-actions {
+      flex-direction: column;
+    }
+    
+    .new-requests-page .btn-contact {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .new-requests-page .employee-stats {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    
+    .new-requests-page .stat-number {
+      font-size: 1rem;
+    }
+    
+    .new-requests-page .stat-label {
+      font-size: 0.7rem;
+    }
+  }
+  </style>
 {% endblock %}

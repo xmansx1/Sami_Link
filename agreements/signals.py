@@ -144,21 +144,7 @@ def handle_milestone_post_save(sender, instance: Milestone, created: bool, **kwa
         # (قد لا يكون ضروريًا دائمًا، لكن يحسن الأمان في سيناريوهات concurency)
         type(milestone).objects.select_for_update().filter(pk=milestone.pk)
 
-        # (1) إنشاء فاتورة تلقائيًا عند اعتماد المرحلة
-        current_status = getattr(milestone, "status", "")
-        if str(current_status).lower() == str(MS_APPROVED).lower():
-            inv = _invoice_for_milestone(milestone)
-            if inv is None:
-                create_kwargs = {
-                    "milestone": milestone,
-                    "amount": getattr(milestone, "amount", 0) or 0,
-                }
-                # إن كان نموذج Invoice يملك FK إلى agreement فأضفه
-                if _has_fk(Invoice, "agreement") or "agreement" in [f.name for f in Invoice._meta.fields]:
-                    create_kwargs["agreement"] = agreement
-                # اختر حالة "غير مدفوع" وفق ما هو متاح
-                create_kwargs["status"] = INV_ST["UNPAID"] if INV_ST["UNPAID"] else INV_ST["DUE"]
-                Invoice.objects.create(**create_kwargs)
+        # (1) تمت إزالة أي منطق لإنشاء فاتورة تلقائيًا عند اعتماد المرحلة نهائيًا.
 
         # (2) فحص اكتمال الاتفاقية/الطلب: هل توجد فواتير غير مدفوعة؟
         inv_qs = _invoices_for_agreement(agreement)

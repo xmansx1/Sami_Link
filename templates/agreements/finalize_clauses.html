@@ -4,263 +4,228 @@
 
 {% block title %}تثبيت بنود الاتفاقية #{{ agreement.id }}{% endblock %}
 
-{% block extra_css %}
-<style>
-  .fade-in { animation: fadeIn 0.6s ease-in-out; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-
-  .card-hover { transition: all 0.3s ease; }
-  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04); }
-
-  .btn-glow { box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06); transition: all 0.3s ease; }
-  .btn-glow:hover { box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); transform: translateY(-2px); }
-
-  .clause-checkbox { transition: all 0.2s ease; }
-  .clause-checkbox:checked { background-color: #10b981; border-color: #10b981; }
-
-  .clause-item { transition: all 0.3s ease; border: 2px solid transparent; }
-  .clause-item:hover { border-color: #e2e8f0; background-color: #f8fafc; }
-  .dark .clause-item:hover { border-color: #475569; background-color: #1e293b; }
-  .clause-item.selected { border-color: #10b981; background-color: #f0fdf4; }
-  .dark .clause-item.selected { border-color: #059669; background-color: #052e16; }
-
-  .custom-textarea { transition: all 0.2s ease; min-height: 120px; }
-  .custom-textarea:focus { box-shadow: 0 0 0 3px rgba(16,185,129,.1); border-color: #10b981; }
-
-  .preview-item { border-left: 3px solid #10b981; transition: all 0.2s ease; }
-  .preview-item:hover { background-color: #f8fafc; transform: translateX(-5px); }
-  .dark .preview-item:hover { background-color: #1e293b; }
-</style>
-{% endblock %}
-
 {% block content %}
-<section class="max-w-5xl mx-auto px-4 py-8 rtl" dir="rtl">
-
-  <!-- هيدر -->
-  <header class="mb-8 fade-in">
-    <div class="flex items-center mb-4">
-      <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center ml-4">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
+<section class="page-section finalize-clauses-page">
+  <div class="container">
+    
+    {# ===== رأس الصفحة ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        📝 تثبيت بنود الاتفاقية
       </div>
-      <div>
-        <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">تثبيت/تعديل بنود الاتفاقية</h1>
-        <p class="text-slate-600 dark:text-slate-300 mt-1">
-          اختر من البنود المحفوظة وأضف بنودًا مخصّصة. سيُحفَظ الترتيب: البنود الجاهزة أولًا ثم البنود المخصّصة.
-        </p>
-      </div>
-    </div>
-  </header>
-
-  <!-- بطاقة معلومات الاتفاقية -->
-  <div class="rounded-2xl border bg-white/70 dark:bg-slate-800/70 backdrop-blur shadow-lg p-6 mb-8 fade-in card-hover">
-    <div class="flex items-center mb-4">
-      <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center ml-3">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      </div>
-      <h2 class="text-lg font-bold text-slate-800 dark:text-white">معلومات الاتفاقية</h2>
+      <h1 class="section-title">
+        تثبيت/تعديل بنود الاتفاقية
+      </h1>
+      <p class="section-description">
+        اختر من البنود المحفوظة وأضف بنودًا مخصّصة. سيُحفَظ الترتيب: البنود الجاهزة أولًا ثم البنود المخصّصة.
+      </p>
     </div>
 
-    <div class="grid md:grid-cols-3 gap-4 text-sm">
-      <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg">
-        <div class="text-slate-500 dark:text-slate-400 text-xs mb-1">رقم الاتفاقية</div>
-        <div class="font-semibold text-slate-800 dark:text-slate-200">#{{ agreement.id }}</div>
-      </div>
-      <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg">
-        <div class="text-slate-500 dark:text-slate-400 text-xs mb-1">العنوان</div>
-        <div class="font-semibold text-slate-800 dark:text-slate-200">{{ agreement.title }}</div>
-      </div>
-      <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg">
-        <div class="text-slate-500 dark:text-slate-400 text-xs mb-1">الطلب المرجعي</div>
-        <div class="font-semibold text-slate-800 dark:text-slate-200">
-          <a class="text-blue-600 dark:text-blue-400 hover:underline flex items-center" href="{% url 'marketplace:request_detail' agreement.request.id %}">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-            #{{ agreement.request.id }}
-          </a>
+    {# ===== بطاقة معلومات الاتفاقية ===== #}
+    <div class="profile-section" style="background: linear-gradient(135deg, var(--primary-50) 0%, var(--white) 100%); margin-bottom: 2rem;">
+      <div class="card-row" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card-icon" style="width: 3rem; height: 3rem; background: var(--primary-100); color: var(--primary-600); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+          📄
         </div>
+        <h2 class="card-section-title">معلومات الاتفاقية</h2>
       </div>
-    </div>
-  </div>
 
-  <form method="post" class="space-y-8" novalidate>
-    {% csrf_token %}
-
-    <!-- البنود المحفوظة -->
-    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow-lg fade-in card-hover">
-      <div class="flex items-center justify-between mb-6 gap-4">
-        <div class="flex items-center">
-          <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center ml-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600 dark:text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <div>
-            <h2 class="text-lg font-bold text-slate-800 dark:text-white">البنود المحفوظة</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400">اختر من البنود الجاهزة (اختيار متعدد)</p>
-          </div>
+      <div class="info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div class="info-item profile-section" style="padding: 1rem; background: var(--white);">
+          <div class="info-label">رقم الاتفاقية</div>
+          <div class="info-value">#{{ agreement.id }}</div>
         </div>
-        <div class="relative">
-          <div class="relative">
-            <input id="clause-filter" type="text" class="input w-64 pr-10" placeholder="ابحث في البنود...">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+        <div class="info-item profile-section" style="padding: 1rem; background: var(--white);">
+          <div class="info-label">العنوان</div>
+          <div class="info-value">{{ agreement.title }}</div>
+        </div>
+        <div class="info-item profile-section" style="padding: 1rem; background: var(--white);">
+          <div class="info-label">الطلب المرجعي</div>
+          <div class="info-value">
+            <a href="{% url 'marketplace:request_detail' agreement.request.id %}" class="link">
+              #{{ agreement.request.id }}
+            </a>
           </div>
         </div>
       </div>
+    </div>
 
-      {% if form.clauses.errors %}
-        <div class="mb-4 p-4 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
-          <ul class="text-rose-600 dark:text-rose-400 text-sm list-disc pr-5">
-            {% for e in form.clauses.errors %}<li>{{ e }}</li>{% endfor %}
-          </ul>
+    <form method="post" class="clauses-form" novalidate>
+      {% csrf_token %}
+
+      {# ===== البنود المحفوظة ===== #}
+      <div class="profile-section" style="margin-bottom: 2rem;">
+        <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div class="card-icon" style="width: 3rem; height: 3rem; background: var(--primary-100); color: var(--primary-600); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+              ✅
+            </div>
+            <div>
+              <h2 class="card-section-title">البنود المحفوظة</h2>
+              <p class="card-section-note">اختر من البنود الجاهزة (اختيار متعدد)</p>
+            </div>
+          </div>
+          <div class="search-box">
+            <input id="clause-filter" type="text" class="input" placeholder="ابحث في البنود...">
+          </div>
         </div>
-      {% endif %}
 
-      <div id="clause-list" class="space-y-3 max-h-96 overflow-y-auto p-2">
-        {% for checkbox in form.clauses %}
-          <div class="clause-item p-4 rounded-lg border border-slate-200 dark:border-slate-600">
-            <label class="flex items-start space-x-3 space-x-reverse cursor-pointer">
-              {{ checkbox.tag }}
-              <div class="flex-1">
-                <div class="flex items-center">
-                  <span class="w-2 h-2 bg-green-500 rounded-full ml-2"></span>
-                  <span class="font-semibold text-slate-800 dark:text-slate-200">{{ checkbox.choice_label }}</span>
+        {% if form.clauses.errors %}
+          <div class="error-alert profile-section" style="background: #fef2f2; border-color: #fecaca; margin-bottom: 1.5rem;">
+            <div class="card-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+              <span class="error-icon" style="color: #ef4444; font-size: 1.2rem;">❌</span>
+              <div class="error-content">
+                <div class="card-section-title" style="color: #dc2626; margin-bottom: 0.25rem;">
+                  خطأ في الاختيار
                 </div>
-              </div>
-            </label>
-          </div>
-        {% endfor %}
-      </div>
-
-      <div class="flex items-center gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-600">
-        <button type="button" id="select-all" class="btn btn-secondary btn-glow flex items-center text-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-          تحديد الكل
-        </button>
-        <button type="button" id="unselect-all" class="btn btn-light btn-glow flex items-center text-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          إلغاء الكل
-        </button>
-        <span class="text-xs text-slate-500 dark:text-slate-400 flex-1 text-left">
-          تم تحديد <span id="selected-count">0</span> بند
-        </span>
-      </div>
-    </div>
-
-    <!-- البنود المخصّصة -->
-    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow-lg fade-in card-hover">
-      <div class="flex items-center mb-4">
-        <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center ml-3">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 dark:text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        </div>
-        <div>
-          <h2 class="text-lg font-bold text-slate-800 dark:text-white">بنود مخصّصة</h2>
-          <p class="text-sm text-slate-500 dark:text-slate-400">أضف بنودًا خاصة بالاتفاقية الحالية (سطر = بند)</p>
-        </div>
-      </div>
-
-      {% if form.custom_clauses.errors %}
-        <div class="mb-4 p-4 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
-          <ul class="text-rose-600 dark:text-rose-400 text-sm list-disc pr-5">
-            {% for e in form.custom_clauses.errors %}<li>{{ e }}</li>{% endfor %}
-          </ul>
-        </div>
-      {% endif %}
-
-      <div class="relative">
-        {{ form.custom_clauses }}
-        <div class="absolute bottom-3 left-3 text-xs text-slate-400">
-          💡 كل سطر يُعتبر بندًا مستقلًا
-        </div>
-      </div>
-
-      <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <p class="text-sm text-blue-700 dark:text-blue-300 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          ملاحظة: أي HTML يُزال تلقائيًا لأسباب أمنية.
-        </p>
-      </div>
-    </div>
-
-    <!-- معاينة البنود المثبتة حاليًا -->
-    <div class="rounded-2xl border bg-white dark:bg-slate-800 p-6 shadow-lg fade-in card-hover">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center">
-          <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center ml-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-bold text-slate-800 dark:text-white">معاينة البنود الحالية</h2>
-        </div>
-        <span class="text-xs rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 font-medium">
-          {{ agreement.clause_items.count }} بند/بنود مثبتة
-        </span>
-      </div>
-
-      <div class="space-y-3 max-h-80 overflow-y-auto p-2">
-        {% for item in agreement.clause_items.all %}
-          <div class="preview-item p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
-            <div class="flex">
-              <span class="flex items-center justify-center w-6 h-6 bg-green-500 rounded-full text-sm font-bold text-white ml-3 mt-1 flex-shrink-0">
-                {{ forloop.counter }}
-              </span>
-              <div class="flex-1">
-                {% if item.clause %}
-                  <strong class="text-slate-800 dark:text-slate-200 block mb-1">{{ item.clause.title }}:</strong>
-                  <span class="text-slate-600 dark:text-slate-400 leading-6">{{ item.clause.body }}</span>
-                {% else %}
-                  <span class="text-slate-600 dark:text-slate-400 leading-6">{{ item.custom_text }}</span>
-                {% endif %}
+                <ul style="color: #b91c1c; margin: 0; padding-right: 1rem;">
+                  {% for e in form.clauses.errors %}<li>{{ e }}</li>{% endfor %}
+                </ul>
               </div>
             </div>
           </div>
-        {% empty %}
-          <div class="text-center py-8 text-slate-500 dark:text-slate-400 border-2 border-dashed rounded-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            لا توجد بنود مثبتة بعد. بعد الحفظ ستظهر هنا.
-          </div>
-        {% endfor %}
+        {% endif %}
+
+        <div id="clause-list" class="clauses-list scroll-reveal">
+          {% for checkbox in form.clauses %}
+            <div class="clause-item profile-section">
+              <label class="clause-label">
+                {{ checkbox.tag }}
+                <div class="clause-content">
+                  <div class="clause-header">
+                    <span class="clause-dot"></span>
+                    <span class="clause-title">{{ checkbox.choice_label }}</span>
+                  </div>
+                </div>
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="clause-actions employee-actions" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--dark-200);">
+          <button type="button" id="select-all" class="btn btn-outline btn-sm">
+            ✅ تحديد الكل
+          </button>
+          <button type="button" id="unselect-all" class="btn btn-outline btn-sm">
+            ❌ إلغاء الكل
+          </button>
+          <span class="selection-count" style="color: var(--dark-500); font-size: 0.875rem;">
+            تم تحديد <span id="selected-count">0</span> بند
+          </span>
+        </div>
       </div>
-    </div>
 
-    <!-- أزرار التحكم -->
-    <div class="flex flex-wrap items-center gap-4 fade-in">
-      <button type="submit" class="btn btn-primary btn-glow flex items-center px-6">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-        </svg>
-        حفظ البنود
-      </button>
-      <a href="{% url 'agreements:detail' agreement.id %}" class="btn btn-light btn-glow flex items-center px-6">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        العودة للتفاصيل
-      </a>
-    </div>
-  </form>
+      {# ===== البنود المخصّصة ===== #}
+      <div class="profile-section" style="margin-bottom: 2rem;">
+        <div class="card-row" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+          <div class="card-icon" style="width: 3rem; height: 3rem; background: var(--secondary-100); color: var(--secondary-600); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+            ✏️
+          </div>
+          <div>
+            <h2 class="card-section-title">بنود مخصّصة</h2>
+            <p class="card-section-note">أضف بنودًا خاصة بالاتفاقية الحالية، كل حقل يمثل بندًا مستقلًا.</p>
+          </div>
+        </div>
+
+        {% if form.custom_clauses.errors %}
+          <div class="error-alert profile-section" style="background: #fef2f2; border-color: #fecaca; margin-bottom: 1.5rem;">
+            <div class="card-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+              <span class="error-icon" style="color: #ef4444; font-size: 1.2rem;">❌</span>
+              <div class="error-content">
+                <div class="card-section-title" style="color: #dc2626; margin-bottom: 0.25rem;">
+                  خطأ في البنود المخصصة
+                </div>
+                <ul style="color: #b91c1c; margin: 0; padding-right: 1rem;">
+                  {% for e in form.custom_clauses.errors %}<li>{{ e }}</li>{% endfor %}
+                </ul>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="custom-clauses-field">
+          {# حقل الفورم الأصلي (يُستخدم للتخزين فقط ويُخفى عن المستخدم) #}
+          {{ form.custom_clauses }}
+          {# قائمة الحقول الديناميكية للبنود المخصصة #}
+          <div id="custom-clauses-rows" class="custom-clauses-rows"></div>
+
+          <button type="button" id="add-custom-clause" class="btn btn-outline btn-sm" style="margin-top: 1rem;">
+            ➕ إضافة بند
+          </button>
+
+          <div class="field-hint" style="margin-top: 0.5rem;">
+            💡 يمكنك إضافة أكثر من بند، واستخدام زر الحذف لإزالة أي بند. سيتم حفظ البنود كسطور منفصلة في النظام.
+          </div>
+        </div>
+      </div>
+
+      {# ===== معاينة البنود المثبتة ===== #}
+      <div class="profile-section" style="margin-bottom: 2rem;">
+        <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div class="card-icon" style="width: 3rem; height: 3rem; background: var(--dark-100); color: var(--dark-600); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+              👁️
+            </div>
+            <h2 class="card-section-title">معاينة البنود الحالية</h2>
+          </div>
+          <span class="badge badge-default">
+            {{ agreement.clause_items.count }} بند/بنود مثبتة
+          </span>
+        </div>
+
+        <div class="preview-list">
+          {% for item in agreement.clause_items.all %}
+            <div class="preview-item profile-section scroll-reveal">
+              <div class="preview-content">
+                <div class="preview-number">{{ forloop.counter }}</div>
+                <div class="preview-text">
+                  {% if item.clause %}
+                    <strong class="preview-title">{{ item.clause.title }}:</strong>
+                    <span class="preview-body">{{ item.clause.body }}</span>
+                  {% else %}
+                    <span class="preview-custom">{{ item.custom_text }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="empty-preview profile-section text-center" style="padding: 3rem 2rem; background: var(--dark-50);">
+              <div class="empty-icon" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">📄</div>
+              <h3 class="card-section-title" style="margin-bottom: 0.5rem;">لا توجد بنود مثبتة</h3>
+              <p class="card-section-note">بعد الحفظ ستظهر البنود المثبتة هنا</p>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# ===== أزرار التحكم ===== #}
+      <div class="form-actions employee-actions" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--dark-200);">
+        <button type="submit" class="btn btn-primary">
+          💾 حفظ البنود
+        </button>
+        <a href="{% url 'agreements:detail' agreement.id %}" class="btn btn-outline">
+          ↩️ العودة للتفاصيل
+        </a>
+      </div>
+    </form>
+  </div>
 </section>
+{% endblock %}
 
-<script>
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
   (function(){
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تهيئة تأثيرات الأزرار
+    if (typeof initButtonEffects === 'function') {
+      initButtonEffects();
+    }
+
     const filterInput = document.getElementById('clause-filter');
     const list = document.getElementById('clause-list');
     const selAll = document.getElementById('select-all');
@@ -280,58 +245,494 @@
       const items = list.querySelectorAll('.clause-item');
       items.forEach(function(item){
         const checkbox = item.querySelector('input[type="checkbox"]');
-        if (checkbox && checkbox.checked) item.classList.add('selected'); else item.classList.remove('selected');
+        if (checkbox && checkbox.checked) {
+          item.classList.add('selected');
+          item.style.background = 'var(--primary-50)';
+          item.style.borderColor = 'var(--primary-300)';
+        } else {
+          item.classList.remove('selected');
+          item.style.background = '';
+          item.style.borderColor = '';
+        }
       });
       updateSelectedCount();
     }
 
-    filterInput?.addEventListener('input', function(){
-      const q = normalize(this.value);
-      if (!list) return;
-      const items = list.querySelectorAll('.clause-item');
-      items.forEach(function(item){
-        const label = item.querySelector('label');
-        const txt = normalize(label ? label.textContent : '');
-        item.style.display = txt.includes(q) ? '' : 'none';
-      });
-    });
+    // البحث في البنود
+    if (filterInput) {
+      filterInput.addEventListener('input', function(){
+        const q = normalize(this.value);
+        if (!list) return;
+        const items = list.querySelectorAll('.clause-item');
+        items.forEach(function(item){
+          const label = item.querySelector('.clause-title');
+          const txt = normalize(label ? label.textContent : '');
+          const isVisible = txt.includes(q);
+          item.style.display = isVisible ? '' : 'none';
+        });
 
-    selAll?.addEventListener('click', function(){
-      if (!list) return;
-      list.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
-        cb.checked = true;
-        cb.dispatchEvent(new Event('change'));
-      });
-    });
-
-    unselAll?.addEventListener('click', function(){
-      if (!list) return;
-      list.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
-        cb.checked = false;
-        cb.dispatchEvent(new Event('change'));
-      });
-    });
-
-    list?.addEventListener('change', function(e){
-      if (e.target.type === 'checkbox') {
-        const item = e.target.closest('.clause-item');
-        if (item) {
-          if (e.target.checked) item.classList.add('selected'); else item.classList.remove('selected');
-          updateSelectedCount();
+        if (q.length > 0) {
+          filterInput.style.borderColor = 'var(--primary-500)';
+          filterInput.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+        } else {
+          filterInput.style.borderColor = '';
+          filterInput.style.boxShadow = '';
         }
-      }
+      });
+    }
+
+    // تحديد الكل
+    if (selAll) {
+      selAll.addEventListener('click', function(){
+        if (!list) return;
+        list.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+          cb.checked = true;
+          cb.dispatchEvent(new Event('change'));
+        });
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+        if (typeof showToast === 'function') {
+          showToast('تم تحديد جميع البنود', 'success');
+        }
+      });
+    }
+
+    // إلغاء الكل
+    if (unselAll) {
+      unselAll.addEventListener('click', function(){
+        if (!list) return;
+        list.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+          cb.checked = false;
+          cb.dispatchEvent(new Event('change'));
+        });
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+        if (typeof showToast === 'function') {
+          showToast('تم إلغاء تحديد جميع البنود', 'info');
+        }
+      });
+    }
+
+    // تحديث حالة البنود عند التغيير
+    if (list) {
+      list.addEventListener('change', function(e){
+        if (e.target.type === 'checkbox') {
+          const item = e.target.closest('.clause-item');
+          if (item) {
+            if (e.target.checked) {
+              item.classList.add('selected');
+              item.style.background = 'var(--primary-50)';
+              item.style.borderColor = 'var(--primary-300)';
+            } else {
+              item.classList.remove('selected');
+              item.style.background = '';
+              item.style.borderColor = '';
+            }
+            updateSelectedCount();
+          }
+        }
+      });
+    }
+
+    // تأثيرات على البنود
+    document.querySelectorAll('.clause-item').forEach(function(item){
+      item.addEventListener('mouseenter', function() {
+        if (!this.classList.contains('selected')) {
+          this.style.background = 'var(--dark-50)';
+        }
+      });
+      item.addEventListener('mouseleave', function() {
+        if (!this.classList.contains('selected')) {
+          this.style.background = '';
+        }
+      });
     });
 
+    // ===== منطق البنود المخصّصة الديناميكية =====
+    const rowsContainer = document.getElementById('custom-clauses-rows');
+    const addCustomBtn = document.getElementById('add-custom-clause');
+    const hiddenTextarea = document.querySelector('textarea[name="custom_clauses"]');
+    const formEl = document.querySelector('.clauses-form');
+
+    function createCustomClauseRow(value) {
+      if (!rowsContainer) return;
+      const row = document.createElement('div');
+      row.className = 'custom-clause-row';
+
+      const input = document.createElement('textarea');
+      input.className = 'input custom-clause-input';
+      input.placeholder = 'اكتب نص البند هنا...';
+      input.rows = 2;
+      input.value = value || '';
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn btn-light btn-sm custom-clause-delete';
+      delBtn.textContent = '🗑️ حذف';
+
+      delBtn.addEventListener('click', function(){
+        if (rowsContainer.children.length === 1 && input.value.trim() === '') {
+          // لا حاجة للتأكيد إذا كان حقلًا فارغًا ووحيدًا
+          rowsContainer.removeChild(row);
+          createCustomClauseRow('');
+          return;
+        }
+        const ok = confirm('هل تريد حذف هذا البند المخصّص؟');
+        if (!ok) return;
+        rowsContainer.removeChild(row);
+      });
+
+      row.appendChild(input);
+      row.appendChild(delBtn);
+      rowsContainer.appendChild(row);
+    }
+
+    // تهيئة الحقول عند تحميل الصفحة
     document.addEventListener('DOMContentLoaded', function(){
-      updateClauseItems();
-      const customTextarea = document.querySelector('textarea[name="custom_clauses"]');
-      if (customTextarea) {
-        customTextarea.className = 'custom-textarea ' + (customTextarea.className || '');
-        if (!customTextarea.placeholder) {
-          customTextarea.placeholder = 'أدخل البنود المخصصة هنا...\nكل سطر يُعتبر بندًا مستقلًا\n\nمثال:\n- البند الأول المخصص\n- البند الثاني المخصص';
+      if (hiddenTextarea) {
+        // إخفاء حقل الفورم الأصلي
+        hiddenTextarea.style.display = 'none';
+
+        const raw = hiddenTextarea.value || '';
+        const parts = raw.split('\n').map(function(t){ return t.trim(); }).filter(function(t){ return t.length > 0; });
+        if (parts.length > 0) {
+          parts.forEach(function(text){
+            createCustomClauseRow(text);
+          });
+        } else {
+          // على الأقل حقل واحد فارغ جاهز للإدخال
+          createCustomClauseRow('');
         }
       }
+
+      if (addCustomBtn) {
+        addCustomBtn.addEventListener('click', function(){
+          createCustomClauseRow('');
+          if (typeof animateButtonClick === 'function') {
+            animateButtonClick(this);
+          }
+        });
+      }
+
+      // قبل الإرسال: تجميع جميع الحقول في الـ textarea المخفية كسطور
+      if (formEl && hiddenTextarea) {
+        formEl.addEventListener('submit', function(){
+          const values = [];
+          const inputs = document.querySelectorAll('.custom-clause-input');
+          inputs.forEach(function(inp){
+            const v = (inp.value || '').trim();
+            if (v) {
+              values.push(v);
+            }
+          });
+          hiddenTextarea.value = values.join('\n');
+        });
+      }
+
+      // توست عند محاولة الحفظ بدون أي بند
+      const submitBtn = document.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', function(){
+          if (typeof animateButtonClick === 'function') {
+            animateButtonClick(this);
+          }
+          const selectedTextEl = document.getElementById('selected-count');
+          const selectedNum = selectedTextEl ? selectedTextEl.textContent : '0';
+          let anyCustom = false;
+          document.querySelectorAll('.custom-clause-input').forEach(function(inp){
+            if (!anyCustom && inp.value.trim() !== '') {
+              anyCustom = true;
+            }
+          });
+          if (selectedNum === '0' && !anyCustom) {
+            if (typeof showToast === 'function') {
+              showToast('لم تقم باختيار أي بنود أو إضافة بنود مخصصة', 'warning');
+            }
+          }
+        });
+      }
+
+      // تهيئة حالة البنود المحفوظة
+      updateClauseItems();
     });
+
   })();
-</script>
+  </script>
+
+  <style>
+  .finalize-clauses-page .info-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .finalize-clauses-page .info-item {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+    transition: all 0.3s ease;
+  }
+
+  .finalize-clauses-page .info-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .finalize-clauses-page .info-label {
+    font-size: 0.875rem;
+    color: var(--dark-600);
+    margin-bottom: 0.5rem;
+  }
+
+  .finalize-clauses-page .info-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--dark-800);
+  }
+
+  .finalize-clauses-page .clauses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+    border: 1px solid var(--dark-200);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+  }
+
+  .finalize-clauses-page .clause-item {
+    padding: 1rem;
+    border: 2px solid var(--dark-200);
+    border-radius: var(--radius-lg);
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .finalize-clauses-page .clause-item:hover {
+    border-color: var(--primary-300);
+    background: var(--primary-25);
+  }
+
+  .finalize-clauses-page .clause-item.selected {
+    border-color: var(--primary-500);
+    background: var(--primary-50);
+  }
+
+  .finalize-clauses-page .clause-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    cursor: pointer;
+    margin: 0;
+  }
+
+  .finalize-clauses-page .clause-content {
+    flex: 1;
+  }
+
+  .finalize-clauses-page .clause-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .finalize-clauses-page .clause-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--primary-500);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .finalize-clauses-page .clause-title {
+    font-weight: 600;
+    color: var(--dark-800);
+    line-height: 1.4;
+  }
+
+  /* إخفاء textarea الأصلي */
+  .finalize-clauses-page .custom-clauses-field textarea[name="custom_clauses"] {
+    display: none;
+  }
+
+  .finalize-clauses-page .custom-clauses-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .finalize-clauses-page .custom-clause-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .finalize-clauses-page .custom-clause-input {
+    width: 100%;
+    min-height: 60px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    resize: vertical;
+    transition: all 0.3s ease;
+  }
+
+  .finalize-clauses-page .custom-clause-input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .finalize-clauses-page .custom-clause-delete {
+    white-space: nowrap;
+  }
+
+  .finalize-clauses-page .preview-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+
+  .finalize-clauses-page .preview-item {
+    border-right: 4px solid var(--primary-500);
+    padding: 1.25rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+    transition: all 0.3s ease;
+  }
+
+  .finalize-clauses-page .preview-item:hover {
+    transform: translateX(-5px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .finalize-clauses-page .preview-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .finalize-clauses-page .preview-number {
+    width: 2rem;
+    height: 2rem;
+    background: var(--primary-500);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+  }
+
+  .finalize-clauses-page .preview-text {
+    flex: 1;
+  }
+
+  .finalize-clauses-page .preview-title {
+    color: var(--dark-800);
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .finalize-clauses-page .preview-body,
+  .finalize-clauses-page .preview-custom {
+    color: var(--dark-600);
+    line-height: 1.6;
+  }
+
+  .finalize-clauses-page .search-box {
+    position: relative;
+  }
+
+  .finalize-clauses-page .search-box .input {
+    padding-right: 2.5rem;
+    width: 250px;
+  }
+
+  .finalize-clauses-page .clause-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .finalize-clauses-page .selection-count {
+    margin-right: auto;
+  }
+
+  .finalize-clauses-page .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+  }
+
+  @media (max-width: 768px) {
+    .finalize-clauses-page .card-header-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+    
+    .finalize-clauses-page .search-box .input {
+      width: 100%;
+    }
+    
+    .finalize-clauses-page .info-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .finalize-clauses-page .clause-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .finalize-clauses-page .form-actions {
+      flex-direction: column;
+    }
+    
+    .finalize-clauses-page .form-actions .btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .finalize-clauses-page .preview-content {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    
+    .finalize-clauses-page .clause-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .finalize-clauses-page .scroll-reveal {
+    animation: slideInRight 0.6s ease-out;
+  }
+  </style>
 {% endblock %}

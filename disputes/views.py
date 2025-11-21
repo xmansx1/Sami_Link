@@ -178,6 +178,7 @@ def dispute_create(request, request_id: int):
             dispute.save()
             _freeze_request(req)
 
+
             detail_url = reverse("marketplace:request_detail", args=[req.pk])
             if getattr(req, "client", None):
                 _notify_safe(req.client, "تم فتح نزاع", f"فُتح نزاع على طلبك #{req.pk}: {dispute.title}", url=detail_url)
@@ -186,6 +187,16 @@ def dispute_create(request, request_id: int):
                     req.assigned_employee, "تم فتح نزاع",
                     f"فُتح نزاع على طلب #{req.pk}: {dispute.title}", url=detail_url
                 )
+
+            # Notify all managers and finance
+            try:
+                from accounts.models import User
+                managers = User.objects.filter(role=User.Role.ADMIN, is_active=True)
+                finance = User.objects.filter(role=User.Role.FINANCE, is_active=True)
+                for user in list(managers) + list(finance):
+                    _notify_safe(user, "تم فتح نزاع جديد", f"تم فتح نزاع على الطلب #{req.pk} بعنوان: {dispute.title}", url=detail_url)
+            except Exception:
+                logger.exception("فشل إرسال إشعار للمديرين أو المالية عند فتح نزاع.")
 
             messages.warning(request, "تم فتح النزاع وتجميد الطلب مؤقتًا حتى الحسم.")
             return redirect(detail_url)
@@ -234,11 +245,22 @@ def dispute_open_quick(request, request_id: int):
         return redirect("marketplace:request_detail", pk=req.pk)
 
     _freeze_request(req)
+
     detail_url = reverse("marketplace:request_detail", args=[req.pk])
     if getattr(req, "client", None):
         _notify_safe(req.client, "تم فتح نزاع", f"فُتح نزاع على طلبك #{req.pk}: {getattr(dispute, 'title', reason)}", url=detail_url)
     if getattr(req, "assigned_employee", None):
         _notify_safe(req.assigned_employee, "تم فتح نزاع", f"فُتح نزاع على طلب #{req.pk}.", url=detail_url)
+
+    # Notify all managers and finance
+    try:
+        from accounts.models import User
+        managers = User.objects.filter(role=User.Role.ADMIN, is_active=True)
+        finance = User.objects.filter(role=User.Role.FINANCE, is_active=True)
+        for user in list(managers) + list(finance):
+            _notify_safe(user, "تم فتح نزاع جديد", f"تم فتح نزاع على الطلب #{req.pk} بعنوان: {getattr(dispute, 'title', reason)}", url=detail_url)
+    except Exception:
+        logger.exception("فشل إرسال إشعار للمديرين أو المالية عند فتح نزاع.")
 
     messages.warning(request, "تم فتح النزاع وإيقاف جميع العمليات لحين المراجعة.")
     return redirect(detail_url)

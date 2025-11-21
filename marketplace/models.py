@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from typing import Optional
+from decimal import Decimal, ROUND_HALF_UP  # ✅ مهم للحسابات المالية
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -9,8 +10,25 @@ from django.db import models, transaction
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.functional import cached_property
 
 User = settings.AUTH_USER_MODEL
+
+
+# ✅ دالة مساعدة لتوحيد شكل النِّسَب (10 → 0.10 / 0.10 تبقى 0.10)
+def _normalize_percent(value) -> Decimal:
+    """
+    يحوّل القيمة إلى نسبة عشرية:
+    - 10  -> 0.10
+    - 0.10 -> 0.10
+    """
+    if value is None:
+        return Decimal("0")
+    if not isinstance(value, Decimal):
+        value = Decimal(str(value))
+    if value > 1:
+        value = value / Decimal("100")
+    return value.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
 
 
 class Request(models.Model):
@@ -88,6 +106,7 @@ class Request(models.Model):
 
         # 4) اتساق العلم مع الحالة (نسمح بالتعايش لأجل التوافق)
         if self.has_dispute and self.status != self.Status.DISPUTED:
+            # لا نرمي استثناءً هنا لأجل التوافق الخلفي؛ العلم يبقى لأغراض التقارير فقط.
             pass
 
     def save(self, *args, skip_clean: bool = False, **kwargs):
@@ -117,24 +136,38 @@ class Request(models.Model):
         )
 
     @property
-    def is_new(self) -> bool: return self.status == self.Status.NEW
+    def is_new(self) -> bool:
+        return self.status == self.Status.NEW
+
     @property
-    def is_offer_selected(self) -> bool: return self.status == self.Status.OFFER_SELECTED
+    def is_offer_selected(self) -> bool:
+        return self.status == self.Status.OFFER_SELECTED
+
     @property
-    def is_agreement_pending(self) -> bool: return self.status == self.Status.AGREEMENT_PENDING
+    def is_agreement_pending(self) -> bool:
+        return self.status == self.Status.AGREEMENT_PENDING
+
     @property
-    def is_in_progress(self) -> bool: return self.status == self.Status.IN_PROGRESS
+    def is_in_progress(self) -> bool:
+        return self.status == self.Status.IN_PROGRESS
+
     @property
-    def is_completed(self) -> bool: return self.status == self.Status.COMPLETED
+    def is_completed(self) -> bool:
+        return self.status == self.Status.COMPLETED
+
     @property
-    def is_disputed(self) -> bool: return self.status == self.Status.DISPUTED or self.has_dispute
+    def is_disputed(self) -> bool:
+        return self.status == self.Status.DISPUTED or self.has_dispute
+
     @property
-    def is_cancelled(self) -> bool: return self.status == self.Status.CANCELLED
+    def is_cancelled(self) -> bool:
+        return self.status == self.Status.CANCELLED
 
     @property
     def selected_offer(self):
         """إرجاع العرض المختار (إن وُجد)."""
         try:
+            # لتفادي مشاكل الاستيراد الدائري نستخدم الاستيراد المتأخر
             from .models import Offer  # type: ignore
             return (
                 self.offers.select_related("employee")
@@ -187,11 +220,17 @@ class Request(models.Model):
         self.sla_agreement_overdue = False
         # بعد الاختيار، نافذة العروض لا تُهم — لكن نضمن أنها معبأة لأغراض التقارير
         self.ensure_offers_window()
-        self.save(update_fields=[
-            "assigned_employee", "status", "selected_at",
-            "agreement_due_at", "sla_agreement_overdue",
-            "offers_window_ends_at", "updated_at"
-        ])
+        self.save(
+            update_fields=[
+                "assigned_employee",
+                "status",
+                "selected_at",
+                "agreement_due_at",
+                "sla_agreement_overdue",
+                "offers_window_ends_at",
+                "updated_at",
+            ]
+        )
 
     @transaction.atomic
     def transition_to_agreement_pending(self):
@@ -228,10 +267,16 @@ class Request(models.Model):
         self.selected_at = None
         self.agreement_due_at = None
         self.sla_agreement_overdue = False
-        self.save(update_fields=[
-            "assigned_employee", "status", "selected_at",
-            "agreement_due_at", "sla_agreement_overdue", "updated_at"
-        ])
+        self.save(
+            update_fields=[
+                "assigned_employee",
+                "status",
+                "selected_at",
+                "agreement_due_at",
+                "sla_agreement_overdue",
+                "updated_at",
+            ]
+        )
 
     @transaction.atomic
     def reset_to_new(self):
@@ -244,11 +289,14 @@ class Request(models.Model):
         """
         try:
             from .models import Offer  # type: ignore
-            (Offer.objects
-                .filter(request=self)
+
+            (
+                Offer.objects.filter(request=self)
                 .exclude(status=getattr(Offer.Status, "REJECTED", "rejected"))
-                .update(status=getattr(Offer.Status, "REJECTED", "rejected")))
+                .update(status=getattr(Offer.Status, "REJECTED", "rejected"))
+            )
         except Exception:
+            # في حال فشل الاستيراد أو التحديث، نكمل إعادة الضبط بدون كسر النظام
             pass
 
         self.assigned_employee = None
@@ -258,11 +306,17 @@ class Request(models.Model):
         self.sla_agreement_overdue = False
         days = getattr(settings, "OFFERS_WINDOW_DAYS", 5)
         self.offers_window_ends_at = timezone.now() + timedelta(days=days)
-        self.save(update_fields=[
-            "assigned_employee", "status", "selected_at",
-            "agreement_due_at", "sla_agreement_overdue",
-            "offers_window_ends_at", "updated_at"
-        ])
+        self.save(
+            update_fields=[
+                "assigned_employee",
+                "status",
+                "selected_at",
+                "agreement_due_at",
+                "sla_agreement_overdue",
+                "offers_window_ends_at",
+                "updated_at",
+            ]
+        )
 
     @transaction.atomic
     def reassign_to(self, employee):
@@ -330,9 +384,24 @@ class Request(models.Model):
 
 
 class Offer(models.Model):
+    client_total_amount_cache = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, editable=False)
+
+    def save(self, *args, **kwargs):
+        # جميع الحسابات المالية تعتمد فقط على المبلغ المدخل (proposed_price)
+        try:
+            self.client_total_amount_cache = Decimal(self.proposed_price or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        except Exception:
+            self.client_total_amount_cache = None
+        super().save(*args, **kwargs)
     """
     عرض واحد فعّال لكل تقني على الطلب (يمكن سحب العرض ثم إعادة التقديم داخل النافذة).
     نافذة العروض = OFFERS_WINDOW_DAYS (افتراضي 5) من إنشاء الطلب.
+
+    💰 منطق المال:
+      - proposed_price = صافي الموظف (P).
+      - platform_fee_amount = دخل المنصّة = P × نسبة المنصّة.
+      - vat_amount = ضريبة القيمة المضافة على P فقط.
+      - client_total_amount = المبلغ المطلوب من العميل = P + العمولة + الضريبة.
     """
 
     class Status(models.TextChoices):
@@ -379,16 +448,105 @@ class Offer(models.Model):
             ),
         ]
 
+    # -------------------------
+    # 💰 منطق المال: proposed_price = صافي الموظف (P)
+    # -------------------------
+    @property
+    def net_for_employee(self) -> Decimal:
+        """
+        صافي الموظف = السعر المقترح - نسبة المنصة
+        """
+        proposed = Decimal(self.proposed_price or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        platform_fee = self.platform_fee_amount
+        return (proposed - platform_fee).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @cached_property
+    def _finance_settings(self):
+        """
+        جلب إعدادات المالية (نِسَب المنصّة والضريبة) مرة واحدة مع كاش على مستوى الكائن.
+        استخدام import داخلي لتفادي أي دورات استيراد.
+        """
+        from finance.models import FinanceSettings  # محلي لتفادي الدورة
+        return FinanceSettings.get_solo()
+
+    @property
+    def platform_fee_percent(self) -> Decimal:
+        """
+        تم تعطيل أي حساب تلقائي للنسبة. تعيد صفر.
+        """
+        return Decimal("0.00")
+
+    @property
+    def vat_percent(self) -> Decimal:
+        """
+        تم تعطيل أي حساب تلقائي للنسبة. تعيد صفر.
+        """
+        return Decimal("0.00")
+
+    @property
+    def platform_fee_amount(self) -> Decimal:
+        """
+        تم تعطيل أي حساب تلقائي للعمولة. تعيد نفس المبلغ المدخل.
+        """
+        return Decimal(self.proposed_price or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @property
+    def subtotal_before_vat(self) -> Decimal:
+        """
+        تم تعطيل أي حساب تلقائي. تعيد نفس المبلغ المدخل.
+        """
+        return Decimal(self.proposed_price or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @property
+    def vat_amount(self) -> Decimal:
+        """
+        تم تعطيل أي حساب تلقائي للضريبة. تعيد نفس المبلغ المدخل.
+        """
+        return Decimal(self.proposed_price or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @property
+    def client_total_amount(self) -> Decimal:
+        """
+        الإجمالي = المبلغ المدخل فقط.
+        """
+        if self.client_total_amount_cache is not None:
+            return self.client_total_amount_cache
+        return Decimal(self.proposed_price or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    def as_financial_dict(self) -> dict:
+        """
+        إرجاع تفاصيل المبلغ على شكل قاموس موحّد للاستخدام في الفيوز/القوالب:
+
+        {
+          "employee_net": ...       # مستحقات الموظف (P)
+          "platform_fee": ...       # دخل المنصّة
+          "vat_amount": ...         # الضريبة
+          "client_total": ...       # المبلغ المطلوب من العميل
+        }
+        """
+        return {
+            "employee_net": self.net_for_employee,
+            "platform_fee": self.platform_fee_amount,
+            "vat_amount": self.vat_amount,
+            "client_total": self.client_total_amount,
+        }
+
+    # -------------------------
     # صلاحيات أساسية (مستعملة في القوالب/الفيوز)
+    # -------------------------
     def can_view(self, user) -> bool:
         if not getattr(user, "is_authenticated", False):
             return False
-        if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False) or getattr(user, "role", "") in ("admin", "manager", "finance"):
+        if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
+            return True
+        if getattr(user, "role", "") in ("admin", "manager", "finance"):
             return True
         return user.id in (self.request.client_id, self.employee_id)
 
     def can_select(self, user) -> bool:
-        # الاختيار متاح للعميل فقط، ومن حالة NEW، وداخل نافذة العروض
+        """
+        الاختيار متاح للعميل فقط، ومن حالة NEW، وداخل نافذة العروض.
+        """
         return (
             getattr(user, "is_authenticated", False)
             and user.id == self.request.client_id
@@ -398,6 +556,9 @@ class Offer(models.Model):
         )
 
     def can_reject(self, user) -> bool:
+        """
+        رفض العرض متاح للعميل صاحب الطلب فقط، وعندما يكون العرض ما زال PENDING.
+        """
         return (
             getattr(user, "is_authenticated", False)
             and user.id == self.request.client_id
@@ -415,7 +576,11 @@ class Offer(models.Model):
         req: Request = getattr(self, "request", None)
         if req:
             req.ensure_offers_window()
-            if req.status == Request.Status.NEW and req.offers_window_ends_at and timezone.now() > req.offers_window_ends_at:
+            if (
+                req.status == Request.Status.NEW
+                and req.offers_window_ends_at
+                and timezone.now() > req.offers_window_ends_at
+            ):
                 # يُسمح بالحفظ لو كان العرض WITHDRAWN (أرشيفي) لكن تُمنع العروض الفعالة الجديدة
                 if self.status != self.Status.WITHDRAWN:
                     raise ValidationError("انتهت نافذة استقبال العروض لهذا الطلب.")

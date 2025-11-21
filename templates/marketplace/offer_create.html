@@ -1,146 +1,553 @@
 {% extends "base.html" %}
 {% block title %}تقديم عرض{% endblock %}
-{% block content %}
-<section class="max-w-3xl mx-auto py-8 rtl" dir="rtl">
 
-  <div class="rounded-2xl border bg-white/80 dark:bg-slate-800/70 backdrop-blur shadow-glass-lg overflow-hidden">
-    {# ===== رأس الصفحة ===== #}
-    <div class="p-6 border-b bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-slate-800 dark:to-slate-900">
-      <div class="flex items-center justify-between gap-3">
-        <div class="min-w-0">
-          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">تقديم عرض</h1>
-          <p class="text-slate-600 dark:text-slate-300 text-sm mt-1">
-            يمكنك تقديم <b>عرض واحد فقط</b> على هذا الطلب. إذا قبل العميل عرضك سيُسنَد الطلب لك تلقائيًا.
-          </p>
+{% block content %}
+<section class="page-section offer-create-page">
+  <div class="container">
+    
+    {# ===== بطاقة النموذج الرئيسية ===== #}
+    <div class="profile-section" style="max-width: 800px; margin: 0 auto;">
+      
+      {# ===== رأس الصفحة ===== #}
+      <div class="card-header" style="background: linear-gradient(135deg, var(--primary-50) 0%, var(--secondary-50) 100%); border-bottom: 1px solid var(--primary-200);">
+        <div class="card-row" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+          <div style="flex: 1;">
+            <h1 class="card-section-title" style="margin: 0; color: var(--dark-900);">
+              📨 تقديم عرض
+            </h1>
+            <p class="card-section-note" style="margin-top: 0.5rem;">
+              يمكنك تقديم <strong>عرض واحد فقط</strong> على هذا الطلب. إذا قبل العميل عرضك سيُسنَد الطلب لك تلقائيًا.
+            </p>
+          </div>
         </div>
-        <a href="{% url 'marketplace:request_list' %}" class="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">رجوع</a>
+      </div>
+
+      {# ===== جسم الصفحة ===== #}
+      <div class="card-body">
+
+        {# ملخّص أخطاء عامة #}
+        {% if form.non_field_errors %}
+          <div class="toast error" style="position: relative; margin-bottom: 1.5rem;">
+            <div class="toast-message">
+              {% for e in form.non_field_errors %}<div>• {{ e }}</div>{% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        <form id="offerForm" method="post" class="offer-form" novalidate autocomplete="off">
+          {% csrf_token %}
+
+          {# أي حقول مخفية (مثل request) #}
+          {% for hf in form.hidden_fields %}
+            {{ hf }}
+          {% endfor %}
+
+          {# ===== تفاصيل العرض (note) ===== #}
+          <div class="form-field">
+            <label for="id_note" class="form-label">
+              📝 تفاصيل العرض
+            </label>
+            <textarea id="id_note" name="note" rows="6"
+                      class="input textarea-large"
+                      minlength="10" maxlength="2000" required
+                      placeholder="اشرح نطاق العمل، المخرجات، الافتراضات وأي ملاحظات للعميل..."
+                      autofocus>{{ form.note.value|default_if_none:'' }}</textarea>
+            {% if form.note.errors %}
+              <div class="field-error">
+                {% for e in form.note.errors %}<div>• {{ e }}</div>{% endfor %}
+              </div>
+            {% endif %}
+            <div class="field-hint-row">
+              <span class="field-hint">اكتب وصفًا واضحًا وشاملاً للعمل المطلوب</span>
+              <span id="descCount" class="field-counter">0/2000</span>
+            </div>
+          </div>
+
+          {# ===== الشبكة: المدة + السعر ===== #}
+          <div class="form-grid-2">
+            
+            {# المدة المقترحة #}
+            <div class="form-field">
+              <label for="id_proposed_duration_days" class="form-label">
+                ⏱️ المدة المقترحة (أيام)
+              </label>
+              <input id="id_proposed_duration_days" type="number" name="proposed_duration_days"
+                     class="input"
+                     min="1" step="1" required
+                     value="{{ form.proposed_duration_days.value|default:form.proposed_duration_days.initial|default:'7' }}">
+              {% if form.proposed_duration_days.errors %}
+                <div class="field-error">
+                  {% for e in form.proposed_duration_days.errors %}<div>• {{ e }}</div>{% endfor %}
+                </div>
+              {% endif %}
+              <p class="field-hint">اختر قيمة واقعية لتنفيذ العمل</p>
+            </div>
+
+            {# السعر المقترح #}
+            <div class="form-field">
+              <label for="id_proposed_price" class="form-label">
+                💰 السعر المقترح
+              </label>
+              <input id="id_proposed_price" type="number" name="proposed_price"
+                     class="input"
+                     inputmode="decimal" min="0" step="0.01" required
+                     value="{{ form.proposed_price.value|default:form.proposed_price.initial|default:'0' }}">
+              {% if form.proposed_price.errors %}
+                <div class="field-error">
+                  {% for e in form.proposed_price.errors %}<div>• {{ e }}</div>{% endfor %}
+                </div>
+              {% endif %}
+              <div class="field-hint-row">
+                <span class="field-hint">المبلغ المدخل:</span>
+                <span id="pricePreview" class="value-strong">—</span>
+              </div>
+
+              {# ===== بطاقة تفاصيل السعر (تُحدَّث تلقائيًا) ===== #}
+              <div class="price-details profile-section"
+                   data-platform-fee-percent="{{ platform_fee_percent|default:form.instance.platform_fee_percent|default_if_none:'' }}"
+                   data-vat-percent="{{ vat_percent|default:form.instance.vat_percent|default_if_none:'' }}"
+                   style="background: var(--dark-50); margin-top: 1rem;">
+                <div class="card-section-title">🧮 تفاصيل السعر</div>
+                <div class="price-grid">
+                  <div class="price-item" title="صافي الموظف بعد خصم العمولة">
+                    <span class="price-label">👤 صافي الموظف:</span>
+                    <span class="price-value">
+                      <span id="netForEmployee"
+                            data-value="{{ form.instance.net_for_employee|default_if_none:'' }}">
+                        {{ form.instance.net_for_employee|default_if_none:'—' }}
+                      </span>
+                      <span class="currency">ر.س</span>
+                    </span>
+                    <span class="field-hint" style="font-size: 0.85em; color: #0e7490; margin-right: 8px;">
+                      المبلغ الذي سيحصل عليه الموظف فعليًا
+                    </span>
+                  </div>
+
+                  <div class="price-item" title="قيمة عمولة المنصة من السعر المقترح">
+                    <span class="price-label">
+                      💸 عمولة المنصة
+                      <span id="platformFeePercentDisplay">
+                        ({{ platform_fee_percent|default:form.instance.platform_fee_percent|default_if_none:'0' }}%)
+                      </span>:
+                    </span>
+                    <span class="price-value">
+                      <span id="platformFee"
+                            data-value="{{ form.instance.platform_fee_amount|default_if_none:'' }}">
+                        {{ form.instance.platform_fee_amount|default_if_none:'—' }}
+                      </span>
+                      <span class="currency">ر.س</span>
+                    </span>
+                  </div>
+
+                  <div class="price-item" title="قيمة الضريبة المضافة على السعر المقترح فقط">
+                    <span class="price-label">
+                      🧾 الضريبة
+                      <span id="vatPercentDisplay">
+                        ({{ vat_percent|default:form.instance.vat_percent|default_if_none:'0' }}%)
+                      </span>:
+                    </span>
+                    <span class="price-value">
+                      <span id="vatValue"
+                            data-value="{{ form.instance.vat_amount|default_if_none:'' }}">
+                        {{ form.instance.vat_amount|default_if_none:'—' }}
+                      </span>
+                      <span class="currency">ر.س</span>
+                    </span>
+                  </div>
+
+                  <div class="price-item highlight" title="المبلغ النهائي الذي سيدفعه العميل (يشمل العمولة والضريبة)">
+                    <span class="price-label">💼 إجمالي العميل:</span>
+                    <span class="price-value">
+                      <span id="totalForClient"
+                            data-value="{{ form.instance.client_total_amount|default_if_none:'' }}">
+                        {{ form.instance.client_total_amount|default_if_none:'—' }}
+                      </span>
+                      <span class="currency">ر.س</span>
+                    </span>
+                    <span class="field-hint" style="font-size: 0.9em; color: #166534; margin-right: 8px;">
+                      يشمل عمولة المنصة والضريبة
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {# ===== أزرار الإجراء ===== #}
+          <div class="form-actions employee-actions" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--dark-200);">
+            <button id="submitBtn" type="submit" class="btn btn-primary">
+              إرسال العرض
+            </button>
+            <a href="{% url 'marketplace:new_requests' %}" class="btn btn-outline">
+              إلغاء
+            </a>
+          </div>
+
+          <p class="form-note" style="text-align: center; color: var(--dark-500); font-size: 0.875rem; margin-top: 1rem;">
+            إذا لم ينتقل النموذج بعد الضغط، راجع رسائل المتصفّح أعلى الحقول (قد يمنع الإرسال لعدم اكتمال المدخلات).
+          </p>
+        </form>
       </div>
     </div>
 
-    {# ===== جسم الصفحة ===== #}
-    <div class="p-6">
-
-      {# ملخّص أخطاء عامة #}
-      {% if form.non_field_errors %}
-        <div class="mb-4 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-900/30 p-3 text-rose-800 dark:text-rose-200 text-sm">
-          {% for e in form.non_field_errors %}• {{ e }}<br>{% endfor %}
-        </div>
-      {% endif %}
-
-      <form id="offerForm" method="post" class="space-y-5" novalidate autocomplete="off">
-        {% csrf_token %}
-
-        {# أي حقول مخفية (مثل request أو csrf إضافي) #}
-        {% for hf in form.hidden_fields %}
-          {{ hf }}
-        {% endfor %}
-
-        {# ===== تفاصيل العرض (note) ===== #}
-        <div>
-          <label for="id_note" class="block mb-2 font-medium text-slate-800 dark:text-slate-100">تفاصيل العرض</label>
-          <textarea id="id_note" name="note" rows="6"
-                    class="input w-full !min-h-[140px] leading-7"
-                    minlength="10" maxlength="2000" required
-                    placeholder="اشرح نطاق العمل، المخرجات، الافتراضات وأي ملاحظات للعميل"
-                    autofocus>{{ form.note.value|default_if_none:'' }}</textarea>
-          {% if form.note.errors %}
-            <p class="mt-2 text-sm text-rose-700 dark:text-rose-300">{% for e in form.note.errors %}• {{ e }} {% endfor %}</p>
-          {% endif %}
-          <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            <span>عدد الأحرف:</span> <span id="descCount">0/2000</span>
-          </div>
-        </div>
-
-        {# ===== الشبكة: المدة + السعر ===== #}
-        <div class="grid md:grid-cols-2 gap-4">
-          <div>
-            <label for="id_proposed_duration_days" class="block mb-2 font-medium text-slate-800 dark:text-slate-100">
-              المدة المقترحة (أيام)
-            </label>
-            <input id="id_proposed_duration_days" type="number" name="proposed_duration_days"
-                   class="input w-full"
-                   min="1" step="1" required
-                   value="{{ form.proposed_duration_days.value|default:form.proposed_duration_days.initial|default:'7' }}">
-            {% if form.proposed_duration_days.errors %}
-              <p class="mt-2 text-sm text-rose-700 dark:text-rose-300">{% for e in form.proposed_duration_days.errors %}• {{ e }} {% endfor %}</p>
-            {% endif %}
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">اختر قيمة واقعية لتنفيذ العمل.</p>
-          </div>
-
-          <div>
-            <label for="id_proposed_price" class="block mb-2 font-medium text-slate-800 dark:text-slate-100">
-              السعر المقترح
-            </label>
-            <input id="id_proposed_price" type="number" name="proposed_price"
-                   class="input w-full"
-                   inputmode="decimal" min="0" step="0.01" required
-                   value="{{ form.proposed_price.value|default:form.proposed_price.initial|default:'0' }}">
-            {% if form.proposed_price.errors %}
-              <p class="mt-2 text-sm text-rose-700 dark:text-rose-300">{% for e in form.proposed_price.errors %}• {{ e }} {% endfor %}</p>
-            {% endif %}
-            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              <span>معاينة:</span> <span id="pricePreview">—</span>
-            </div>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">أدخل السعر شاملًا للضرائب/الرسوم إن لزم.</p>
-          </div>
-        </div>
-
-        {# ===== أزرار الإجراء ===== #}
-        <div class="pt-2 flex items-center gap-3">
-          <button id="submitBtn" type="submit"
-                  class="btn btn-primary">
-            إرسال العرض
-          </button>
-
-          <a href="{% url 'marketplace:request_list' %}"
-             class="btn btn-ghost">
-            العودة
-          </a>
-        </div>
-
-        <p class="text-xs text-slate-500 dark:text-slate-400">
-          إذا لم ينتقل النموذج بعد الضغط، راجع رسائل المتصفّح أعلى الحقول (قد يمنع الإرسال لعدم اكتمال المدخلات).
-        </p>
-      </form>
-    </div>
   </div>
-
 </section>
+{% endblock %}
 
-{# ===== عدّاد النص + تعطيل الزر بعد الإرسال + معاينة السعر ===== #}
-<script>
-(function () {
-  var form = document.getElementById('offerForm');
-  var ta = document.getElementById('id_note');
-  var cnt = document.getElementById('descCount');
-  var btn = document.getElementById('submitBtn');
-  var priceInput = document.getElementById('id_proposed_price');
-  var pricePreview = document.getElementById('pricePreview');
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+    if (typeof initButtonEffects === 'function') {
+      initButtonEffects();
+    }
 
-  function updateCount() {
-    if (!ta || !cnt) return;
-    var max = parseInt(ta.getAttribute('maxlength')) || 2000;
-    var len = (ta.value || '').length;
-    cnt.textContent = len + '/' + max;
-  }
-  if (ta) { updateCount(); ta.addEventListener('input', updateCount); }
+    var form = document.getElementById('offerForm');
+    var ta = document.getElementById('id_note');
+    var cnt = document.getElementById('descCount');
+    var btn = document.getElementById('submitBtn');
+    var priceInput = document.getElementById('id_proposed_price');
+    var pricePreview = document.getElementById('pricePreview');
 
-  function formatSar(v) {
-    if (v === '' || v === null || isNaN(v)) return '—';
-    try {
-      return new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR' }).format(parseFloat(v));
-    } catch (e) { return v; }
-  }
-  function updatePrice() {
-    if (!priceInput || !pricePreview) return;
-    var val = priceInput.value;
-    pricePreview.textContent = formatSar(val);
-  }
-  if (priceInput) { priceInput.addEventListener('input', updatePrice); updatePrice(); }
+    // عناصر تفاصيل السعر
+    var priceBox = document.querySelector('.price-details');
+    var netForEmployee = document.getElementById('netForEmployee');
+    var platformFee = document.getElementById('platformFee');
+    var vatValue = document.getElementById('vatValue');
+    var totalForClient = document.getElementById('totalForClient');
 
-  if (form && btn) {
-    form.addEventListener('submit', function () { btn.setAttribute('disabled', 'disabled'); });
+    var platformFeePercentDisplay = document.getElementById('platformFeePercentDisplay');
+    var vatPercentDisplay = document.getElementById('vatPercentDisplay');
+
+    // قراءة النسب من الـ data-attributes أو من النص المعروض
+    function normalizePercent(raw) {
+      if (!raw) return 0;
+      raw = String(raw).replace(',', '.').trim();
+      var num = parseFloat(raw);
+      if (!isFinite(num) || isNaN(num)) return 0;
+      // إذا كانت مثل 10 اعتبرها 10%، وإذا 0.1 اعتبرها فعلياً 10%
+      if (num > 1) {
+        return num / 100.0;
+      }
+      return num;
+    }
+
+    var platformFeePercentRaw = priceBox ? priceBox.getAttribute('data-platform-fee-percent') : null;
+    var vatPercentRaw = priceBox ? priceBox.getAttribute('data-vat-percent') : null;
+
+    var platformFeePercent = normalizePercent(platformFeePercentRaw);
+    var vatPercent = normalizePercent(vatPercentRaw);
+
+    // لو النسب غير موجودة في الـ data نحاول نقرأ من النص بين الأقواس
+    if (!platformFeePercent && platformFeePercentDisplay) {
+      var txt = platformFeePercentDisplay.textContent || '';
+      var m = txt.match(/([\d.,]+)/);
+      if (m) {
+        platformFeePercent = normalizePercent(m[1]);
+      }
+    }
+    if (!vatPercent && vatPercentDisplay) {
+      var txt2 = vatPercentDisplay.textContent || '';
+      var m2 = txt2.match(/([\d.,]+)/);
+      if (m2) {
+        vatPercent = normalizePercent(m2[1]);
+      }
+    }
+
+    // عداد الوصف
+    function updateCount() {
+      if (!ta || !cnt) return;
+      var max = parseInt(ta.getAttribute('maxlength')) || 2000;
+      var len = (ta.value || '').length;
+      cnt.textContent = len + '/' + max;
+
+      if (len > max * 0.9) {
+        cnt.style.color = '#ef4444';
+      } else if (len > max * 0.8) {
+        cnt.style.color = 'var(--secondary-600)';
+      } else {
+        cnt.style.color = 'var(--dark-500)';
+      }
+    }
+
+    if (ta) {
+      updateCount();
+      ta.addEventListener('input', updateCount);
+      ta.addEventListener('focus', function() {
+        this.style.borderColor = 'var(--primary-500)';
+        this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+      });
+      ta.addEventListener('blur', function() {
+        this.style.borderColor = '';
+        this.style.boxShadow = '';
+      });
+    }
+
+    // حسابات السعر التلقائية
+    function formatAmount(val) {
+      if (!isFinite(val) || isNaN(val)) {
+        return '—';
+      }
+      return val.toFixed(2);
+    }
+
+    function updatePricePreview() {
+      if (!priceInput || !pricePreview) return;
+      var raw = priceInput.value;
+      if (!raw) {
+        pricePreview.textContent = '—';
+        return;
+      }
+      var num = parseFloat(raw);
+      if (!isFinite(num) || isNaN(num) || num < 0) {
+        pricePreview.textContent = '—';
+        return;
+      }
+      pricePreview.textContent = formatAmount(num) + ' ر.س';
+    }
+
+    function updatePriceBreakdown() {
+      if (!priceInput || !priceBox) return;
+
+      var raw = priceInput.value;
+      var P = parseFloat(String(raw).replace(',', '.'));
+      if (!isFinite(P) || isNaN(P) || P <= 0) {
+        if (netForEmployee) netForEmployee.textContent = '—';
+        if (platformFee) platformFee.textContent = '—';
+        if (vatValue) vatValue.textContent = '—';
+        if (totalForClient) totalForClient.textContent = '—';
+        return;
+      }
+
+      // عمولة المنصة والضريبة حسب الاتفاق:
+      // صافي الموظف = P - عمولة المنصة
+      // الضريبة على المبلغ الأساسي فقط
+      var fee = +(P * platformFeePercent).toFixed(2);
+      var vat = +(P * vatPercent).toFixed(2);
+      var net = +(P - fee).toFixed(2);
+      var total = +(P + fee + vat).toFixed(2);
+
+      if (netForEmployee) netForEmployee.textContent = formatAmount(net);
+      if (platformFee) platformFee.textContent = formatAmount(fee);
+      if (vatValue) vatValue.textContent = formatAmount(vat);
+      if (totalForClient) totalForClient.textContent = formatAmount(total);
+    }
+
+    if (priceInput) {
+      updatePricePreview();
+      updatePriceBreakdown();
+      priceInput.addEventListener('input', function () {
+        updatePricePreview();
+        updatePriceBreakdown();
+      });
+      priceInput.addEventListener('blur', function () {
+        updatePricePreview();
+        updatePriceBreakdown();
+      });
+    }
+
+    // تحققات قبل الإرسال
+    if (form && btn) {
+      form.addEventListener('submit', function (e) {
+        var noteValue = ta ? ta.value.trim() : '';
+        var priceValue = priceInput ? priceInput.value : '';
+
+        if (noteValue.length < 10) {
+          e.preventDefault();
+          if (typeof showToast === 'function') {
+            showToast('يرجى كتابة تفاصيل العرض (10 أحرف على الأقل)', 'error');
+          } else {
+            alert('يرجى كتابة تفاصيل العرض (10 أحرف على الأقل)');
+          }
+          if (ta) ta.focus();
+          return false;
+        }
+
+        if (!priceValue || parseFloat(priceValue) <= 0) {
+          e.preventDefault();
+          if (typeof showToast === 'function') {
+            showToast('يرجى إدخال سعر صحيح أكبر من صفر', 'error');
+          } else {
+            alert('يرجى إدخال سعر صحيح أكبر من صفر');
+          }
+          if (priceInput) priceInput.focus();
+          return false;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '⏳ جاري إرسال العرض...';
+
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(btn);
+        }
+
+        if (typeof showToast === 'function') {
+          showToast('جاري إرسال العرض...', 'info');
+        }
+      });
+    }
+
+    // تلوين الحقول المعبأة
+    document.querySelectorAll('input, textarea').forEach(function (field) {
+      field.addEventListener('input', function() {
+        if (this.value && this.value.length > 0) {
+          this.style.background = 'var(--primary-50)';
+        } else {
+          this.style.background = '';
+        }
+      });
+    });
+
+  })();
+  </script>
+
+  <style>
+  .offer-create-page .profile-section {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
-})();
-</script>
+
+  .offer-create-page .profile-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+  }
+
+  .offer-create-page .input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .offer-create-page .input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .offer-create-page .textarea-large {
+    min-height: 140px;
+    resize: vertical;
+    line-height: 1.6;
+  }
+
+  .offer-create-page .field-error {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .offer-create-page .field-hint {
+    color: var(--dark-500);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .offer-create-page .field-hint-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+  }
+
+  .offer-create-page .field-counter {
+    color: var(--dark-500);
+    font-size: 0.875rem;
+  }
+
+  .offer-create-page .value-strong {
+    color: var(--primary-600);
+    font-weight: 600;
+  }
+
+  .offer-create-page .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .offer-create-page .price-details {
+    margin-top: 1rem;
+  }
+
+  .offer-create-page .price-grid {
+    margin-top: 0.75rem;
+  }
+
+  .offer-create-page .price-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--dark-200);
+  }
+
+  .offer-create-page .price-item:last-child {
+    border-bottom: none;
+  }
+
+  .offer-create-page .price-item.highlight {
+    background: var(--primary-50);
+    margin: 0 -1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    border: none;
+  }
+
+  .offer-create-page .price-label {
+    color: var(--dark-600);
+    font-size: 0.9rem;
+  }
+
+  .offer-create-page .price-value {
+    color: var(--dark-900);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .offer-create-page .currency {
+    margin-right: 4px;
+    font-size: 0.85rem;
+    color: var(--dark-500);
+  }
+
+  .offer-create-page .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+  }
+
+  .offer-create-page .form-note {
+    text-align: center;
+    color: var(--dark-500);
+    font-size: 0.875rem;
+  }
+
+  @media (max-width: 768px) {
+    .offer-create-page .form-grid-2 {
+      grid-template-columns: 1fr;
+    }
+    
+    .offer-create-page .form-actions {
+      flex-direction: column;
+    }
+    
+    .offer-create-page .form-actions .btn {
+      width: 100%;
+    }
+    
+    .offer-create-page .price-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+  }
+  </style>
 {% endblock %}

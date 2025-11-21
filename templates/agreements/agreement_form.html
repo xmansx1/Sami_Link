@@ -1,348 +1,738 @@
-{# agreements/templates/agreements/agreement_form.html #}
 {% extends "base.html" %}
+{# agreements/templates/agreements/agreement_form.html #}
 {% load static %}
 {% block title %}اتفاقية — طلب #{{ req.id }}{% endblock %}
 
-{% block extra_css %}
-<style>
-  .fade-in{animation:fadeIn .5s ease-in-out}@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-  .card-hover{transition:all .3s ease}.card-hover:hover{transform:translateY(-4px);box-shadow:0 12px 24px -8px rgba(0,0,0,.15)}
-  .sticky-aside{position:sticky;top:88px}
-  .form-input{transition:box-shadow .2s ease}.form-input:focus{box-shadow:0 0 0 3px rgba(37,99,235,.12)}
-  .payment-item{transition:background-color .2s ease}.payment-item:hover{background-color:rgba(148,163,184,.08)}
-  .kpi{background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%)}.dark .kpi{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%)}
-  .soft-border{border:1px solid rgba(148,163,184,.25)}
-</style>
-{% endblock %}
-
 {% block content %}
-<section class="py-8 max-w-6xl mx-auto rtl" dir="rtl">
-
-  {# بطاقة معلومات سريعة #}
-  <div class="rounded-2xl soft-border kpi p-6 shadow mb-8 fade-in card-hover">
-    <div class="flex items-center gap-3 mb-4">
-      <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-        <svg class="w-6 h-6 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293L19 8.586A1 1 0 0120 9V19a2 2 0 01-2 2z"/>
-        </svg>
-      </div>
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">اتفاقية الخدمة</h1>
-        <p class="text-slate-600 dark:text-slate-300 text-sm">
-          مرتبطة بالطلب
-          <a class="text-blue-600 dark:text-blue-400 underline" href="{% url 'marketplace:request_detail' req.id %}">#{{ req.id }}</a>
-        </p>
-      </div>
+    {# ===== مربع توضيحي للحسابات المالية (Debug) ===== #}
+    {% if breakdown %}
+    <div class="profile-section" style="background: #f3f4f6; border: 1px dashed #a3a3a3; margin-bottom: 1.5rem;">
+      <div style="font-weight: bold; color: #444; margin-bottom: 0.5rem;">تفاصيل الحسابات (Debug):</div>
+      <ul style="font-size: 1rem; color: #333; list-style: disc inside;">
+        <li>المبلغ المدخل في الاتفاقية: <strong>{{ agreement.total_amount|floatformat:2 }}</strong> ر.س</li>
+        <li>نسبة عمولة المنصة: <strong>{% if cfg %}{{ cfg.platform_fee_percent|floatformat:2 }}{% else %}؟{% endif %}%</strong> (قيمة العمولة: {{ breakdown.platform_fee|floatformat:2 }} ر.س)</li>
+        <li>نسبة الضريبة: <strong>{% if cfg %}{{ cfg.vat_rate|floatformat:2 }}{% else %}؟{% endif %}%</strong> (قيمة الضريبة: {{ breakdown.vat_amount|floatformat:2 }} ر.س)</li>
+        <li>صافي الموظف: <strong>{{ breakdown.net_for_employee|floatformat:2 }}</strong> ر.س</li>
+        <li>الإجمالي النهائي للعميل: <strong>{{ breakdown.client_total|floatformat:2 }}</strong> ر.س</li>
+      </ul>
     </div>
-
-    <div class="grid md:grid-cols-4 gap-4 text-sm">
-      <div class="bg-white/70 dark:bg-slate-800/70 p-3 rounded-lg soft-border">
-        <div class="text-slate-500 dark:text-slate-400">المبلغ المتفق عليه</div>
-        <div class="font-semibold text-lg mt-1 text-green-600 dark:text-green-400">
-          {{ form.instance.total_amount|default:req.selected_offer.proposed_price|default:0|floatformat:2 }} ر.س
+    {% endif %}
+<section class="page-section agreement-form-page">
+  <div class="container">
+    
+    {# ===== بطاقة معلومات سريعة أعلى الاتفاقية ===== #}
+    <div class="profile-section" style="background: linear-gradient(135deg, var(--primary-50) 0%, var(--white) 100%); margin-bottom: 2rem;">
+      <div class="card-row" style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem;">
+        <div class="agreement-icon" style="width: 4rem; height: 4rem; background: var(--primary-100); color: var(--primary-600); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+          📝
+        </div>
+        <div style="flex: 1;">
+          <h1 class="section-title" style="margin-bottom: 0.5rem;">
+            اتفاقية الخدمة
+          </h1>
+          <p class="section-description">
+            مرتبطة بالطلب
+            <a class="link" href="{% url 'marketplace:request_detail' req.id %}">#{{ req.id }}</a>
+          </p>
         </div>
       </div>
-      <div class="bg-white/70 dark:bg-slate-800/70 p-3 rounded-lg soft-border">
-        <div class="text-slate-500 dark:text-slate-400">المدة الإجمالية</div>
-        <div class="font-semibold text-lg mt-1 text-amber-600 dark:text-amber-400">
-          {{ form.instance.duration_days|default:0 }} يوم
-        </div>
-      </div>
-      <div class="bg-white/70 dark:bg-slate-800/70 p-3 rounded-lg soft-border">
-        <div class="text-slate-500 dark:text-slate-400">الحالة</div>
-        <div class="font-semibold text-lg mt-1">
-          {{ form.instance.get_status_display|default:"—" }}
-        </div>
-      </div>
-      <div class="bg-white/70 dark:bg-slate-800/70 p-3 rounded-lg soft-border">
-        <div class="text-slate-500 dark:text-slate-400">عدد المراحل</div>
-        <div id="live-sum" class="font-semibold text-lg mt-1">
-          {{ form.instance.milestones.count|default:0 }}
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <form method="post" novalidate>
-    {% csrf_token %}
-
-    {# تمرير الإجمالي كمخفي دائمًا #}
-    <input type="hidden" name="total_amount"
-           value="{{ form.instance.total_amount|default:req.selected_offer.proposed_price|default:0 }}">
-
-    <div class="grid md:grid-cols-3 gap-6">
-      {# العمود الرئيسي #}
-      <div class="md:col-span-2 space-y-6">
-
-        {# تفاصيل الاتفاقية #}
-        <div class="rounded-2xl soft-border bg-white dark:bg-slate-800 p-6 shadow fade-in card-hover">
-          <div class="flex items-center mb-5">
-            <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center ml-3">
-              <svg class="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/>
-              </svg>
-            </div>
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white">تفاصيل الاتفاقية</h2>
-          </div>
-
-          <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-semibold mb-2">عنوان الاتفاقية</label>
-              {{ form.title }}
-              {% for e in form.title.errors %}<p class="text-rose-600 text-sm mt-1">{{ e }}</p>{% endfor %}
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold mb-2">المدة (أيام)</label>
-              {{ form.duration_days }}
-              {% if form.duration_days and form.duration_days.field and form.duration_days.field.disabled %}
-                <p class="text-xs text-slate-500 mt-1">تم قفل هذا الحقل بعد إنشاء الاتفاقية.</p>
-              {% endif %}
-              {% for e in form.duration_days.errors %}<p class="text-rose-600 text-sm mt-1">{{ e }}</p>{% endfor %}
-            </div>
-
-            <div class="md:col-span-2">
-              <label class="block text-sm font-semibold mb-2">نص الاتفاقية</label>
-              {{ form.text }}
-              {% for e in form.text.errors %}<p class="text-rose-600 text-sm mt-1">{{ e }}</p>{% endfor %}
-            </div>
+      {% with agreed_days=req.selected_offer.proposed_duration_days|default:0 %}
+      <div class="agreement-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div class="stat-item profile-section" style="padding: 1rem; text-align: center;">
+          <div class="stat-label">💰 المبلغ المتفق عليه</div>
+          <div class="stat-value" style="color: var(--primary-600); background: #e6fff6; border-radius: 12px; padding: 0.5rem 1.5rem; display: inline-block; font-size: 1.35rem; font-weight: bold;">
+            السعر النهائي للعميل: {{ breakdown.client_total|floatformat:2 }} ر.س
           </div>
         </div>
-
-        {# المراحل (Formset) #}
-        <div class="rounded-2xl soft-border bg-white dark:bg-slate-800 p-6 shadow fade-in card-hover">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center">
-              <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center ml-3">
-                <svg class="w-5 h-5 text-green-600 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                </svg>
-              </div>
-              <h3 class="text-xl font-bold">مراحل تسليم المشروع</h3>
-            </div>
-            <button type="button" id="add-row" class="btn btn-secondary btn-glow">+ إضافة مرحلة</button>
-          </div>
-
-          {{ formset.management_form }}
-          {% if formset.non_form_errors %}
-            <div class="p-3 rounded bg-rose-50 text-rose-700 soft-border mb-3">
-              {% for e in formset.non_form_errors %}<div>{{ e }}</div>{% endfor %}
-            </div>
-          {% endif %}
-
-          <div id="rows" class="space-y-4">
-            {% for f in formset.forms %}
-              <div class="rounded-xl soft-border p-4 payment-item milestone-row" data-row-index="{{ forloop.counter0 }}">
-                {# مهم: تضمين حقل المعرف لعدم إنشاء صفوف جديدة عند الحفظ #}
-                {{ f.id }}
-
-                <div class="flex items-center gap-3 mb-3">
-                  <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-sm font-bold text-slate-700 dark:text-slate-200 milestone-order">{{ forloop.counter }}</div>
-                  <input type="hidden" class="milestone-order-value" name="{{ f.order.html_name }}" value="{{ f.order.value|default:forloop.counter }}">
-                  {# ضمان amount=0 حتى لو الحقل غير موجود في الفورم - سنضيفه بالـJS أيضًا كضمان #}
-                  <input type="hidden" name="{{ f.prefix }}-amount" value="0">
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-3">
-                  <div>
-                    <label class="text-sm font-semibold">عنوان المرحلة</label>
-                    {{ f.title }}
-                  </div>
-                  <div>
-                    <label class="text-sm font-semibold">المدة (أيام)</label>
-                    {{ f.due_days }}
-                  </div>
-                </div>
-
-                {% if formset.can_delete %}
-                  <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600 flex items-center justify-between">
-                    <span class="text-xs text-slate-500"><span class="text-rose-500">⚠️</span> حذف هذه المرحلة</span>
-                    <button type="button" class="btn btn-sm btn-danger delete-row">حذف</button>
-                  </div>
-                  {{ f.DELETE }}
-                {% endif %}
-
-                {% for e in f.title.errors %}<p class="text-rose-600 text-sm mt-2">{{ e }}</p>{% endfor %}
-                {% for e in f.due_days.errors %}<p class="text-rose-600 text-sm mt-2">{{ e }}</p>{% endfor %}
-                {% for e in f.non_field_errors %}<p class="text-rose-600 text-sm mt-2">{{ e }}</p>{% endfor %}
-              </div>
-            {% endfor %}
-          </div>
-
-          <div class="mt-4 p-3 rounded-lg soft-border bg-blue-50 dark:bg-blue-900/20">
-            <p class="text-sm text-blue-800 dark:text-blue-300">
-              ✨ <strong>إضافة تلقائية:</strong> حدِّد مراحل تسليم المشروع مع مدة كل مرحلة. الترتيب يُحدَّث تلقائيًا.
-            </p>
-          </div>
-        </div>
-
-      </div>
-
-      {# العمود الجانبي #}
-      <aside class="space-y-6 sticky-aside">
-        <div class="rounded-2xl soft-border bg-white dark:bg-slate-800 p-6 shadow fade-in card-hover">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-bold">البنود المثبّتة</h3>
-            <span class="text-xs rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1">
-              {{ form.instance.clause_items.count }} بند
-            </span>
-          </div>
-
-          {% if form.instance.clause_items.count == 0 %}
-            <div class="p-3 rounded bg-amber-50 dark:bg-amber-900/20 soft-border text-amber-800 dark:text-amber-200">
-              لا توجد بنود مثبتة بعد.
-            </div>
-          {% endif %}
-
-          <ol class="list-decimal pr-5 space-y-3 max-h-64 overflow-auto">
-            {% for item in form.instance.clause_items.all %}
-              <li class="leading-7 p-3 rounded bg-slate-50 dark:bg-slate-700/40 soft-border">
-                {% if item.clause %}
-                  <strong>{{ item.clause.title }}:</strong>
-                  <span class="text-slate-600 dark:text-slate-300">{{ item.clause.body }}</span>
-                {% else %}
-                  <span class="text-slate-600 dark:text-slate-300">{{ item.custom_text }}</span>
-                {% endif %}
-              </li>
-            {% empty %}
-              <li class="text-center text-slate-500 py-2">—</li>
-            {% endfor %}
-          </ol>
-
-          <div class="mt-4">
-            {% if user.is_authenticated %}
-              {% if user.is_staff or user.is_superuser or user.id == form.instance.employee_id %}
-                <a href="{% url 'agreements:finalize_clauses' form.instance.pk %}" class="btn btn-primary w-full btn-glow">تثبيت/تعديل البنود</a>
-              {% endif %}
+        <div class="stat-item profile-section" style="padding: 1rem; text-align: center;">
+          <div class="stat-label">⏱️ المدة الإجمالية المتفق عليها</div>
+          <div id="agreed-duration"
+               class="stat-value"
+               data-duration-days="{% if req.selected_offer %}{{ req.selected_offer.proposed_duration_days }}{% else %}{{ agreed_days }}{% endif %}"
+               style="color: var(--secondary-600);">
+            {% if req.selected_offer %}
+              {{ req.selected_offer.proposed_duration_days }} يوم
+            {% else %}
+              {{ agreed_days }} يوم
             {% endif %}
           </div>
         </div>
-
-        <div class="rounded-2xl soft-border bg-slate-50 dark:bg-slate-800/60 p-4 text-sm">
-          <ul class="space-y-2 text-slate-600 dark:text-slate-300">
-            <li>✨ <strong>ترتيب تلقائي:</strong> يُحدّث الترتيب عند الإضافة أو الحذف</li>
-            <li>➕ <strong>إضافة سهلة:</strong> اضغط “+ إضافة مرحلة”</li>
-            <li>🗑️ <strong>حذف فعلي:</strong> الحذف يوسِّم الصف بـ DELETE لإزالته فعليًا عند الحفظ</li>
-            <li>📝 <strong>نص آمن:</strong> تتم إزالة الوسوم لأسباب أمنية</li>
-          </ul>
+        <div class="stat-item profile-section" style="padding: 1rem; text-align: center;">
+          <div class="stat-label">📊 حالة الاتفاقية</div>
+          <div class="stat-value">
+            {{ form.instance.get_status_display|default:"—" }}
+          </div>
         </div>
-      </aside>
-    </div>
-
-    {# الأزرار #}
-    <div class="mt-8 flex flex-wrap gap-3 justify-center fade-in">
-      <button id="btn-save" name="action" value="save" class="btn btn-primary btn-glow px-6">حفظ (مسودة)</button>
-      <button id="btn-send" name="action" value="send" class="btn btn-success btn-glow px-6">حفظ وإرسال للعميل</button>
-      <a href="{% url 'marketplace:request_detail' req.id %}" class="btn btn-light btn-glow px-6">عودة للطلب</a>
-    </div>
-  </form>
-
-  {# قالب صف جديد (من empty_form) #}
-  <template id="empty-form">
-    <div class="rounded-xl soft-border p-4 mt-4 payment-item milestone-row" data-row-index="__new__">
-      {{ formset.empty_form.id }}
-      <div class="flex items-center gap-3 mb-3">
-        <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-sm font-bold text-slate-700 dark:text-slate-200 milestone-order">1</div>
-        <input type="hidden" class="milestone-order-value" name="{{ formset.prefix }}-__prefix__-order" value="1">
-        <input type="hidden" name="{{ formset.prefix }}-__prefix__-amount" value="0">
-      </div>
-      <div class="grid md:grid-cols-2 gap-3">
-        <div>
-          <label class="text-sm font-semibold">عنوان المرحلة</label>
-          {{ formset.empty_form.title }}
-        </div>
-        <div>
-          <label class="text-sm font-semibold">المدة (أيام)</label>
-          {{ formset.empty_form.due_days }}
+        <div class="stat-item profile-section" style="padding: 1rem; text-align: center;">
+          <div class="stat-label">🔢 عدد المراحل</div>
+          <div id="live-sum" class="stat-value">
+            {{ form.instance.milestones.count|default:0 }}
+          </div>
         </div>
       </div>
-      {% if formset.can_delete %}
-        <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600 flex items-center justify-between">
-          <span class="text-xs text-slate-500"><span class="text-rose-500">⚠️</span> حذف هذه المرحلة</span>
-          <button type="button" class="btn btn-sm btn-danger delete-row">حذف</button>
+      {% endwith %}
+    </div>
+
+    <form method="post" novalidate class="agreement-form">
+      {% csrf_token %}
+
+      {# أخطاء عامة للنموذج والفورم سِت وأخطاء الحقول #}
+      {% if form.non_field_errors or formset.non_form_errors or form.errors %}
+        <div class="error-alert profile-section" style="background: #fef2f2; border-color: #fecaca; margin-bottom: 1.5rem;">
+          <div class="card-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+            <span class="error-icon" style="color: #ef4444;">❌</span>
+            <div class="error-content">
+              {% for e in form.non_field_errors %}
+                <div>{{ e }}</div>
+              {% endfor %}
+              {% for e in formset.non_form_errors %}
+                <div>{{ e }}</div>
+              {% endfor %}
+              {% for field in form %}
+                {% for err in field.errors %}
+                  <div>{{ field.label }}: {{ err }}</div>
+                {% endfor %}
+              {% endfor %}
+            </div>
+          </div>
         </div>
-        {{ formset.empty_form.DELETE }}
       {% endif %}
-    </div>
-  </template>
+
+      {# ===== تخطيط عام: عمود رئيسي + جانبي ===== #}
+      <div class="form-layout" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: flex-start;">
+        
+        {# ===== العمود الرئيسي ===== #}
+        <div class="main-column">
+
+          {# تفاصيل الاتفاقية الأساسية #}
+          <div class="profile-section scroll-reveal">
+            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+              <div class="card-section-title">🧾 تفاصيل الاتفاقية</div>
+              <div class="card-section-note">
+                يتم استخدام بيانات العرض المختار كأساس للاتفاقية.
+              </div>
+            </div>
+
+            {% with agreed_days=req.selected_offer.proposed_duration_days|default:0 %}
+            <div class="form-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-field">
+                <label class="form-label">المدة المتفق عليها (أيام)</label>
+                <div class="input" style="background: var(--dark-50); border-color: var(--dark-200); cursor: not-allowed;">
+                  {{ agreed_days }} يوم
+                </div>
+                <input type="hidden" name="duration_days" value="{{ agreed_days }}">
+              </div>
+
+              <div class="form-field">
+                <label class="form-label">المبلغ الإجمالي (قراءة فقط)</label>
+                <div class="input" style="background: var(--dark-50); border-color: var(--dark-200); cursor: not-allowed;">
+                    {{ agreement.total_amount|floatformat:2 }} ر.س
+                </div>
+          {# breakdown المالي المفصل #}
+          {% if breakdown %}
+          <div class="profile-section" style="background: var(--primary-50); border-color: var(--primary-200); margin-top: 1.5rem;">
+            <div class="card-section-title" style="color: var(--primary-700);">📊 تفاصيل المبالغ</div>
+            <div class="summary-items">
+              <div class="summary-item">
+                <span class="summary-label">صافي الموظف:</span>
+                <span class="summary-value">{{ breakdown.net_for_employee|floatformat:2 }} ر.س</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">عمولة المنصة:</span>
+                <span class="summary-value">{{ breakdown.platform_fee|floatformat:2 }} ر.س</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">الضريبة (VAT):</span>
+                <span class="summary-value">{{ breakdown.vat_amount|floatformat:2 }} ر.س</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">الإجمالي للعميل:</span>
+                <span class="summary-value">{{ breakdown.client_total|floatformat:2 }} ر.س</span>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+              </div>
+            </div>
+            {% endwith %}
+
+
+            <div class="form-field">
+              <label class="form-label">عنوان الاتفاقية</label>
+              <input type="hidden" name="title" value="{{ req.title }}">
+              <div class="input" style="background: var(--dark-50); border-color: var(--dark-200); cursor: not-allowed;">{{ req.title }}</div>
+              {% for e in form.title.errors %}
+                <div class="field-error">{{ e }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="form-field">
+              <label class="form-label">نص الاتفاقية</label>
+              {{ form.text }}
+              {% for e in form.text.errors %}
+                <div class="field-error">{{ e }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# تنبيه خاص بمجموع مدد المراحل مقابل المدة المتفق عليها #}
+          <div id="duration-warning" class="profile-section" style="display:none; background:#fef2f2; border:1px solid #fecaca; border-radius:12px; padding:1rem; margin:1rem 0; color:#b91c1c; font-weight:bold; text-align:center;">
+          </div>
+
+          {# ===== مراحل المشروع ===== #}
+          <div class="profile-section scroll-reveal">
+            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+              <div class="card-section-title">📋 مراحل تسليم المشروع</div>
+              <button type="button" id="add-row" class="btn btn-primary btn-sm">
+                ➕ إضافة مرحلة
+              </button>
+            </div>
+
+            {{ formset.management_form }}
+            {% if formset.non_form_errors %}
+              <div class="error-alert profile-section" style="background: #fef2f2; border-color: #fecaca; margin-bottom: 1.5rem;">
+                <div class="card-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+                  <span class="error-icon" style="color: #ef4444;">❌</span>
+                  <div class="error-content">
+                    {% for e in formset.non_form_errors %}
+                      <div>{{ e }}</div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+
+            <div id="rows" class="milestones-container">
+              {% for f in formset.forms %}
+                <div class="milestone-row profile-section" data-row-index="{{ forloop.counter0 }}">
+                  {{ f.id }}
+
+                  <div class="milestone-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="milestone-number" style="width: 2.5rem; height: 2.5rem; background: var(--primary-100); color: var(--primary-600); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;">
+                      {{ forloop.counter }}
+                    </div>
+                    <input type="hidden"
+                           class="milestone-order-value"
+                           name="{{ f.order.html_name }}"
+                           value="{{ f.order.value|default:forloop.counter }}">
+                    <input type="hidden" name="{{ f.prefix }}-amount" value="0">
+                  </div>
+
+                  <div class="form-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-field">
+                      <label class="form-label">عنوان المرحلة</label>
+                      {{ f.title }}
+                    </div>
+                    <div class="form-field">
+                      <label class="form-label">المدة (أيام)</label>
+                      {{ f.due_days }}
+                    </div>
+                  </div>
+
+                  {% if formset.can_delete %}
+                    <div class="milestone-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--dark-200);">
+                      <span class="delete-label" style="color: var(--dark-500); font-size: 0.875rem;">
+                        ⚠️ حذف هذه المرحلة
+                      </span>
+                      <button type="button" class="btn btn-danger btn-sm delete-row">
+                        🗑️ حذف
+                      </button>
+                    </div>
+                    {{ f.DELETE }}
+                  {% endif %}
+
+                  {% for e in f.title.errors %}
+                    <div class="field-error">{{ e }}</div>
+                  {% endfor %}
+                  {% for e in f.due_days.errors %}
+                    <div class="field-error">{{ e }}</div>
+                  {% endfor %}
+                </div>
+              {% endfor %}
+            </div>
+
+            <div class="info-box profile-section" style="background: var(--primary-50); border-color: var(--primary-200); margin-top: 1.5rem;">
+              <div class="card-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+                <span class="info-icon" style="color: var(--primary-600);">💡</span>
+                <div class="info-content">
+                  <div class="card-section-title" style="color: var(--primary-700); margin-bottom: 0.25rem;">
+                    إضافة تلقائية
+                  </div>
+                  <p class="card-section-note" style="color: var(--primary-600);">
+                    حدِّد مراحل تسليم المشروع مع مدة كل مرحلة. يتم تحديث الترتيب وعدد المراحل تلقائيًا.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {# ===== العمود الجانبي ===== #}
+        <div class="sidebar-column">
+          
+          {# البنود المثبتة #}
+          <div class="profile-section scroll-reveal sticky-sidebar">
+            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <div class="card-section-title">📌 البنود المثبّتة</div>
+              <span class="badge badge-default">
+                {{ form.instance.clause_items.count }} بند
+              </span>
+            </div>
+
+            {% if form.instance.clause_items.count == 0 %}
+              <div class="empty-state profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200); text-align: center; padding: 2rem;">
+                <div class="empty-icon" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;">📄</div>
+                <p class="card-section-note">لا توجد بنود مثبتة بعد.</p>
+              </div>
+            {% endif %}
+
+            <div class="clauses-list" style="max-height: 300px; overflow-y: auto;">
+              <ol class="clauses-ol" style="list-style-type: decimal; padding-right: 1.5rem; space-y: 0.75rem;">
+                {% for item in form.instance.clause_items.all %}
+                  <li class="clause-item profile-section" style="padding: 1rem; background: var(--dark-50); border-radius: var(--radius-lg); margin-bottom: 0.75rem;">
+                    {% if item.clause %}
+                      <strong style="color: var(--dark-700);">{{ item.clause.title }}:</strong>
+                      <span style="color: var(--dark-600); display: block; margin-top: 0.25rem;">{{ item.clause.body }}</span>
+                    {% else %}
+                      <span style="color: var(--dark-600);">{{ item.custom_text }}</span>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ol>
+            </div>
+
+            <div class="clause-actions employee-actions" style="margin-top: 1.5rem;">
+              {% if user.is_authenticated %}
+                {% if user.is_staff or user.is_superuser or user.id == form.instance.employee_id %}
+                  <a href="{% url 'agreements:finalize_clauses' form.instance.pk %}" class="btn btn-primary btn-sm" style="width: 100%;">
+                    ⚙️ تثبيت/تعديل البنود
+                  </a>
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+
+          {# تلميحات سريعة #}
+          <div class="profile-section scroll-reveal" style="background: var(--dark-50);">
+            <div class="card-section-title">💡 تلميحات سريعة</div>
+            <div class="tips-list" style="margin-top: 1rem;">
+              <div class="tip-item" style="display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <span class="tip-icon">✨</span>
+                <span class="tip-text" style="font-size: 0.875rem; color: var(--dark-600);">
+                  <strong>ترتيب تلقائي:</strong> يُحدّث ترتيب المراحل تلقائيًا بعد الإضافة أو الحذف.
+                </span>
+              </div>
+              <div class="tip-item" style="display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <span class="tip-icon">➕</span>
+                <span class="tip-text" style="font-size: 0.875rem; color: var(--dark-600);">
+                  <strong>إضافة سهلة:</strong> استخدم زر "إضافة مرحلة" لإدراج صف جديد بسرعة.
+                </span>
+              </div>
+              <div class="tip-item" style="display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <span class="tip-icon">🗑️</span>
+                <span class="tip-text" style="font-size: 0.875rem; color: var(--dark-600);">
+                  <strong>حذف فعلي:</strong> الحذف يوسِّم الصف للإزالة عند الحفظ ولا يُحذف مباشرة من قاعدة البيانات.
+                </span>
+              </div>
+              <div class="tip-item" style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                <span class="tip-icon">📝</span>
+                <span class="tip-text" style="font-size: 0.875rem; color: var(--dark-600);">
+                  <strong>نص آمن:</strong> تتم حماية النص من الوسوم الضارة لأسباب أمنية.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# ===== أزرار الإجراءات ===== #}
+      <div class="form-actions employee-actions" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--dark-200); justify-content: center;">
+        <button id="btn-save" name="action" value="save" class="btn btn-primary">
+          💾 حفظ (مسودة)
+        </button>
+        <button id="btn-send" name="action" value="send" class="btn btn-success">
+          📨 حفظ وإرسال للعميل
+        </button>
+        <a href="{% url 'marketplace:request_detail' req.id %}" class="btn btn-outline">
+          ↩️ عودة للطلب
+        </a>
+      </div>
+    </form>
+
+    {# ===== قالب صف جديد للفورم سِت ===== #}
+    <template id="empty-form">
+      <div class="milestone-row profile-section" data-row-index="__new__">
+        {{ formset.empty_form.id }}
+        <div class="milestone-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+          <div class="milestone-number" style="width: 2.5rem; height: 2.5rem; background: var(--primary-100); color: var(--primary-600); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;">
+            1
+          </div>
+          <input type="hidden" class="milestone-order-value" name="{{ formset.prefix }}-__prefix__-order" value="1">
+          <input type="hidden" name="{{ formset.prefix }}-__prefix__-amount" value="0">
+        </div>
+        <div class="form-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-field">
+            <label class="form-label">عنوان المرحلة</label>
+            {{ formset.empty_form.title }}
+          </div>
+          <div class="form-field">
+            <label class="form-label">المدة (أيام)</label>
+            {{ formset.empty_form.due_days }}
+          </div>
+        </div>
+        {% if formset.can_delete %}
+          <div class="milestone-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--dark-200);">
+            <span class="delete-label" style="color: var(--dark-500); font-size: 0.875rem;">
+              ⚠️ حذف هذه المرحلة
+            </span>
+            <button type="button" class="btn btn-danger btn-sm delete-row">
+              🗑️ حذف
+            </button>
+          </div>
+          {{ formset.empty_form.DELETE }}
+        {% endif %}
+      </div>
+    </template>
+
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
 
   <script>
-  (function(){
-    const prefix  = "{{ formset.prefix }}";
-    const totalEl = document.getElementById(prefix + "-TOTAL_FORMS");
-    const rows    = document.getElementById("rows");
-    const addBtn  = document.getElementById("add-row");
-    const btnSend = document.getElementById("btn-send");
+  (function () {
+    var rowsContainer = document.getElementById('rows');
+    var addBtn = document.getElementById('add-row');
+    var emptyTemplate = document.getElementById('empty-form');
+    var totalFormsInput = document.querySelector('input[name="{{ formset.prefix }}-TOTAL_FORMS"]');
+    var btnSave = document.getElementById('btn-save');
+    var btnSend = document.getElementById('btn-send');
+    var agreedDurationEl = document.getElementById('agreed-duration');
+    var warningBox = document.getElementById('duration-warning');
+    var agreedDuration = 0;
 
-    function updateMilestoneOrders(){
-      const items = rows.querySelectorAll(".milestone-row:not([style*='display: none'])");
-      items.forEach(function(el, idx){
-        const orderInput = el.querySelector(".milestone-order-value");
-        const orderDisp  = el.querySelector(".milestone-order");
-        const n = idx + 1;
-        if(orderInput) orderInput.value = n;
-        if(orderDisp)  orderDisp.textContent = n;
-      });
-      const live = document.getElementById("live-sum");
-      if(live) live.textContent = String(items.length);
+    if (agreedDurationEl) {
+      var raw = agreedDurationEl.getAttribute('data-duration-days');
+      agreedDuration = parseInt(raw, 10) || 0;
     }
 
-    function ensureZeroAmount(row, idx){
-      var hidden = row.querySelector("input[type='hidden'][name$='-amount']");
-      if(!hidden){
-        hidden = document.createElement("input");
-        hidden.type = "hidden";
-        hidden.name = prefix + "-" + idx + "-amount";
-        row.appendChild(hidden);
+    function toggleActionButtons(hasError) {
+      if (btnSave) {
+        btnSave.disabled = hasError;
       }
-      hidden.value = "0";
+      if (btnSend) {
+        btnSend.disabled = hasError;
+      }
     }
 
-    function setupDeleteButtons(){
-      rows.querySelectorAll(".delete-row").forEach(function(btn){
-        if(btn.dataset.hasListener) return;
-        btn.addEventListener("click", function(e){
-          e.preventDefault();
-          const row = this.closest(".milestone-row");
-          const del = row.querySelector("input[type='checkbox'][name*='-DELETE']");
-          if(del){ del.checked = true; row.style.display = "none"; }
-          updateMilestoneOrders();
-        });
-        btn.dataset.hasListener = "1";
+    function updateMilestoneOrders() {
+      if (!rowsContainer) {
+        return;
+      }
+      var items = rowsContainer.querySelectorAll('.milestone-row:not([data-deleted="1"])');
+      items.forEach(function (el, idx) {
+        var orderInput = el.querySelector('.milestone-order-value');
+        var orderDisp = el.querySelector('.milestone-number');
+        var n = idx + 1;
+        if (orderInput) {
+          orderInput.value = n;
+        }
+        if (orderDisp) {
+          orderDisp.textContent = n;
+          orderDisp.style.animation = 'pulse 0.5s ease';
+          setTimeout(function () {
+            orderDisp.style.animation = '';
+          }, 500);
+        }
+      });
+      var live = document.getElementById('live-sum');
+      if (live) {
+        live.textContent = String(items.length);
+        live.style.animation = 'pulse 0.5s ease';
+        setTimeout(function () {
+          live.style.animation = '';
+        }, 500);
+      }
+    }
+
+    function bindDeleteButtons(row) {
+      var delBtn = row.querySelector('.delete-row');
+      var delInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+      if (!delBtn) {
+        return;
+      }
+      delBtn.addEventListener('click', function () {
+        if (!confirm('سيتم حذف هذه المرحلة عند حفظ الاتفاقية. متابعة؟')) {
+          return;
+        }
+        if (delInput) {
+          delInput.checked = true;
+        }
+        row.setAttribute('data-deleted', '1');
+        row.style.display = 'none';
+        updateMilestoneOrders();
+        checkMilestonesDuration();
       });
     }
 
-    addBtn && addBtn.addEventListener("click", function(e){
-      e.preventDefault();
-      const idx = parseInt(totalEl.value || "0", 10);
-      const tpl = document.getElementById("empty-form");
-      const frag = tpl.content.cloneNode(true);
-      const html = frag.querySelector(".milestone-row").outerHTML.replace(/__prefix__/g, idx);
-      const wrapper = document.createElement("div");
+    function addRow() {
+      if (!rowsContainer || !emptyTemplate || !totalFormsInput) {
+        return;
+      }
+      var currentCount = parseInt(totalFormsInput.value, 10) || 0;
+      var html = emptyTemplate.innerHTML.replace(/__prefix__/g, String(currentCount));
+      var wrapper = document.createElement('div');
       wrapper.innerHTML = html;
-      const newRow = wrapper.firstElementChild;
-      newRow.setAttribute("data-row-index", idx);
-      rows.appendChild(newRow);
-      totalEl.value = String(idx + 1);
-      ensureZeroAmount(newRow, idx);
-      setupDeleteButtons();
+      var newRow = wrapper.firstElementChild;
+      rowsContainer.appendChild(newRow);
+      totalFormsInput.value = String(currentCount + 1);
+      bindDeleteButtons(newRow);
       updateMilestoneOrders();
+      checkMilestonesDuration();
+    }
+
+    if (rowsContainer) {
+      var existingRows = rowsContainer.querySelectorAll('.milestone-row');
+      existingRows.forEach(function (row) {
+        bindDeleteButtons(row);
+      });
+    }
+
+    if (addBtn) {
+      addBtn.addEventListener('click', function () {
+        addRow();
+      });
+    }
+
+    function showDurationWarning(hasError, msg) {
+      if (!warningBox) {
+        return;
+      }
+      if (hasError) {
+        warningBox.textContent = msg || '';
+        warningBox.style.display = 'block';
+      } else {
+        warningBox.textContent = '';
+        warningBox.style.display = 'none';
+      }
+    }
+
+    function checkMilestonesDuration() {
+      if (!rowsContainer) {
+        toggleActionButtons(false);
+        return;
+      }
+
+      var rows = rowsContainer.querySelectorAll('.milestone-row:not([data-deleted="1"])');
+      var sum = 0;
+      rows.forEach(function (row) {
+        var input = row.querySelector('input[name$="-due_days"]');
+        if (input && input.value) {
+          sum += parseInt(input.value, 10) || 0;
+        }
+      });
+
+      if (!agreedDuration || agreedDuration <= 0) {
+        showDurationWarning(false, '');
+        toggleActionButtons(false);
+        return;
+      }
+
+      if (sum > agreedDuration) {
+        var msg = '⚠️ مجموع مدد المراحل (' + String(sum) +
+                  ' يومًا) أكبر من المدة المتفق عليها (' +
+                  String(agreedDuration) + ' يومًا). عدّل مدد المراحل أو قلّل عددها.';
+        showDurationWarning(true, msg);
+        toggleActionButtons(true);
+      } else {
+        showDurationWarning(false, '');
+        toggleActionButtons(false);
+      }
+    }
+
+    document.addEventListener('input', function (e) {
+      if (!e.target || !e.target.name) {
+        return;
+      }
+      var name = e.target.name;
+      var isDueField = name.slice(-9) === '-due_days';
+      if (isDueField) {
+        checkMilestonesDuration();
+      }
     });
 
-    document.addEventListener("DOMContentLoaded", function(){
-      document.querySelectorAll("input,textarea,select").forEach(function(el){ el.classList.add("form-input"); });
-      if(btnSend){ btnSend.disabled = false; btnSend.classList.remove("opacity-50"); }
-      rows.querySelectorAll(".milestone-row").forEach(function(row, i){ ensureZeroAmount(row, i); });
-      setupDeleteButtons();
-      updateMilestoneOrders();
-    });
+    {# التهيئة الأولية مباشرة بعد تحميل السكربت (القالب في أسفل الصفحة) #}
+    updateMilestoneOrders();
+    checkMilestonesDuration();
 
-    document.forms[0].addEventListener("submit", function(){
-      const items = rows.querySelectorAll(".milestone-row");
-      items.forEach(function(row, i){ ensureZeroAmount(row, i); });
-    });
   })();
   </script>
 
-</section>
+  <style>
+  .agreement-form-page .agreement-stats {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .agreement-form-page .stat-item {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+    transition: all 0.3s ease;
+  }
+
+  .agreement-form-page .stat-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .agreement-form-page .stat-label {
+    font-size: 0.875rem;
+    color: var(--dark-600);
+    margin-bottom: 0.5rem;
+  }
+
+  .agreement-form-page .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .agreement-form-page .form-layout {
+    grid-template-columns: 2fr 1fr;
+  }
+
+  .agreement-form-page .sticky-sidebar {
+    position: sticky;
+    top: 100px;
+  }
+
+  .agreement-form-page .form-field {
+    margin-bottom: 1rem;
+  }
+
+  .agreement-form-page .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .agreement-form-page input,
+  .agreement-form-page textarea,
+  .agreement-form-page select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .agreement-form-page input:focus,
+  .agreement-form-page textarea:focus,
+  .agreement-form-page select:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .agreement-form-page textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  .agreement-form-page .field-error {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .agreement-form-page .field-hint {
+    color: var(--dark-500);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .agreement-form-page .milestones-container {
+    gap: 1rem;
+  }
+
+  .agreement-form-page .milestone-row {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--dark-200);
+    transition: all 0.3s ease;
+  }
+
+  .agreement-form-page .milestone-row:hover {
+    border-color: var(--primary-300);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .agreement-form-page .clauses-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .agreement-form-page .clause-item {
+    border-radius: var(--radius);
+    border: 1px solid var(--dark-200);
+    transition: all 0.3s ease;
+  }
+
+  .agreement-form-page .clause-item:hover {
+    background: var(--primary-50);
+    border-color: var(--primary-200);
+  }
+
+  .agreement-form-page .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  @media (max-width: 1024px) {
+    .agreement-form-page .form-layout {
+      grid-template-columns: 1fr;
+    }
+    .agreement-form-page .sticky-sidebar {
+      position: static;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .agreement-form-page .form-grid-2 {
+      grid-template-columns: 1fr;
+    }
+    .agreement-form-page .agreement-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .agreement-form-page .form-actions {
+      flex-direction: column;
+    }
+    .agreement-form-page .form-actions .btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .agreement-form-page .agreement-stats {
+      grid-template-columns: 1fr;
+    }
+    .agreement-form-page .stat-item {
+      padding: 0.75rem;
+    }
+  }
+  </style>
 {% endblock %}

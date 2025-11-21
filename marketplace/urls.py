@@ -86,4 +86,7 @@ urlpatterns = [
     # نزاعات
     # ======================
     path("disputed/", views.disputed_tasks, name="disputed_tasks"),
+
+    # قائمة جميع الطلبات الإدارية
+    path("all-requests/", views.all_requests_admin, name="all_requests_admin"),
 ]

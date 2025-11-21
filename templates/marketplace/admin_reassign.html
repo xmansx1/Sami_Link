@@ -3,131 +3,425 @@
 {% block title %}إعادة إسناد طلب #{{ req.pk }}{% endblock %}
 
 {% block content %}
-<section class="py-8 max-w-2xl mx-auto rtl" dir="rtl">
-
-  <div class="rounded-2xl border bg-white/85 dark:bg-slate-800/80 backdrop-blur shadow-glass-lg overflow-hidden">
-    <!-- رأس -->
-    <div class="p-6 border-b bg-gradient-to-l from-indigo-50 to-sky-50 dark:from-slate-800 dark:to-slate-900">
-      <div class="flex items-start justify-between gap-4">
-        <div class="min-w-0">
-          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            إعادة إسناد طلب #{{ req.pk }}
-          </h1>
-          <p class="text-slate-600 dark:text-slate-300 text-sm mt-1">
-            العنوان: <b class="truncate">{{ req.title|default:"—" }}</b>
-          </p>
-          <p class="text-slate-600 dark:text-slate-300 text-sm">
-            المُعين الحالي: <b>{{ req.assigned_employee|default:"غير معيّن" }}</b>
-          </p>
-        </div>
-        <a href="{{ req.get_absolute_url }}" class="px-4 py-2 rounded-xl border hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shrink-0">
-          رجوع
-        </a>
-      </div>
-
-      {# تنبيه إداري #}
-      <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-900/20 p-3 text-amber-900 dark:text-amber-200 text-sm">
-        <b>تنبيه:</b> إعادة الإسناد قد تغيّر صلاحيات الوصول والمراسلة الخاصة بالطلب. يتم تسجيل هذا الإجراء في سجلّ النظام.
-      </div>
-    </div>
-
-    <!-- جسم -->
-    <div class="p-6">
-
-      {# أخطاء عامة #}
-      {% if form.non_field_errors %}
-        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-900/20 p-3 text-rose-700 dark:text-rose-200 text-sm">
-          {{ form.non_field_errors }}
-        </div>
-      {% endif %}
-
-      <form id="reassignForm" method="post" class="space-y-5" novalidate>
-        {% csrf_token %}
-
-        {# أي حقول مخفية #}
-        {% for hf in form.hidden_fields %}
-          {{ hf }}
-        {% endfor %}
-
-        <!-- اختيار الموظف -->
-        <div>
-          <label for="{{ form.employee.id_for_label }}" class="block mb-1 font-semibold text-slate-800 dark:text-slate-100">
-            اختر الموظف
-          </label>
-          <div class="mt-1">
-            {{ form.employee }}
+<section class="page-section reassign-page">
+  <div class="container">
+    <div class="reassign-card profile-section" style="max-width: 800px; margin: 0 auto;">
+      
+      {# ===== رأس البطاقة ===== #}
+      <div class="card-header" style="background: linear-gradient(135deg, var(--primary-50) 0%, var(--secondary-50) 100%); border-bottom: 1px solid var(--dark-200); padding: 2rem;">
+        <div class="header-content" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem;">
+          <div style="flex: 1;">
+            <div class="section-badge" style="margin-bottom: 1rem;">
+              🔄 إعادة إسناد طلب
+            </div>
+            <h1 class="section-title" style="margin-bottom: 0.5rem; font-size: 1.75rem;">
+              إعادة إسناد طلب #{{ req.pk }}
+            </h1>
+            <div class="request-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <p class="card-section-note">
+                <strong>العنوان:</strong> {{ req.title|default:"—" }}
+              </p>
+              <p class="card-section-note">
+                <strong>المُعين الحالي:</strong> {{ req.assigned_employee|default:"غير معيّن" }}
+              </p>
+            </div>
           </div>
-          {% if form.employee.errors %}
-            <p class="mt-1 text-sm text-rose-600 dark:text-rose-300">{{ form.employee.errors|join:", " }}</p>
-          {% endif %}
-          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            يُنصح بإسناد الطلب لموظف مناسب لمجاله لضمان جودة التنفيذ.
-          </p>
-        </div>
-
-        {# حقل ملاحظة اختياري إذا وُجد في الفورم #}
-        {% if form.note %}
-        <div>
-          <label for="{{ form.note.id_for_label }}" class="block mb-1 font-semibold text-slate-800 dark:text-slate-100">
-            ملاحظة (اختياري)
-          </label>
-          <div class="mt-1">
-            {{ form.note }}
-          </div>
-          {% if form.note.errors %}
-            <p class="mt-1 text-sm text-rose-600 dark:text-rose-300">{{ form.note.errors|join:", " }}</p>
-          {% endif %}
-          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            ستظهر هذه الملاحظة في سجلّ الطلب للمراجعة لاحقًا.
-          </p>
-        </div>
-        {% endif %}
-
-        <!-- أزرار -->
-        <div class="flex items-center gap-3 pt-2">
-          <button id="submitBtn" type="submit" name="action" value="reassign"
-                  class="px-5 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed">
-            حفظ
-          </button>
-          <a class="px-5 py-3 rounded-xl border hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
-             href="{{ req.get_absolute_url }}">
-            إلغاء
+          <a href="{{ req.get_absolute_url }}" class="btn btn-outline">
+            ↩️ رجوع
           </a>
         </div>
-      </form>
+
+        {# ===== تنبيه إداري ===== #}
+        <div class="admin-alert profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200); margin-top: 1.5rem;">
+          <div class="card-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+            <span class="alert-icon" style="color: var(--secondary-600); font-size: 1.2rem;">⚠️</span>
+            <div class="alert-content">
+              <div class="card-section-title" style="color: var(--secondary-700); margin-bottom: 0.25rem;">
+                تنبيه إداري
+              </div>
+              <p class="card-section-note" style="color: var(--secondary-600);">
+                إعادة الإسناد قد تغيّر صلاحيات الوصول والمراسلة الخاصة بالطلب. يتم تسجيل هذا الإجراء في سجلّ النظام.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# ===== جسم النموذج ===== #}
+      <div class="card-body" style="padding: 2rem;">
+        
+        {# ===== أخطاء عامة ===== #}
+        {% if form.non_field_errors %}
+          <div class="error-alert profile-section" style="background: #fef2f2; border-color: #fecaca; margin-bottom: 1.5rem;">
+            <div class="card-row" style="display: flex; align-items: flex-start; gap: 1rem;">
+              <span class="error-icon" style="color: #ef4444; font-size: 1.2rem;">❌</span>
+              <div class="error-content">
+                <div class="card-section-title" style="color: #dc2626; margin-bottom: 0.25rem;">
+                  خطأ في الإدخال
+                </div>
+                <p class="card-section-note" style="color: #b91c1c;">
+                  {{ form.non_field_errors }}
+                </p>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+        <form id="reassignForm" method="post" class="reassign-form" novalidate>
+          {% csrf_token %}
+
+          {# أي حقول مخفية #}
+          {% for hf in form.hidden_fields %}
+            {{ hf }}
+          {% endfor %}
+
+          {# ===== اختيار الموظف ===== #}
+          <div class="form-field">
+            <label for="{{ form.employee.id_for_label }}" class="form-label">
+              👥 اختر الموظف
+            </label>
+            <div class="select-wrapper">
+              {{ form.employee }}
+            </div>
+            {% if form.employee.errors %}
+              <div class="field-error">
+                {{ form.employee.errors|join:", " }}
+              </div>
+            {% endif %}
+            <p class="field-hint">
+              يُنصح بإسناد الطلب لموظف مناسب لمجاله لضمان جودة التنفيذ.
+            </p>
+          </div>
+
+          {# ===== حقل الملاحظة ===== #}
+          {% if form.note %}
+          <div class="form-field">
+            <label for="{{ form.note.id_for_label }}" class="form-label">
+              📝 ملاحظة (اختياري)
+            </label>
+            <div class="textarea-wrapper">
+              {{ form.note }}
+            </div>
+            {% if form.note.errors %}
+              <div class="field-error">
+                {{ form.note.errors|join:", " }}
+              </div>
+            {% endif %}
+            <p class="field-hint">
+              ستظهر هذه الملاحظة في سجلّ الطلب للمراجعة لاحقًا.
+            </p>
+          </div>
+          {% endif %}
+
+          {# ===== أزرار الإجراءات ===== #}
+          <div class="form-actions employee-actions" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--dark-200);">
+            <button id="submitBtn" type="submit" name="action" value="reassign"
+                    class="btn btn-primary">
+              💾 حفظ التغييرات
+            </button>
+            <a class="btn btn-outline"
+               href="{{ req.get_absolute_url }}">
+              🚫 إلغاء
+            </a>
+          </div>
+        </form>
+      </div>
     </div>
+
+    {# ===== معلومات إضافية ===== #}
+    <div class="info-section profile-section" style="max-width: 800px; margin: 1.5rem auto 0; background: var(--dark-50);">
+      <div class="card-section-title">💡 معلومات مهمة</div>
+      <div class="info-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div class="info-item">
+          <div class="info-icon">📋</div>
+          <div class="info-content">
+            <div class="info-title">السجل</div>
+            <div class="info-text">سيتم تسجيل عملية إعادة الإسناد في سجل النظام</div>
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-icon">🔔</div>
+          <div class="info-content">
+            <div class="info-title">الإشعارات</div>
+            <div class="info-text">سيتم إشعار الموظف الجديد والعميل بالتغيير</div>
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-icon">⚡</div>
+          <div class="info-content">
+            <div class="info-title">الفورية</div>
+            <div class="info-text">التغيير ساري المفعول فور حفظ الإجراء</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
-
 </section>
+{% endblock %}
 
-<!-- تحسينات UX: تأكيد وتعطيل الإرسال + تركيز الحقل -->
-<script>
-(function () {
-  var form = document.getElementById('reassignForm');
-  var submitBtn = document.getElementById('submitBtn');
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
 
-  // تأكيد قبل الإرسال
-  function confirmReassign() {
-    var msg = 'سيتم إعادة إسناد هذا الطلب لموظف آخر.\nسيُسجَّل هذا الإجراء في السجلّ.\nمتابعة؟';
-    return window.confirm(msg);
-  }
+    // تهيئة تأثيرات الأزرار
+    if (typeof initButtonEffects === 'function') {
+      initButtonEffects();
+    }
 
-  if (form) {
-    // منع الإرسال المتكرر
-    form.addEventListener('submit', function (e) {
-      if (!confirmReassign()) {
-        e.preventDefault();
-        return false;
+    var form = document.getElementById('reassignForm');
+    var submitBtn = document.getElementById('submitBtn');
+    var employeeSelect = document.querySelector('select[name="employee"]');
+
+    // تأكيد قبل الإرسال
+    function confirmReassign() {
+      const selectedEmployee = employeeSelect ? employeeSelect.options[employeeSelect.selectedIndex] : null;
+      const employeeName = selectedEmployee ? selectedEmployee.text : '';
+      
+      let msg = 'سيتم إعادة إسناد هذا الطلب لموظف آخر.\n';
+      if (employeeName) {
+        msg += `الموظف الجديد: ${employeeName}\n`;
       }
-      if (submitBtn) submitBtn.setAttribute('disabled', 'disabled');
+      msg += 'سيُسجَّل هذا الإجراء في السجلّ.\nمتابعة؟';
+      
+      return window.confirm(msg);
+    }
+
+    if (form) {
+      // منع الإرسال المتكرر
+      form.addEventListener('submit', function (e) {
+        if (!confirmReassign()) {
+          e.preventDefault();
+          return false;
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '⏳ جاري الحفظ...';
+          
+          // تأثير النقر
+          if (typeof animateButtonClick === 'function') {
+            animateButtonClick(submitBtn);
+          }
+        }
+
+        // استخدام نظام التوست إذا كان متاحًا
+        if (typeof showToast === 'function') {
+          showToast('جاري إعادة إسناد الطلب...', 'info');
+        }
+      });
+
+      // تركيز تلقائي على حقل الموظف
+      if (employeeSelect) {
+        setTimeout(function () { 
+          employeeSelect.focus();
+          employeeSelect.style.borderColor = 'var(--primary-500)';
+          employeeSelect.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+          
+          setTimeout(() => {
+            employeeSelect.style.borderColor = '';
+            employeeSelect.style.boxShadow = '';
+          }, 1500);
+        }, 100);
+      }
+
+      // تأثيرات على الحقول
+      const formFields = form.querySelectorAll('select, textarea');
+      formFields.forEach(field => {
+        field.addEventListener('focus', function() {
+          this.style.borderColor = 'var(--primary-500)';
+          this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+        });
+        
+        field.addEventListener('blur', function() {
+          this.style.borderColor = '';
+          this.style.boxShadow = '';
+        });
+
+        // تأثير عند تغيير الاختيار
+        if (field.tagName === 'SELECT') {
+          field.addEventListener('change', function() {
+            this.style.background = 'var(--primary-50)';
+            setTimeout(() => {
+              this.style.background = '';
+            }, 500);
+          });
+        }
+      });
+    }
+
+    // تأثيرات على بطاقة المعلومات
+    document.querySelectorAll('.info-item').forEach((item, index) => {
+      item.style.animationDelay = `${index * 0.2}s`;
+      item.classList.add('scroll-reveal');
     });
 
-    // تركيز تلقائي على أول عنصر قابل للإدخال
-    var first = form.querySelector('select, input, textarea');
-    if (first && typeof first.focus === 'function') {
-      setTimeout(function () { first.focus(); }, 50);
+  })();
+  </script>
+
+  <style>
+  .reassign-page .reassign-card {
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .reassign-page .form-field {
+    margin-bottom: 2rem;
+  }
+
+  .reassign-page .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .reassign-page select,
+  .reassign-page textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .reassign-page select:focus,
+  .reassign-page textarea:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .reassign-page textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  .reassign-page .field-error {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .reassign-page .field-hint {
+    color: var(--dark-500);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .reassign-page .info-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .reassign-page .info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+  }
+
+  .reassign-page .info-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .reassign-page .info-content {
+    flex: 1;
+  }
+
+  .reassign-page .info-title {
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.25rem;
+  }
+
+  .reassign-page .info-text {
+    color: var(--dark-600);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .reassign-page .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-start;
+  }
+
+  @media (max-width: 768px) {
+    .reassign-page .header-content {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .reassign-page .header-content .btn {
+      align-self: flex-end;
+    }
+    
+    .reassign-page .form-actions {
+      flex-direction: column;
+    }
+    
+    .reassign-page .form-actions .btn {
+      width: 100%;
+    }
+    
+    .reassign-page .info-grid {
+      grid-template-columns: 1fr;
     }
   }
-})();
-</script>
+
+  @media (max-width: 480px) {
+    .reassign-page .card-header,
+    .reassign-page .card-body {
+      padding: 1.5rem;
+    }
+    
+    .reassign-page .section-title {
+      font-size: 1.5rem;
+    }
+  }
+
+  /* تأثيرات خاصة */
+  .reassign-page .admin-alert,
+  .reassign-page .error-alert {
+    border-left: 4px solid;
+  }
+
+  .reassign-page .admin-alert {
+    border-left-color: var(--secondary-500);
+  }
+
+  .reassign-page .error-alert {
+    border-left-color: #ef4444;
+  }
+
+  /* تأثيرات الحركة */
+  @keyframes slideInFromTop {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .reassign-page .reassign-card {
+    animation: slideInFromTop 0.6s ease-out;
+  }
+  </style>
 {% endblock %}

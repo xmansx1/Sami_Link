@@ -5,108 +5,387 @@
 {% block title %}لوحة المالية{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6" dir="rtl">
-  <div class="mb-6">
-    <h1 class="text-2xl md:text-3xl font-extrabold">لوحة المالية</h1>
-    <p class="text-sm text-gray-600 mt-1">نظرة إجمالية على التحصيل والضرائب وعمولة المنصة ومتابعة الطلبات.</p>
+<section class="page-section finance-dashboard">
+  <div class="container">
+    
+    {# ===== رأس الصفحة ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        💰 لوحة المالية
+      </div>
+      <h1 class="section-title">
+        لوحة المالية
+      </h1>
+      <p class="section-description">
+        نظرة إجمالية على التحصيل والضرائب وعمولة المنصة ومتابعة الطلبات
+      </p>
+    </div>
+
+    {# ===== بطاقات الإحصائيات ===== #}
+    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+      
+      {# طلبات قيد التنفيذ #}
+      <div class="profile-section">
+        <div class="card-section-title">🔄 طلبات قيد التنفيذ</div>
+        <div class="stat-value" style="font-size: 2rem; font-weight: 800; color: var(--primary-600); margin: 0.5rem 0;">
+          {{ inprogress_count|default:0 }}
+        </div>
+        <div class="card-section-note">
+          إجمالي مبالغ اتفاقياتها: {{ total_agreements_amount|floatformat:2 }} ريال
+        </div>
+        <div class="employee-actions" style="margin-top: 1rem;">
+          <a href="{% url 'finance:in_progress' %}" class="btn btn-outline btn-sm">
+            عرض الطلبات
+          </a>
+        </div>
+      </div>
+
+      {# الفواتير المدفوعة #}
+      <div class="profile-section" style="background: linear-gradient(135deg, var(--primary-50) 0%, var(--white) 100%);">
+        <div class="card-section-title">✅ إجمالي الفواتير المدفوعة</div>
+        <div class="stat-value" style="font-size: 2rem; font-weight: 800; color: var(--primary-600); margin: 0.5rem 0;">
+          {{ paid_sum|default:0|floatformat:2 }} ريال
+        </div>
+        <div class="employee-actions" style="margin-top: 1rem;">
+          <a href="{% url 'finance:invoice_list' %}?status=paid" class="btn btn-outline btn-sm">
+            عرض الفواتير المدفوعة
+          </a>
+        </div>
+      </div>
+
+      {# الفواتير غير المدفوعة #}
+      <div class="profile-section" style="background: linear-gradient(135deg, var(--secondary-50) 0%, var(--white) 100%);">
+        <div class="card-section-title">⏳ إجمالي الفواتير غير المدفوعة</div>
+        <div class="stat-value" style="font-size: 2rem; font-weight: 800; color: var(--secondary-600); margin: 0.5rem 0;">
+          {{ unpaid_sum|default:0|floatformat:2 }} ريال
+        </div>
+        <div class="employee-actions" style="margin-top: 1rem;">
+          <a href="{% url 'finance:invoice_list' %}?status=unpaid" class="btn btn-outline btn-sm">
+            عرض الفواتير غير المدفوعة
+          </a>
+        </div>
+      </div>
+
+
+      {# إجمالي المبالغ فقط #}
+      <div class="profile-section">
+        <div class="card-section-title">💰 إجمالي المبالغ المدخلة</div>
+        <div class="stat-value" style="font-size: 2rem; font-weight: 800; color: var(--primary-600); margin: 0.5rem 0;">
+          {{ total_agreements_amount|default:0|floatformat:2 }} ريال
+        </div>
+      </div>
+    </div>
+
+    {# ===== القسم السفلي ===== #}
+    <div class="bottom-section" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+      
+      {# تحويلات بانتظار التأكيد #}
+      <div class="profile-section">
+        <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 class="card-section-title">📤 تحويلات بانتظار تأكيد مالي (مرجع بنكي مُدخل)</h2>
+          <a href="{% url 'finance:confirm_transfers' %}" class="btn btn-outline btn-sm">
+            فتح صفحة التأكيد
+          </a>
+        </div>
+        
+        <div class="table-wrapper">
+          <table class="table table-clean">
+            <thead>
+              <tr>
+                <th>فاتورة</th>
+                <th>طلب</th>
+                <th>المبلغ</th>
+                <th>مرجع التحويل</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if pending_bank_confirms %}
+                {% for inv in pending_bank_confirms %}
+                  <tr class="scroll-reveal">
+                    <td class="text-muted">#{{ inv.id }}</td>
+                    <td>R{{ inv.agreement.request_id }}</td>
+                    <td>
+                      <span class="value-strong">{{ inv.total_amount|floatformat:2 }} ريال</span>
+                    </td>
+                    <td>
+                      <span class="badge badge-default">{{ inv.paid_ref|default:"—" }}</span>
+                    </td>
+                    <td>
+                      <a href="{% url 'finance:invoice_detail' inv.id %}" class="btn btn-outline btn-sm">
+                        تفاصيل
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="5" class="text-center text-muted" style="padding: 2rem;">
+                    <div class="text-4xl mb-2 opacity-40">💸</div>
+                    لا توجد تحويلات بانتظار التأكيد حاليًا
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# الإعدادات والمستحقات #}
+      <div class="profile-section">
+        <div class="card-section-title">⚙️ إعدادات النِّسَب</div>
+        <p class="card-section-note" style="margin-bottom: 1rem;">
+          نسبة عمولة المنصة و VAT (بين 0 و 1)
+        </p>
+        
+        <div class="employee-actions" style="margin-bottom: 2rem;">
+          {% if settings_url %}
+            <a href="{{ settings_url }}" class="btn btn-primary btn-sm" style="width: 100%;">
+              فتح صفحة الإعدادات
+            </a>
+          {% else %}
+            <a href="{% url 'finance:settings' %}" class="btn btn-primary btn-sm" style="width: 100%;">
+              فتح صفحة الإعدادات
+            </a>
+          {% endif %}
+        </div>
+
+
+        {# لا يوجد صافي موظفين - فقط المبلغ المدخل #}
+      </div>
+    </div>
+
+    {# ===== موجز سريع ===== #}
+    <div class="profile-section" style="margin-top: 2rem; background: var(--dark-50);">
+      <div class="card-section-title">📊 موجز سريع</div>
+      <div class="quick-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div class="stat-item">
+          <div class="stat-label">إجمالي الفواتير المدفوعة</div>
+          <div class="stat-number">{{ paid_sum|default:0|floatformat:2 }} ريال</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">إجمالي الفواتير غير المدفوعة</div>
+          <div class="stat-number">{{ unpaid_sum|default:0|floatformat:2 }} ريال</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">إجمالي عمولة المنصة</div>
+          <div class="stat-number">{{ platform_fee_total|default:0|floatformat:2 }} ريال</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">إجمالي الضريبة VAT</div>
+          <div class="stat-number">{{ vat_total|default:0|floatformat:2 }} ريال</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">صافي الموظفين المدفوع</div>
+          <div class="stat-number">{{ employee_dues_total|default:0|floatformat:2 }} ريال</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">صافي الموظفين المعلق (نزاع)</div>
+          <div class="stat-number">{{ disputed_total|default:0|floatformat:2 }} ريال</div>
+        </div>
+      </div>
+    </div>
+
   </div>
+</section>
+{% endblock %}
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div class="p-4 rounded-2xl shadow bg-white">
-      <div class="text-gray-500 text-sm">طلبات قيد التنفيذ</div>
-      <div class="text-2xl font-bold mt-1">{{ inprogress_count|default:0 }}</div>
-      <div class="text-xs text-gray-500 mt-1">إجمالي مبالغ اتفاقياتها: {{ total_agreements_amount|floatformat:2 }} ريال</div>
-      <a href="{% url 'finance:in_progress' %}" class="inline-block mt-3 text-sm underline hover:no-underline">عرض الطلبات</a>
-    </div>
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
 
-    <div class="p-4 rounded-2xl shadow bg-white">
-      <div class="text-gray-500 text-sm">إجمالي الفواتير المدفوعة</div>
-      <div class="text-2xl font-bold mt-1">{{ paid_sum|default:0|floatformat:2 }} ريال</div>
-      <a href="{% url 'finance:invoice_list' %}?status=paid" class="inline-block mt-3 text-sm underline hover:no-underline">عرض الفواتير المدفوعة</a>
-    </div>
+    // تأثيرات على البطاقات الإحصائية
+    document.querySelectorAll('.profile-section').forEach((card, index) => {
+      card.style.animationDelay = `${index * 0.1}s`;
+      card.classList.add('scroll-reveal');
+      
+      // تأثير hover على البطاقات الإحصائية
+      card.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-5px)';
+        this.style.boxShadow = 'var(--shadow-lg)';
+      });
+      
+      card.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = '';
+      });
+    });
 
-    <div class="p-4 rounded-2xl shadow bg-white">
-      <div class="text-gray-500 text-sm">إجمالي الفواتير غير المدفوعة</div>
-      <div class="text-2xl font-bold mt-1">{{ unpaid_sum|default:0|floatformat:2 }} ريال</div>
-      <a href="{% url 'finance:invoice_list' %}?status=unpaid" class="inline-block mt-3 text-sm underline hover:no-underline">عرض الفواتير غير المدفوعة</a>
-    </div>
+    // تأثيرات على الأزرار
+    document.querySelectorAll('.btn').forEach(button => {
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+      });
+    });
 
-    <div class="p-4 rounded-2xl shadow bg-white">
-      <div class="text-gray-500 text-sm">ضريبة القيمة المضافة (مجموع)</div>
-      <div class="text-2xl font-bold mt-1">{{ vat_total|default:0|floatformat:2 }} ريال</div>
-      <a href="{% url 'finance:collections_report' %}" class="inline-block mt-3 text-sm underline hover:no-underline">تقرير التحصيل</a>
-    </div>
+    // تحديث حيوي للإحصائيات (يمكن تطويره لاحقًا)
+    function updateStats() {
+      const statValues = document.querySelectorAll('.stat-value');
+      statValues.forEach(stat => {
+        const originalValue = stat.textContent;
+        // يمكن إضافة تأثيرات رقمية متحركة هنا لاحقًا
+      });
+    }
 
-    <div class="p-4 rounded-2xl shadow bg-white">
-      <div class="text-gray-500 text-sm">عمولة المنصة (مجموع)</div>
-      <div class="text-2xl font-bold mt-1">{{ platform_fee_total|default:0|floatformat:2 }} ريال</div>
-      <a href="{% url 'finance:collections_report' %}" class="inline-block mt-3 text-sm underline hover:no-underline">تفاصيل بالطرق</a>
-    </div>
+    // تهيئة الإحصائيات
+    updateStats();
 
-    <div class="p-4 rounded-2xl shadow bg-white">
-      <div class="text-gray-500 text-sm">مبالغ محتجزة بسبب نزاعات</div>
-      <div class="text-2xl font-bold mt-1">{{ disputed_total|default:0|floatformat:2 }} ريال</div>
-      <a href="{% url 'finance:collections_report' %}?status=paid" class="inline-block mt-3 text-sm underline hover:no-underline">تتبّع التحصيل</a>
-    </div>
-  </div>
+    // تأثيرات على صفوف الجدول
+    document.querySelectorAll('.table-clean tbody tr').forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.background = 'var(--primary-50)';
+      });
+      
+      row.addEventListener('mouseleave', function() {
+        this.style.background = '';
+      });
+    });
 
-  <div class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 p-4 rounded-2xl shadow bg-white">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-bold">تحويلات بانتظار تأكيد مالي (مرجع بنكي مُدخل)</h2>
-        <a href="{% url 'finance:confirm_transfers' %}" class="text-sm underline hover:no-underline">فتح صفحة التأكيد</a>
+    // تحديث تلقائي للوحة (يمكن تفعيله لاحقًا)
+    /*
+    setInterval(() => {
+      // يمكن إضافة تحديث تلقائي للبيانات هنا
+      console.log('Updating finance dashboard...');
+    }, 30000); // كل 30 ثانية
+    */
+
+  })();
+  </script>
+
+  <style>
+  .finance-dashboard .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .finance-dashboard .profile-section {
+    transition: all 0.3s ease;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .finance-dashboard .table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+  }
+
+  .finance-dashboard .table-clean {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .finance-dashboard .table-clean th {
+    background: var(--dark-50);
+    color: var(--dark-700);
+    font-weight: 600;
+    padding: 1rem;
+    text-align: right;
+    border-bottom: 1px solid var(--dark-200);
+  }
+
+  .finance-dashboard .table-clean td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--dark-100);
+    vertical-align: middle;
+  }
+
+  .finance-dashboard .table-clean tr:last-child td {
+    border-bottom: none;
+  }
+
+  .finance-dashboard .value-strong {
+    font-weight: 700;
+    color: var(--dark-900);
+  }
+
+  .finance-dashboard .text-muted {
+    color: var(--dark-500);
+  }
+
+  .finance-dashboard .text-center {
+    text-align: center;
+  }
+
+  .finance-dashboard .quick-stats {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .finance-dashboard .stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+      {# بطاقة واحدة فقط: إجمالي المبالغ المدخلة #}
+      <div class="profile-section" style="max-width: 500px; margin: 0 auto 2rem auto; background: linear-gradient(135deg, var(--primary-50) 0%, var(--white) 100%);">
+        <div class="card-section-title" style="font-size: 1.3rem;">💰 إجمالي المبالغ المدخلة</div>
+        <div class="stat-value" style="font-size: 2.5rem; font-weight: 900; color: var(--primary-700); margin: 1.5rem 0; letter-spacing:1px;">
+          {{ total_agreements_amount|default:0|floatformat:2 }} <span style="font-size:1.1rem; color:#bfa700;">ريال</span>
+        </div>
+        <div class="card-section-note" style="font-size:1.1rem; color:var(--dark-500); margin-bottom:1.5rem;">
+          هذا الرقم يعكس فقط مجموع المبالغ المدخلة في جميع العروض والاتفاقيات المعتمدة.
+        </div>
       </div>
-      <div class="mt-3 overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="text-gray-600 border-b">
-              <th class="py-2 px-3 text-right">فاتورة</th>
-              <th class="py-2 px-3 text-right">طلب</th>
-              <th class="py-2 px-3 text-right">المبلغ</th>
-              <th class="py-2 px-3 text-right">مرجع التحويل</th>
-              <th class="py-2 px-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% if pending_bank_confirms %}
-            {% for inv in pending_bank_confirms %}
-            <tr class="border-b">
-              <td class="py-2 px-3">#{{ inv.id }}</td>
-              <td class="py-2 px-3">R{{ inv.agreement.request_id }}</td>
-              <td class="py-2 px-3">{{ inv.total_amount|floatformat:2 }}</td>
-              <td class="py-2 px-3">{{ inv.paid_ref }}</td>
-              <td class="py-2 px-3">
-                <a href="{% url 'finance:invoice_detail' inv.id %}" class="btn btn-sm">تفاصيل</a>
-              </td>
-            </tr>
-            {% endfor %}
-            {% else %}
-            <tr>
-              <td colspan="5" class="py-4 px-3 text-gray-500">لا توجد تحويلات بانتظار التأكيد حاليًا.</td>
-            </tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
-    </div>
 
-    <div class="p-4 rounded-2xl shadow bg-white">
-      <h2 class="text-lg font-bold">إعدادات النِّسَب</h2>
-      <p class="text-sm text-gray-600 mt-1">نسبة عمولة المنصة و VAT (بين 0 و 1).</p>
-      <div class="mt-3">
-        {% if settings_url %}
-        <a href="{{ settings_url }}" class="btn w-full">فتح صفحة الإعدادات</a>
-        {% else %}
-        <a href="{% url 'finance:settings' %}" class="btn w-full">فتح صفحة الإعدادات</a>
-        {% endif %}
-      </div>
+  .finance-dashboard .stat-number {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-600);
+  }
 
-      <div class="mt-6">
-        <h3 class="font-bold text-sm">صافي الموظفين (على أساس الفواتير)</h3>
-        <div class="text-2xl font-bold mt-1">{{ employee_dues_total|default:0|floatformat:2 }} ريال</div>
-        <a href="{% url 'finance:employee_dues' %}" class="inline-block mt-3 text-sm underline hover:no-underline">عرض مستحقات الموظفين</a>
-      </div>
-    </div>
-  </div>
-</div>
+  @media (max-width: 1024px) {
+    .finance-dashboard .bottom-section {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .finance-dashboard .stats-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .finance-dashboard .quick-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .finance-dashboard .table-wrapper {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .finance-dashboard .quick-stats {
+      grid-template-columns: 1fr;
+    }
+    
+    .finance-dashboard .stat-item {
+      padding: 0.75rem;
+    }
+  }
+
+  /* تأثيرات الرقم المتحركة */
+  @keyframes countUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .finance-dashboard .stat-value {
+    animation: countUp 0.6s ease-out;
+  }
+  </style>
 {% endblock %}

@@ -212,9 +212,9 @@ def compute_breakdown(
         raise ValueError("payout_mode غير معروف.")
 
     platform_fee_value = _q(P * F)
-    taxable_base = _q(P + platform_fee_value)
+    taxable_base = _q(P)  # الضريبة فقط على قيمة المشروع
     vat_amount = _q(taxable_base * V)
-    client_total = _q(taxable_base + vat_amount)
+    client_total = _q(P + platform_fee_value + vat_amount)
 
     tech_payout = _q(P - platform_fee_value) if mode == "net_after_fee" else _q(P)
 

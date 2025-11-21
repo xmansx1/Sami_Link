@@ -124,6 +124,88 @@ def current_rates_cached() -> Tuple[Decimal, Decimal]:
 
 
 # ============================
+# حساب صافي الموظف وإجمالي العميل من مبلغ أساسي
+# ============================
+def calculate_financials_from_net(
+    net_amount: Any,
+    platform_fee_percent: Optional[Any] = None,
+    vat_rate: Optional[Any] = None,
+) -> Dict[str, Decimal]:
+    """
+    يحسب القيم المالية الأساسية انطلاقًا من مبلغ صافي الموظف:
+
+    المدخل:
+      - net_amount: صافي الموظف (proposed_price في العرض)
+      - platform_fee_percent: نسبة عمولة المنصّة على مقياس 0..1 (مثال 0.10 لـ 10%)
+      - vat_rate: نسبة ضريبة القيمة المضافة على مقياس 0..1 (مثال 0.15 لـ 15%)
+
+    إذا لم تُمرَّر النسب، يتم جلبها من إعدادات المالية (FinanceSettings) عن طريق الكاش.
+
+    المخرجات:
+      - net_for_employee: صافي الموظف (نفس net_amount بعد التقريب)
+      - platform_fee: قيمة عمولة المنصّة
+      - vat_amount: قيمة الضريبة على (الصافي + عمولة المنصّة)
+      - client_total: المبلغ النهائي الذي يدفعه العميل (صافي + عمولة + ضريبة)
+    """
+    net = money_q2(net_amount)
+
+    # fallback إلى الإعدادات المخزنة إذا لم تُمرَّر النسب يدويًا
+    if platform_fee_percent is None or vat_rate is None:
+        cfg = get_finance_cfg()
+        if platform_fee_percent is None:
+            platform_fee_percent = cfg.platform_fee_percent
+        if vat_rate is None:
+            vat_rate = cfg.vat_rate
+
+    pf = percent_q4(platform_fee_percent)
+    vr = percent_q4(vat_rate)
+
+    if net <= Decimal("0.00"):
+        return {
+            "net_for_employee": Decimal("0.00"),
+            "platform_fee": Decimal("0.00"),
+            "vat_amount": Decimal("0.00"),
+            "client_total": Decimal("0.00"),
+        }
+
+
+    # عمولة المنصة كنسبة من السعر المقترح
+    platform_fee = money_q2(net * pf)
+
+    # الضريبة على السعر المقترح فقط
+    vat_amount = money_q2(net * vr)
+
+    # المجموع قبل الضريبة = السعر المقترح + عمولة المنصة
+    subtotal = money_q2(net + platform_fee)
+
+    # الإجمالي الذي يدفعه العميل
+    client_total = money_q2(subtotal + vat_amount)
+
+    return {
+        "net_for_employee": money_q2(net - platform_fee),
+        "platform_fee": platform_fee,
+        "vat_amount": vat_amount,
+        "client_total": client_total,
+    }
+
+
+def calculate_financials(
+    net_amount: Any,
+    platform_fee_percent: Optional[Any] = None,
+    vat_rate: Optional[Any] = None,
+) -> Dict[str, Decimal]:
+    """
+    دالة غلاف (alias) لسهولة الاستخدام/التوافق الخلفي.
+    نفس سلوك calculate_financials_from_net تمامًا.
+    """
+    return calculate_financials_from_net(
+        net_amount=net_amount,
+        platform_fee_percent=platform_fee_percent,
+        vat_rate=vat_rate,
+    )
+
+
+# ============================
 # أدوات البنك/الدفع للعرض
 # ============================
 def mask_iban(iban: str) -> str:

@@ -74,11 +74,12 @@ class AgreementForm(forms.ModelForm):
 class AgreementEditForm(forms.ModelForm):
     class Meta:
         model = Agreement
-        fields = ["title", "text"]
-        labels = {"title": "عنوان الاتفاقية", "text": "نص الاتفاقية"}
+        fields = ["title", "text", "duration_days"]
+        labels = {"title": "عنوان الاتفاقية", "text": "نص الاتفاقية", "duration_days": "المدة (أيام)"}
         widgets = {
             "title": forms.TextInput(attrs={"class": "input", "placeholder": "عنوان واضح"}),
             "text": forms.Textarea(attrs={"class": "input", "rows": 6, "placeholder": "نص الاتفاقية (اختياري)"}),
+            "duration_days": forms.NumberInput(attrs={"class": "input", "min": 1}),
         }
 
     def clean_title(self) -> str:
@@ -115,14 +116,20 @@ class BaseMilestoneFormSet(BaseInlineFormSet):
         super().clean()
         # اضمن أن فيه على الأقل نموذج غير محذوف وصالح
         alive = 0
+        orders = set()
         for form in self.forms:
             if not form.cleaned_data:
                 continue
             if form.cleaned_data.get("DELETE"):
                 continue
             alive += 1
+            order_val = form.cleaned_data.get("order")
+            if order_val in orders:
+                raise ValidationError("رجاء صحّح بيانات order المتكررة. يجب ألا تتكرر أرقام ترتيب المراحل.")
+            orders.add(order_val)
         if alive < 1:
             raise ValidationError("يجب أن تحتوي الاتفاقية على مرحلة واحدة على الأقل.")
+        # لا تضف أي تحقق متعلق بمجموع الأيام هنا، التحقق يتم فقط في الـ view
 
     def save(self, commit=True):
         """

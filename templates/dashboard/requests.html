@@ -1,75 +1,556 @@
 {% extends "base.html" %}
 {% block title %}إدارة الطلبات{% endblock %}
 {% block content %}
-<div class="container-xl mx-auto space-y-5">
-  <div class="flex items-center justify-between">
-    <h1 class="text-2xl md:text-3xl font-extrabold">إدارة الطلبات</h1>
-    <div class="text-sm text-slate-600">مراجعة الطلبات حسب الحالة ونطاق التاريخ</div>
-  </div>
 
-  <form method="get" class="card p-4 grid md:grid-cols-5 gap-3">
-    <input class="input md:col-span-2" type="text" name="q" value="{{ q }}" placeholder="بحث بالعنوان/الوصف/العميل…" />
-    <input class="input" type="date" name="start" value="{{ start }}" />
-    <input class="input" type="date" name="end" value="{{ end }}" />
-    <select class="input" name="state">
-      <option value="">كل الحالات</option>
-      {% if state %}<option value="{{ state }}" selected>{{ state }}</option>{% endif %}
-    </select>
-    <div class="md:col-span-5 flex gap-2">
-      <button class="px-4 py-3 rounded-xl text-white font-semibold bg-brand-600 hover:bg-brand-700">بحث</button>
-      <a href="." class="px-4 py-3 rounded-xl font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50">تصفير</a>
+<section class="page-section admin-requests-page">
+  <div class="container">
+    
+    {# ===== رأس الصفحة ===== #}
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">
+        🛠️ إدارة الطلبات
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+        <h1 class="section-title" style="margin: 0;">
+          إدارة الطلبات
+        </h1>
+        <div class="page-subtitle" style="color: var(--dark-500); font-size: 0.95rem;">
+          مراجعة الطلبات حسب الحالة ونطاق التاريخ
+        </div>
+      </div>
     </div>
-  </form>
 
-  <div class="card overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-right text-slate-600">
-          <th class="py-3 px-3">#</th>
-          <th class="py-3 px-3">العنوان</th>
-          <th class="py-3 px-3">العميل</th>
-          <th class="py-3 px-3">الحالة</th>
-          <th class="py-3 px-3">تاريخ الإنشاء</th>
-          <th class="py-3 px-3">إجراءات</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if page_obj %}
-          {% for r in page_obj %}
-          <tr class="border-t border-slate-200">
-            <td class="py-2 px-3">R{{ r.id }}</td>
-            <td class="py-2 px-3">{{ r.title|default:"-" }}</td>
-            <td class="py-2 px-3">{% if r.created_by %}{{ r.created_by }}{% else %}-{% endif %}</td>
-            <td class="py-2 px-3">{% if r.state %}{{ r.state }}{% else %}-{% endif %}</td>
-            <td class="py-2 px-3">{% if r.created_at %}{{ r.created_at|date:"Y-m-d" }}{% else %}-{% endif %}</td>
-            <td class="py-2 px-3">
-              <div class="flex gap-2">
-                <a href="{% url 'marketplace:request_detail' r.id %}" class="px-3 py-1.5 rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100">فتح</a>
-                <a href="{% url 'marketplace:admin_request_reassign' r.id %}" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">إعادة إسناد</a>
-                <a href="{% url 'marketplace:admin_request_delete' r.id %}" class="px-3 py-1.5 rounded-lg bg-danger-50 text-danger-600 hover:bg-danger-100">حذف</a>
-              </div>
-            </td>
-          </tr>
-          {% empty %}
-          <tr><td class="py-4 px-3" colspan="6">لا توجد نتائج.</td></tr>
-          {% endfor %}
-        {% else %}
-          <tr><td class="py-4 px-3" colspan="6">النموذج Request غير متوفر حاليًا.</td></tr>
+    {# ===== فلاتر البحث ===== #}
+    <div class="profile-section" style="margin-bottom: 2rem;">
+      <form method="get" class="filter-form">
+        <div class="form-grid-5" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1rem;">
+          <div class="form-field" style="grid-column: span 2;">
+            <label class="form-label">🔍 بحث</label>
+            <input type="text" name="q" value="{{ q }}" class="input" placeholder="بحث بالعنوان/الوصف/العميل…">
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">📅 من تاريخ</label>
+            <input type="date" name="start" value="{{ start }}" class="input">
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">📅 إلى تاريخ</label>
+            <input type="date" name="end" value="{{ end }}" class="input">
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">📊 الحالة</label>
+            <select name="state" class="input">
+              <option value="">كل الحالات</option>
+              {% if state %}<option value="{{ state }}" selected>{{ state }}</option>{% endif %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-actions" style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-primary">
+            🔍 بحث
+          </button>
+          <a href="." class="btn btn-outline">
+            🔄 تصفير
+          </a>
+        </div>
+      </form>
+    </div>
+
+    {# ===== جدول الطلبات ===== #}
+    <div class="profile-section">
+      <div class="table-wrapper">
+        <table class="table table-clean">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>العنوان</th>
+              <th>العميل</th>
+              <th>الحالة</th>
+              <th>تاريخ الإنشاء</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if page_obj %}
+              {% for r in page_obj %}
+                <tr class="scroll-reveal">
+                  <td class="text-muted">R{{ r.id }}</td>
+                  
+                  <td>
+                    <div class="table-cell-main">
+                      <div class="table-cell-title">{{ r.title|default:"-" }}</div>
+                    </div>
+                  </td>
+                  
+                  <td>
+                    <div class="client-info">
+                      {{ r.client_name|default:"-" }}
+                    </div>
+                  </td>
+                  
+                  <td>
+                    {% with req_state=r.state %}
+                      {% if req_state %}
+                        <span class="badge 
+                                   {% if req_state == 'new' or req_state == 'pending' %}badge-pending
+                                   {% elif req_state == 'completed' or req_state == 'done' %}badge-verified
+                                   {% elif req_state == 'cancelled' or req_state == 'canceled' or req_state == 'rejected' %}badge-rejected
+                                   {% elif req_state == 'in_progress' or req_state == 'processing' %}badge-default
+                                   {% else %}badge-default{% endif %}">
+                          {{ req_state }}
+                        </span>
+                      {% elif r.status %}
+                        <span class="badge badge-default">{{ r.status }}</span>
+                      {% elif r.phase %}
+                        <span class="badge badge-default">{{ r.phase }}</span>
+                      {% else %}-{% endif %}
+                    {% endwith %}
+                  </td>
+                  
+                  <td class="text-muted">
+                    {% if r.created_at %}{{ r.created_at|date:"Y-m-d" }}{% else %}-{% endif %}
+                  </td>
+                  
+                  <td>
+                    <div class="table-actions">
+                      <a href="{% url 'marketplace:request_detail' r.id %}" 
+                         class="btn btn-outline btn-sm"
+                         title="فتح تفاصيل الطلب">
+                        👁️ فتح
+                      </a>
+                      <a href="{% url 'marketplace:admin_request_reassign' r.id %}" 
+                         class="btn btn-outline btn-sm"
+                         title="إعادة إسناد الطلب">
+                        🔄 إسناد
+                      </a>
+                      <a href="{% url 'marketplace:admin_request_delete' r.id %}" 
+                         class="btn btn-danger btn-sm"
+                         title="حذف الطلب"
+                         onclick="return confirm('هل أنت متأكد من حذف هذا الطلب؟ هذا الإجراء لا يمكن التراجع عنه.')">
+                        🗑️ حذف
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center text-muted" style="padding: 3rem;">
+                    <div class="empty-state">
+                      <div class="empty-icon" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">📭</div>
+                      <h3 class="empty-title" style="font-size: 1.2rem; margin-bottom: 0.5rem; color: var(--dark-600);">لا توجد نتائج</h3>
+                      <p class="empty-description" style="color: var(--dark-500);">لم يتم العثور على طلبات تطابق معايير البحث</p>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted" style="padding: 3rem;">
+                  <div class="empty-state">
+                    <div class="empty-icon" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">⚙️</div>
+                    <h3 class="empty-title" style="font-size: 1.2rem; margin-bottom: 0.5rem; color: var(--dark-600);">النموذج غير متوفر</h3>
+                    <p class="empty-description" style="color: var(--dark-500);">النموذج Request غير متوفر حاليًا</p>
+                  </div>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {# ===== ترقيم الصفحات ===== #}
+    {% if page_obj %}
+      <div class="pagination profile-section" style="text-align: center; padding: 1.5rem;">
+        <div class="pagination-inner employee-actions">
+          {% if page_obj.has_previous %}
+            <a class="btn btn-outline btn-sm"
+               href="?page={{ page_obj.previous_page_number }}&q={{ q }}&state={{ state }}&start={{ start }}&end={{ end }}">
+              ‹ السابق
+            </a>
+          {% else %}
+            <span class="btn btn-outline btn-sm" style="opacity: 0.5; cursor: not-allowed;">‹ السابق</span>
+          {% endif %}
+
+          <span class="pagination-info badge badge-default">
+            الصفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
+          </span>
+
+          {% if page_obj.has_next %}
+            <a class="btn btn-outline btn-sm"
+               href="?page={{ page_obj.next_page_number }}&q={{ q }}&state={{ state }}&start={{ start }}&end={{ end }}">
+              التالي ›
+            </a>
+          {% else %}
+            <span class="btn btn-outline btn-sm" style="opacity: 0.5; cursor: not-allowed;">التالي ›</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    {# ===== إحصائيات سريعة ===== #}
+    <div class="profile-section" style="background: var(--dark-50); margin-top: 2rem;">
+      <div class="card-section-title">📊 إحصائيات سريعة</div>
+      <div class="quick-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div class="stat-item">
+          <div class="stat-label">إجمالي الطلبات</div>
+          <div class="stat-number">{{ page_obj.paginator.count|default:0 }}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">عرض الصفحة</div>
+          <div class="stat-number">{{ page_obj|length }}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">الصفحة الحالية</div>
+          <div class="stat-number">{{ page_obj.number }}</div>
+        </div>
+        {% if q or start or end or state %}
+        <div class="stat-item">
+          <div class="stat-label">بحث مفعل</div>
+          <div class="stat-number">✅</div>
+        </div>
         {% endif %}
-      </tbody>
-    </table>
-  </div>
+      </div>
+    </div>
 
-  {% if page_obj %}
-  <div class="flex items-center justify-center gap-2">
-    {% if page_obj.has_previous %}
-      <a class="px-3 py-2 rounded-lg border border-slate-200" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&state={{ state }}&start={{ start }}&end={{ end }}">السابق</a>
-    {% endif %}
-    <span class="px-3 py-2 rounded-lg bg-slate-100">صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-      <a class="px-3 py-2 rounded-lg border border-slate-200" href="?page={{ page_obj.next_page_number }}&q={{ q }}&state={{ state }}&start={{ start }}&end={{ end }}">التالي</a>
-    {% endif %}
   </div>
-  {% endif %}
-</div>
+</section>
+
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    // تهيئة تأثيرات التمرير
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    // تأثيرات على الأزرار
+    document.querySelectorAll('.btn').forEach(button => {
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+      });
+    });
+
+    // تحسين تجربة الفلاتر
+    const filterForm = document.querySelector('.filter-form');
+    if (filterForm) {
+      const inputs = filterForm.querySelectorAll('input, select');
+      
+      inputs.forEach(input => {
+        // تأثير التركيز
+        input.addEventListener('focus', function() {
+          this.style.borderColor = 'var(--primary-500)';
+          this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+        });
+        
+        input.addEventListener('blur', function() {
+          this.style.borderColor = '';
+          this.style.boxShadow = '';
+        });
+
+        // تأثير عند التغيير
+        input.addEventListener('change', function() {
+          this.style.background = 'var(--primary-50)';
+          setTimeout(() => {
+            this.style.background = '';
+          }, 500);
+        });
+      });
+
+      // إرسال النموذج عند الضغط على Enter في حقل البحث
+      const searchInput = filterForm.querySelector('input[name="q"]');
+      if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            filterForm.submit();
+          }
+        });
+      }
+    }
+
+    // تأثيرات على صفوف الجدول
+    document.querySelectorAll('.table-clean tbody tr').forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.background = 'var(--primary-50)';
+        this.style.transform = 'translateX(-5px)';
+      });
+      
+      row.addEventListener('mouseleave', function() {
+        this.style.background = '';
+        this.style.transform = 'translateX(0)';
+      });
+
+      // تأثير النقر على صف الجدول
+      row.addEventListener('click', function(e) {
+        // منع التأثير إذا تم النقر على زر إجراء
+        if (!e.target.closest('.table-actions')) {
+          const viewLink = this.querySelector('a[href*="request_detail"]');
+          if (viewLink) {
+            viewLink.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+              viewLink.style.transform = '';
+            }, 150);
+          }
+        }
+      });
+    });
+
+    // تأكيد الحذف مع تحسين الرسالة
+    document.querySelectorAll('a[href*="admin_request_delete"]').forEach(link => {
+      link.addEventListener('click', function(e) {
+        const requestId = this.href.split('/').filter(Boolean).pop();
+        const msg = `⚠️ تأكيد الحذف\n\nسيتم حذف الطلب #R${requestId} نهائيًا.\nهذا الإجراء لا يمكن التراجع عنه.\n\nهل أنت متأكد من المتابعة؟`;
+        
+        if (!confirm(msg)) {
+          e.preventDefault();
+          return false;
+        }
+
+        // استخدام نظام التوست إذا كان متاحًا
+        if (typeof showToast === 'function') {
+          showToast('جاري حذف الطلب...', 'info');
+        }
+      });
+    });
+
+    // تحديث الإحصائيات بشكل ديناميكي
+    function updateStats() {
+      const totalItems = {{ page_obj.paginator.count|default:0 }};
+      const currentPage = {{ page_obj.number|default:1 }};
+      const pageSize = {{ page_obj|length|default:0 }};
+      
+      // يمكن إضافة تحديثات ديناميكية هنا لاحقًا
+    }
+
+    // التهيئة الأولية
+    updateStats();
+
+  })();
+  </script>
+
+  <style>
+  .admin-requests-page .form-grid-5 {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .admin-requests-page .form-field {
+    margin-bottom: 0;
+  }
+
+  .admin-requests-page .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .admin-requests-page .input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .admin-requests-page .input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .admin-requests-page .table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--dark-200);
+  }
+
+  .admin-requests-page .table-clean {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .admin-requests-page .table-clean th {
+    background: var(--dark-50);
+    color: var(--dark-700);
+    font-weight: 600;
+    padding: 1rem;
+    text-align: right;
+    border-bottom: 1px solid var(--dark-200);
+  }
+
+  .admin-requests-page .table-clean td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--dark-100);
+    vertical-align: middle;
+    transition: all 0.3s ease;
+  }
+
+  .admin-requests-page .table-clean tr:last-child td {
+    border-bottom: none;
+  }
+
+  .admin-requests-page .table-cell-main {
+    min-width: 200px;
+  }
+
+  .admin-requests-page .table-cell-title {
+    font-weight: 600;
+    color: var(--dark-900);
+  }
+
+  .admin-requests-page .client-info {
+    min-width: 150px;
+    font-size: 0.95rem;
+  }
+
+  .admin-requests-page .table-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .admin-requests-page .text-muted {
+    color: var(--dark-500);
+  }
+
+  .admin-requests-page .text-center {
+    text-align: center;
+  }
+
+  .admin-requests-page .empty-state {
+    padding: 2rem;
+  }
+
+  .admin-requests-page .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .admin-requests-page .empty-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--dark-600);
+  }
+
+  .admin-requests-page .empty-description {
+    color: var(--dark-500);
+  }
+
+  .admin-requests-page .pagination-inner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .admin-requests-page .pagination-info {
+    padding: 0.5rem 1rem;
+  }
+
+  .admin-requests-page .quick-stats {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .admin-requests-page .stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-200);
+  }
+
+  .admin-requests-page .stat-label {
+    font-size: 0.875rem;
+    color: var(--dark-600);
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-requests-page .stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-600);
+  }
+
+  @media (max-width: 1024px) {
+    .admin-requests-page .form-grid-5 {
+      grid-template-columns: 1fr 1fr;
+    }
+    
+    .admin-requests-page .form-field:first-child {
+      grid-column: span 2;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .admin-requests-page .form-grid-5 {
+      grid-template-columns: 1fr;
+    }
+    
+    .admin-requests-page .form-field:first-child {
+      grid-column: span 1;
+    }
+    
+    .admin-requests-page .table-actions {
+      flex-direction: column;
+    }
+    
+    .admin-requests-page .table-actions .btn {
+      width: 100%;
+    }
+    
+    .admin-requests-page .pagination-inner {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .admin-requests-page .quick-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .admin-requests-page .quick-stats {
+      grid-template-columns: 1fr;
+    }
+    
+    .admin-requests-page .table-wrapper {
+      font-size: 0.875rem;
+    }
+    
+    .admin-requests-page .table-clean th,
+    .admin-requests-page .table-clean td {
+      padding: 0.75rem 0.5rem;
+    }
+  }
+
+  /* تأثيرات الحركة */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .admin-requests-page .scroll-reveal {
+    animation: fadeIn 0.5s ease-out;
+  }
+  </style>
 {% endblock %}

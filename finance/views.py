@@ -225,14 +225,13 @@ def _fallback_agreement_totals(ag: Agreement) -> Dict[str, Decimal]:
     P = _as_decimal(getattr(ag, "total_amount", 0))
     fee, vat = FinanceSettings.current_rates()
     fee_val = _q2(P * fee)
-    taxable = _q2(P + fee_val)
-    vat_val = _q2(taxable * vat)
-    grand = _q2(taxable + vat_val)
+    vat_val = _q2(P * vat)  # الضريبة فقط على قيمة المشروع
+    grand = _q2(P + fee_val + vat_val)
     return {
         "P": _q2(P),
         "fee_percent": fee * Decimal("100"),
         "platform_fee": fee_val,
-        "taxable": taxable,
+        "taxable": P,  # الأساس الخاضع للضريبة هو قيمة المشروع فقط
         "vat_percent": vat * Decimal("100"),
         "vat_amount": vat_val,
         "grand_total": grand,
@@ -420,48 +419,38 @@ def finance_home(request: HttpRequest):
         or Decimal("0.00")
     )
 
-    # مجاميع الفواتير
-    invs = Invoice.objects.all()
-    paid_total_amount = (
-        invs.filter(status=paid_val).aggregate(s=Sum("total_amount"))["s"]
-        or Decimal("0.00")
-    )
-    unpaid_total_amount = (
-        invs.filter(status=unpaid_val).aggregate(s=Sum("total_amount"))["s"]
-        or Decimal("0.00")
-    )
 
-    # VAT + عمولة المنصّة (الكل/المدفوع)
-    vat_paid = invs.filter(status=paid_val).aggregate(s=Sum("vat_amount"))["s"] or Decimal(
-        "0.00"
-    )
-    vat_all = invs.aggregate(s=Sum("vat_amount"))["s"] or Decimal("0.00")
-    fee_paid = (
-        invs.filter(status=paid_val).aggregate(s=Sum("platform_fee_amount"))["s"]
-        or Decimal("0.00")
-    )
-    fee_all = (
-        invs.aggregate(s=Sum("platform_fee_amount"))["s"] or Decimal("0.00")
-    )
+    # مجاميع الفواتير (باستخدام دالة الحساب الموحدة)
+    from finance.utils import calculate_financials_from_net
+    invs = Invoice.objects.all().select_related("agreement")
+    def _sum_breakdown(qs, key):
+        total = Decimal("0.00")
+        for inv in qs:
+            if inv.agreement:
+                net_amount = inv.agreement.p_amount
+            else:
+                net_amount = inv.amount
+            platform_fee_percent = inv.platform_fee_percent if inv.platform_fee_percent else None
+            vat_rate = inv.vat_percent if inv.vat_percent else None
+            breakdown = calculate_financials_from_net(
+                net_amount,
+                platform_fee_percent=platform_fee_percent,
+                vat_rate=vat_rate,
+            )
+            total += breakdown.get(key, Decimal("0.00"))
+        return total
 
-    # صافي الموظف (منطق مبسّط: P من الاتفاقية، لكن هنا نستخدم مجموع amount-fee كقيمة تقريبية قد تُغنى بالتقارير التفصيلية)
-    inv_paid_qs = invs.filter(status=paid_val).select_related("agreement", "agreement__request")
-    inv_unpaid_qs = invs.filter(status=unpaid_val).select_related(
-        "agreement", "agreement__request"
-    )
-
-    def _emp_net(qs):
-        agg = qs.aggregate(p=Sum("amount"), fee=Sum("platform_fee_amount"))
-        P = agg["p"] or Decimal("0.00")
-        FEE = agg["fee"] or Decimal("0.00")
-        return (P - FEE) if P >= FEE else Decimal("0.00")
-
-    employee_paid_net = _emp_net(inv_paid_qs)
-    employee_unpaid_net = _emp_net(inv_unpaid_qs)
-
+    paid_total_amount = _sum_breakdown(invs.filter(status=paid_val), "client_total")
+    unpaid_total_amount = _sum_breakdown(invs.filter(status=unpaid_val), "client_total")
+    fee_all = _sum_breakdown(invs, "platform_fee")
+    fee_paid = _sum_breakdown(invs.filter(status=paid_val), "platform_fee")
+    vat_all = _sum_breakdown(invs, "vat_amount")
+    vat_paid = _sum_breakdown(invs.filter(status=paid_val), "vat_amount")
+    # صافي الموظف
+    employee_paid_net = _sum_breakdown(invs.filter(status=paid_val), "net_for_employee")
+    employee_unpaid_net = _sum_breakdown(invs.filter(status=unpaid_val), "net_for_employee")
     disputed_val = getattr(getattr(Request, "Status", None), "DISPUTED", "disputed")
-    inv_disputed_qs = invs.filter(agreement__request__status=disputed_val)
-    employee_held_dispute = _emp_net(inv_disputed_qs)
+    employee_held_dispute = _sum_breakdown(invs.filter(agreement__request__status=disputed_val), "net_for_employee")
 
     # آخر فواتير تحتاج تأكيد (غير مدفوعة + لديها مرجع تحويل)
     pending_bank_confirms = (
@@ -558,14 +547,15 @@ def checkout_agreement(request: HttpRequest, agreement_id: int):
         messages.error(request, "غير مصرح لك بفتح صفحة الدفع لهذه الاتفاقية.")
         return redirect("website:home")
 
-    # احسب الإجمالي ثم ضمن/أنشئ الفاتورة بالمبلغ الصحيح
-    totals = compute_agreement_totals(ag)
-    inv = _ensure_single_invoice_with_amount(ag, amount=totals["grand_total"])
+    # استخدم خصائص الاتفاقية مباشرة
+    inv = _ensure_single_invoice_with_amount(ag, amount=ag.grand_total)
 
+    # تمرير breakdown الموحد
+    breakdown = compute_agreement_totals(ag)
     ctx = {
         "agreement": ag,
         "invoice": inv,
-        "totals": totals,
+        "breakdown": breakdown,
         "BANK_NAME": BANK_NAME,
         "BANK_ACCOUNT_NAME": BANK_ACCOUNT_NAME,
         "BANK_IBAN_MASKED": _mask_iban(BANK_IBAN),
@@ -609,13 +599,19 @@ def confirm_bank_transfer(request: HttpRequest, invoice_id: int):
         inv.updated_at = timezone.now()
         updates.append("updated_at")
 
+
     if updates:
         inv.save(update_fields=updates)
 
+    # إشعار المالية (يمكن تطويره لاحقاً ليكون إشعار داخلي أو بريد)
+    logger.info(f"[FINANCE] حوالة جديدة بحاجة للمتابعة: Invoice #{inv.pk} - Agreement #{inv.agreement_id} - Ref: {paid_ref}")
+
     messages.success(
-        request, "تم تسجيل مرجع التحويل. ستقوم المالية بالتحقق ووَسم الفاتورة لاحقًا."
+        request,
+        "تم تسجيل بيانات الحوالة بنجاح. سيتم مراجعة الحوالة من المالية وتحويل الطلب إلى قيد التنفيذ بعد التأكيد."
     )
-    return redirect("finance:checkout_agreement", agreement_id=inv.agreement_id)
+    # إعادة العميل إلى صفحة تفاصيل الطلب
+    return redirect("marketplace:request_detail", pk=inv.agreement.request_id)
 
 
 # ===========================
@@ -724,13 +720,30 @@ def invoice_detail(request: HttpRequest, pk: int):
         Invoice.objects.select_related("agreement", "agreement__request"),
         pk=pk,
     )
-    # ✅ تمرير الاسمين لتوافق القوالب
+    # breakdown المالي الموحد (من مبلغ الاتفاقية أو الفاتورة)
+    if inv.agreement:
+        net_amount = inv.agreement.p_amount
+    else:
+        net_amount = inv.amount
+
+    # جلب النسب من الفاتورة إذا كانت موجودة، وإلا من الإعدادات
+    platform_fee_percent = inv.platform_fee_percent if inv.platform_fee_percent else None
+    vat_rate = inv.vat_percent if inv.vat_percent else None
+
+    from finance.utils import calculate_financials_from_net
+    breakdown = calculate_financials_from_net(
+        net_amount,
+        platform_fee_percent=platform_fee_percent,
+        vat_rate=vat_rate,
+    )
+
     return render(
         request,
         "finance/invoice_detail.html",
         {
             "inv": inv,
             "invoice": inv,
+            "breakdown": breakdown,
         },
     )
 
@@ -747,7 +760,26 @@ def invoice_list(request: HttpRequest):
         map_val = {"unpaid": UNPAID_VAL, "paid": PAID_VAL, "cancelled": CANCEL_VAL}
         qs = qs.filter(status=map_val[status])
 
-    ctx = {"invoices": qs, "object_list": qs}
+    from finance.utils import calculate_financials_from_net
+    invoices_with_breakdown = []
+    for inv in qs:
+        if inv.agreement:
+            net_amount = inv.agreement.p_amount
+        else:
+            net_amount = inv.amount
+        platform_fee_percent = inv.platform_fee_percent if inv.platform_fee_percent else None
+        vat_rate = inv.vat_percent if inv.vat_percent else None
+        breakdown = calculate_financials_from_net(
+            net_amount,
+            platform_fee_percent=platform_fee_percent,
+            vat_rate=vat_rate,
+        )
+        invoices_with_breakdown.append({
+            "inv": inv,
+            "breakdown": breakdown,
+        })
+
+    ctx = {"invoices": invoices_with_breakdown, "object_list": qs}
     return render(request, "finance/invoice_list.html", ctx)
 
 
