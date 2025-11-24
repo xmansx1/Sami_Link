@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from decimal import Decimal
 
 from django.apps import apps
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models.signals import post_migrate, post_save, pre_save
 from django.dispatch import receiver
@@ -15,19 +16,11 @@ from .models import FinanceSettings, Invoice
 from .utils import invalidate_finance_cfg_cache
 
 logger = logging.getLogger(__name__)
-
-# إعداد اختياري لتعطيل إكمال الطلب تلقائيًا عند السداد (مُفعّل افتراضيًا)
 FIN_AUTOCOMPLETE = getattr(settings, "FINANCE_AUTOCOMPLETE_ON_PAID", True)
 
 
-# =========================
-# إعدادات المالية (Cache)
-# =========================
 @receiver(post_save, sender=FinanceSettings)
 def finance_settings_saved(sender, instance: FinanceSettings, **kwargs):
-    """
-    عند حفظ الإعدادات المالية: امسح الكاش حتى تُقرأ القيم الجديدة فورًا.
-    """
     try:
         invalidate_finance_cfg_cache()
     except Exception:
@@ -36,48 +29,149 @@ def finance_settings_saved(sender, instance: FinanceSettings, **kwargs):
 
 @receiver(post_migrate)
 def ensure_finance_settings_exists(sender, **kwargs):
-    """
-    بعد الهجرات: تأكّد من وجود سجل FinanceSettings (Singleton).
-    """
     try:
-        # نحصر التنفيذ على تطبيق finance فقط لتقليل الضجيج
         app_label = getattr(sender, "name", "") or ""
         if app_label.split(".")[-1] != "finance":
             return
-
-        FinanceSettings.get_solo()  # سيُنشئه إن لم يوجد
+        FinanceSettings.get_solo()
     except Exception:
         logger.exception("failed to ensure FinanceSettings singleton on post_migrate")
 
 
-# =====================================
-# تتبّع تغيّر حالة الفاتورة إلى مدفوعة
-# =====================================
-def _request_status_value(model, name: str, fallback: str) -> str:
-    """
-    جلب قيمة الحالة من TextChoices إن وُجدت، وإلا إعادة fallback.
-    """
-    try:
-        Status = getattr(model, "Status", None)
-        return getattr(Status, name, fallback)
-    except Exception:
-        return fallback
+def _status_value(model_cls, name: str, fallback: str) -> str:
+    Status = getattr(model_cls, "Status", None)
+    return getattr(Status, name, fallback) if Status else fallback
 
 
 def _is_writable(obj, field: str) -> bool:
-    """تحقّق سريع أن الحقل قابل للكتابة وليس property."""
     if not hasattr(obj, field):
         return False
     attr = getattr(type(obj), field, None)
-    from types import MappingProxyType  # defensive
     return not isinstance(attr, property)
+
+
+def _get_req_status(req) -> str:
+    val = getattr(req, "status", None)
+    if val is None and hasattr(req, "state"):
+        val = getattr(req, "state", "")
+    return (str(val or "")).strip().lower()
+
+
+def _set_req_status(req, new_val: str) -> None:
+    if hasattr(req, "status") and _is_writable(req, "status"):
+        req.status = new_val
+    elif hasattr(req, "state") and _is_writable(req, "state"):
+        req.state = new_val
+
+
+def _all_positive_invoices_paid(agreement) -> bool:
+    PAID_VAL = _status_value(Invoice, "PAID", "paid")
+    invs = list(
+        Invoice.objects.select_for_update()
+        .filter(agreement_id=agreement.id)
+        .only("id", "total_amount", "status")
+    )
+    for inv in invs:
+        total = getattr(inv, "total_amount", None) or Decimal("0.00")
+        if total <= 0:
+            continue
+        if str(inv.status).lower() != str(PAID_VAL).lower():
+            return False
+    return True
+
+
+def _all_milestones_client_approved(agreement) -> bool:
+    try:
+        Milestone = apps.get_model("agreements", "Milestone")
+    except Exception:
+        return False
+
+    qs = Milestone.objects.filter(agreement_id=agreement.id)
+    if not qs.exists():
+        return True
+
+    if hasattr(Milestone, "is_approved"):
+        return not qs.filter(is_approved=False).exists()
+
+    if hasattr(Milestone, "approved_at"):
+        return not qs.filter(approved_at__isnull=True).exists()
+
+    if hasattr(Milestone, "status"):
+        approved_val = _status_value(Milestone, "APPROVED", "approved")
+        return not qs.exclude(status=approved_val).exists()
+
+    return False
+
+
+def _try_set_request_in_progress(req) -> None:
+    inprog_val = _status_value(type(req), "IN_PROGRESS", "in_progress")
+
+    # لو عندك دالة رسمية
+    if hasattr(req, "mark_paid_and_start"):
+        try:
+            req.mark_paid_and_start()
+            return
+        except ValidationError:
+            return
+        except Exception:
+            logger.exception("mark_paid_and_start failed for request %s", getattr(req, "pk", None))
+
+    current = _get_req_status(req)
+    final_states = {
+        _status_value(type(req), "COMPLETED", "completed"),
+        _status_value(type(req), "CANCELLED", "cancelled"),
+        _status_value(type(req), "DISPUTED", "disputed"),
+    }
+    if current in final_states:
+        return
+
+    _set_req_status(req, inprog_val)
+    fields = []
+    if hasattr(req, "status"):
+        fields.append("status")
+    if hasattr(req, "state"):
+        fields.append("state")
+    if hasattr(req, "updated_at") and _is_writable(req, "updated_at"):
+        req.updated_at = timezone.now()
+        fields.append("updated_at")
+    req.save(update_fields=fields)
+
+
+def _try_set_request_completed(req) -> None:
+    COMPLETED = _status_value(type(req), "COMPLETED", "completed")
+    DISPUTED = _status_value(type(req), "DISPUTED", "disputed")
+    CANCELLED = _status_value(type(req), "CANCELLED", "cancelled")
+
+    cur = _get_req_status(req)
+    if cur in {COMPLETED, DISPUTED, CANCELLED}:
+        return
+
+    if hasattr(req, "mark_completed"):
+        try:
+            req.mark_completed()
+            return
+        except ValidationError:
+            return
+        except Exception:
+            logger.exception("mark_completed failed for request %s", getattr(req, "pk", None))
+
+    _set_req_status(req, COMPLETED)
+    fields = []
+    if hasattr(req, "status"):
+        fields.append("status")
+    if hasattr(req, "state"):
+        fields.append("state")
+    if hasattr(req, "completed_at") and _is_writable(req, "completed_at"):
+        req.completed_at = timezone.now()
+        fields.append("completed_at")
+    if hasattr(req, "updated_at") and _is_writable(req, "updated_at"):
+        req.updated_at = timezone.now()
+        fields.append("updated_at")
+    req.save(update_fields=fields)
 
 
 @receiver(pre_save, sender=Invoice)
 def _invoice_pre_save_track_status(sender, instance: Invoice, **kwargs):
-    """
-    قبل حفظ الفاتورة: خزّن الحالة السابقة لمقارنة التغيّر بعد الحفظ.
-    """
     try:
         instance.__old_status = None
         if instance.pk:
@@ -85,164 +179,45 @@ def _invoice_pre_save_track_status(sender, instance: Invoice, **kwargs):
             if old:
                 instance.__old_status = old.status
     except Exception:
-        logger.exception("failed to snapshot previous invoice status (id=%s)", getattr(instance, "id", None))
+        logger.exception("failed to snapshot previous invoice status (id=%s)", getattr(instance, "pk", None))
 
 
 @receiver(post_save, sender=Invoice)
-def _invoice_post_save_complete_request(sender, instance: Invoice, created: bool, **kwargs):
-    # إشعار للموظف عند سداد العميل للفاتورة
+def _invoice_post_save_sync_request(sender, instance: Invoice, created: bool, **kwargs):
     try:
-        PAID_VAL = _request_status_value(Invoice, "PAID", "paid")
-        old_status = getattr(instance, "__old_status", None)
-        new_status = getattr(instance, "status", None)
-        if new_status == PAID_VAL and new_status != old_status:
-            agreement = getattr(instance, "agreement", None)
-            employee = getattr(agreement, "employee", None) if agreement else None
-            req = getattr(agreement, "request", None) if agreement else None
-            client = getattr(req, "client", None) if req else None
-            from notifications.utils import create_notification
-            if employee:
-                create_notification(
-                    recipient=employee,
-                    title=f"تم دفع فاتورة للطلب #{req.pk}",
-                    body=f"قام العميل {client} بسداد فاتورة بقيمة {getattr(instance, 'amount', '')} ر.س للطلب '{req.title}'. يمكنك مراجعة التفاصيل في حسابك.",
-                    url=instance.get_absolute_url() if hasattr(instance, "get_absolute_url") else None,
-                    actor=client,
-                    target=instance,
-                )
-    except Exception:
-        pass
-
-    """
-    بعد حفظ الفاتورة: إن تغيّرت الحالة إلى (مدفوعة) نفّذ منطق إكمال الطلب/الاتفاقية
-    في حال سُدِّدت **جميع الفواتير ذات الإجمالي > 0**.
-    """
-    if not FIN_AUTOCOMPLETE:
-        return
-
-    # إشعار للعميل عند تغير حالة الفاتورة إلى مدفوعة
-    try:
-        PAID_VAL = _request_status_value(Invoice, "PAID", "paid")
-        old_status = getattr(instance, "__old_status", None)
-        new_status = getattr(instance, "status", None)
-        if new_status == PAID_VAL and new_status != old_status:
-            agreement = getattr(instance, "agreement", None)
-            req = getattr(agreement, "request", None) if agreement else None
-            client = getattr(req, "client", None) if req else None
-            from notifications.utils import create_notification
-            if client:
-                create_notification(
-                    recipient=client,
-                    title=f"تم دفع فاتورة طلبك #{req.pk}",
-                    body=f"تم دفع فاتورة بقيمة {getattr(instance, 'amount', '')} ر.س للطلب '{req.title}'. يمكنك مراجعة التفاصيل في حسابك.",
-                    url=instance.get_absolute_url() if hasattr(instance, "get_absolute_url") else None,
-                    actor=getattr(agreement, "employee", None),
-                    target=instance,
-                )
-    except Exception:
-        pass
-
-    try:
-        PAID_VAL = _request_status_value(Invoice, "PAID", "paid")
+        PAID_VAL = _status_value(Invoice, "PAID", "paid")
         old_status = getattr(instance, "__old_status", None)
         new_status = getattr(instance, "status", None)
 
-        # لم تتغير إلى مدفوعة؟ لا شيء
-        if new_status != PAID_VAL or new_status == old_status:
+        # فقط عند transition إلى PAID
+        if str(new_status).lower() != str(PAID_VAL).lower() or str(new_status).lower() == str(old_status or "").lower():
             return
 
         agreement = getattr(instance, "agreement", None)
-        if agreement is None:
+        if not agreement:
             return
 
-        # سنحتاج للوصول إلى الطلب المرتبط
         req = getattr(agreement, "request", None)
-        if req is None:
+        if not req:
             return
 
         with transaction.atomic():
-            # أعِد تحميل الفواتير من قاعدة البيانات للتأكّد النهائي
-            invs = list(
-                Invoice.objects.select_for_update()
-                .filter(agreement_id=agreement.id)
-                .only("id", "total_amount", "status")
-            )
+            # 1) أي فاتورة تُدفع -> الطلب قيد التنفيذ
+            _try_set_request_in_progress(req)
 
-            # هل جميع الفواتير ذات إجمالي > 0 مدفوعة؟
-            all_paid = True
-            for inv in invs:
-                try:
-                    total = (inv.total_amount or 0)
-                except Exception:
-                    total = 0
-                if total <= 0:
-                    continue
-                if inv.status != PAID_VAL:
-                    all_paid = False
-                    break
-
-            if not all_paid:
+            if not FIN_AUTOCOMPLETE:
                 return
 
-            # الطلب: تحقّق أن حالته تسمح بالإكمال
-            Request = apps.get_model("marketplace", "Request")
-            COMPLETED = _request_status_value(Request, "COMPLETED", "completed")
-            DISPUTED = _request_status_value(Request, "DISPUTED", "disputed")
-            CANCELLED = _request_status_value(Request, "CANCELLED", "cancelled")
-
-            cur_status = (getattr(req, "status", "") or "").lower()
-            if cur_status in {DISPUTED, CANCELLED, COMPLETED}:
-                # لا نُغيّر إن كان مُكتمل أو مُلغى أو متنازع عليه
+            # 2) شرط الفواتير
+            if not _all_positive_invoices_paid(agreement):
                 return
 
-            now = timezone.now()
+            # 3) شرط اعتماد المراحل
+            if not _all_milestones_client_approved(agreement):
+                return
 
-            # وسم الطلب كمكتمل
-            if _is_writable(req, "status"):
-                req.status = COMPLETED
-                fields = ["status"]
-                if _is_writable(req, "completed_at"):
-                    req.completed_at = now
-                    fields.append("completed_at")
-                if _is_writable(req, "updated_at"):
-                    req.updated_at = now
-                    fields.append("updated_at")
-                req.save(update_fields=fields)
-
-                # إشعار للعميل عند اكتمال المشروع
-                try:
-                    client = getattr(req, "client", None)
-                    from notifications.utils import create_notification
-                    if client:
-                        create_notification(
-                            recipient=client,
-                            title=f"اكتمل تنفيذ مشروعك للطلب #{req.pk}",
-                            body=f"تم اكتمال جميع مراحل وفواتير المشروع '{req.title}'. يمكنك مراجعة التفاصيل في حسابك.",
-                            url=req.get_absolute_url() if hasattr(req, "get_absolute_url") else None,
-                            actor=getattr(agreement, "employee", None),
-                            target=req,
-                        )
-                except Exception:
-                    pass
-
-            # وسم الاتفاقية كمكتملة (بحذر عبر فحص الخيارات)
-            Agreement = apps.get_model("agreements", "Agreement")
-            AGREEMENT_COMPLETED = _request_status_value(Agreement, "COMPLETED", "completed")
-
-            try:
-                ag_status_field = agreement._meta.get_field("status")
-                has_choices = bool(getattr(ag_status_field, "choices", ()))
-                if not has_choices or AGREEMENT_COMPLETED in {c[0] for c in ag_status_field.choices}:
-                    if _is_writable(agreement, "status"):
-                        agreement.status = AGREEMENT_COMPLETED
-                        ag_fields = ["status"]
-                        if _is_writable(agreement, "updated_at"):
-                            agreement.updated_at = now
-                            ag_fields.append("updated_at")
-                        agreement.save(update_fields=ag_fields)
-            except Exception:
-                # لو فشل فحص الحقل، لا نمنع إكمال الطلب
-                logger.warning("agreement status completion skipped due to schema inspection issue (agreement_id=%s)", agreement.id)
+            # 4) الآن فقط نكمل
+            _try_set_request_completed(req)
 
     except Exception:
-        logger.exception("failed to auto-complete request after invoice paid (invoice_id=%s)", getattr(instance, "id", None))
+        logger.exception("failed to sync request after invoice paid (invoice_id=%s)", getattr(instance, "pk", None))

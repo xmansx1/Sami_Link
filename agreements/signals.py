@@ -1,271 +1,172 @@
 # agreements/signals.py
 from __future__ import annotations
 
+import logging
+from typing import Optional
+
 from django.db import transaction
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 from .models import Milestone, Agreement
 
-# ملاحظات عامة:
-# - نعتمد نهجًا دفاعيًا: نتعامل مع اختلافات محتملة في أسماء الحالات والحقول.
-# - نستخدم atomic() + select_for_update (حيث يلزم) للحد من حالات الظروف الحرِجة (race conditions).
-# - لا نرمي استثناءات من الإشارة حتى لا تُفشل عملية الحفظ الأصلية؛ نكتفي بالتحقق الهادئ.
+logger = logging.getLogger(__name__)
 
 
-# ===== أدوات مساعدة لاكتشاف الأسماء/القيم المتاحة ديناميكيًا =====
+def _status_value(model_cls, name: str, default: str) -> str:
+    Status = getattr(model_cls, "Status", None)
+    return getattr(Status, name, default) if Status else default
 
-def _status_value(model_cls, path: list[str], default: str) -> str:
+
+@receiver(pre_save, sender=Milestone)
+def _milestone_pre_save_snapshot(sender, instance: Milestone, **kwargs):
     """
-    يعيد قيمة حالة (string) من model_cls عبر مسار مثل ["Status", "APPROVED"].
-    إن تعذّر الوصول، يُرجع default.
+    نلتقط الحالة السابقة للمرحلة حتى نعرف هل حصل transition فعلي.
     """
-    cur = model_cls
-    try:
-        for part in path:
-            cur = getattr(cur, part)
-        if isinstance(cur, str):
-            return cur
-        # TextChoices: قد تكون خاصية .value
-        return getattr(cur, "value", default)
-    except Exception:
-        return default
-
-
-def _has_fk(obj, field_name: str) -> bool:
-    """يتحقق هل الكائن يملك حقلًا باسم field_name."""
-    return hasattr(obj, field_name)
-
-
-def _get_related_manager(obj, rel_name: str):
-    """يحصل على مدير علاقة عكسيّة إن وُجد وإلا يعيد None."""
-    return getattr(obj, rel_name, None)
-
-
-def _invoice_statuses(Invoice):
-    """
-    يعيد قاموسًا موحدًا للأسماء المتوقعة لحالات الفاتورة.
-    سندعم تنوعات: DUE/UNPAID مقابل PAID/VOID.
-    """
-    due = _status_value(Invoice, ["Status", "DUE"], "due")
-    unpaid = _status_value(Invoice, ["Status", "UNPAID"], "unpaid")
-    paid = _status_value(Invoice, ["Status", "PAID"], "paid")
-    void = _status_value(Invoice, ["Status", "VOID"], "void")
-    # نرجّح استخدام DUE إن وُجد وإلا UNPAID
-    open_status = due if due.lower() != "due" or unpaid.lower() == "unpaid" else unpaid
-    # إذا كان كلاهما افتراضيين، اختر "due"
-    open_status = open_status or "due"
-    return {
-        "OPEN": open_status,  # حالة غير مدفوعة
-        "PAID": paid or "paid",
-        "VOID": void or "void",
-        "DUE": due or "due",
-        "UNPAID": unpaid or "unpaid",
-    }
-
-
-def _agreement_completed_status(Agreement):
-    # نحاول العثور على COMPLETED ضمن TextChoices إن وجدت، وإلا "completed"
-    return _status_value(Agreement, ["Status", "COMPLETED"], "completed")
-
-
-def _request_completed_status(Request):
-    return _status_value(Request, ["Status", "COMPLETED"], "completed")
-
-
-def _milestone_status_approved(MilestoneCls):
-    return _status_value(MilestoneCls, ["Status", "APPROVED"], "approved")
-
-
-def _milestone_status_paid(MilestoneCls):
-    # قد لا توجد حالة "PAID" للميلستون في بعض المشاريع؛ نجعلها اختيارية.
-    return _status_value(MilestoneCls, ["Status", "PAID"], "paid")
+    instance.__old_status = None
+    if instance.pk:
+        old = sender.objects.only("status").filter(pk=instance.pk).first()
+        if old:
+            instance.__old_status = old.status
 
 
 @receiver(post_save, sender=Milestone)
 def handle_milestone_post_save(sender, instance: Milestone, created: bool, **kwargs):
-    # إشعار للموظف عند قبول أو رفض استلام مرحلة
-    try:
-        from notifications.utils import create_notification
-        agreement = getattr(milestone, "agreement", None)
-        employee = getattr(agreement, "employee", None) if agreement else None
-        req = getattr(agreement, "request", None) if agreement else None
-        client = getattr(req, "client", None) if req else None
-        old_status = None
-        if milestone.pk:
-            try:
-                from agreements.models import Milestone as MilestoneModel
-                prev = MilestoneModel.objects.only("status").get(pk=milestone.pk)
-                old_status = prev.status
-            except Exception:
-                pass
-        if old_status and milestone.status != old_status:
-            if milestone.status == milestone.Status.APPROVED:
-                create_notification(
-                    recipient=employee,
-                    title=f"تم اعتماد المرحلة للطلب #{req.pk}",
-                    body=f"قام العميل {client} باعتماد المرحلة '{milestone.title}' ضمن الاتفاقية للطلب '{req.title}'.",
-                    url=milestone.get_absolute_url() if hasattr(milestone, "get_absolute_url") else None,
-                    actor=client,
-                    target=milestone,
-                )
-            elif milestone.status == milestone.Status.REJECTED:
-                create_notification(
-                    recipient=employee,
-                    title=f"تم رفض المرحلة من العميل للطلب #{req.pk}",
-                    body=f"قام العميل {client} برفض المرحلة '{milestone.title}' ضمن الاتفاقية للطلب '{req.title}'. يرجى مراجعة السبب واتخاذ الإجراء المناسب.",
-                    url=milestone.get_absolute_url() if hasattr(milestone, "get_absolute_url") else None,
-                    actor=client,
-                    target=milestone,
-                )
-    except Exception:
-        pass
-
     """
-    سيناريو المعالجة:
-    1) إذا أصبحت المرحلة APPROVED ⇒ أنشئ فاتورة مرتبطة إن لم تكن موجودة (idempotent).
-    2) بعد أي حفظ للمرحلة ⇒ تحقّق إن كانت جميع فواتير الاتفاقية مدفوعة:
-       - إن نعم: ضع الاتفاقية والطلب في COMPLETED (إن توفرت الحقول وحالاتها).
-       - (اختياري) يمكننا مزامنة حالة الميلستون إلى "PAID" إن كانت متاحة وكل فواتيرها مدفوعة.
-    ملاحظات:
-    - نتجنب الاستيراد الدائري عبر الاستيراد المتأخر داخل الدالة.
-    - لا نطلق استثناءات؛ في حال أي نقص بنيوي نتجاهل بهدوء.
+    مسؤوليات هذه الإشارة بعد التصحيح:
+    - إرسال إشعار للموظف عند اعتماد/رفض المرحلة من العميل.
+    - إرسال إشعار للعميل عند إنشاء مرحلة جديدة (إن كانت بانتظار مراجعته).
+    - عدم تغيير حالة الطلب أو الاتفاقية هنا نهائيًا.
+      (منطق الاكتمال صار في finance/signals.py بشرط: اعتماد كل المراحل + سداد الفواتير)
     """
 
     milestone = instance
     agreement = getattr(milestone, "agreement", None)
-    if agreement is None:
-        # حالة غير متوقعة: مرحلة بلا اتفاقية
+    if not agreement:
         return
 
-    # إشعار للعميل عند وصول مرحلة جديدة للموافقة عليها
+    req = getattr(agreement, "request", None)
+    employee = getattr(agreement, "employee", None)
+    client = getattr(req, "client", None) if req else None
+
+    old_status = getattr(milestone, "__old_status", None)
+    new_status = getattr(milestone, "status", None)
+
+    MS_APPROVED = _status_value(Milestone, "APPROVED", "approved")
+    MS_REJECTED = _status_value(Milestone, "REJECTED", "rejected")
+    MS_DELIVERED = _status_value(Milestone, "DELIVERED", "delivered")
+    MS_PENDING = _status_value(Milestone, "PENDING", "pending")
+
+    # =========================
+    # 1) إشعار للعميل عند إنشاء مرحلة جديدة بانتظار المراجعة
+    # =========================
     try:
-        MS_APPROVED = _milestone_status_approved(Milestone.__class__ if isinstance(Milestone, type) else Milestone)
-        if created and hasattr(milestone, "status") and str(getattr(milestone, "status", "")).lower() == str(MS_APPROVED).lower():
-            req = getattr(agreement, "request", None)
-            client = getattr(req, "client", None) if req else None
+        if created and client and str(new_status).lower() in {
+            str(MS_PENDING).lower(),
+            str(MS_DELIVERED).lower(),
+        }:
             from notifications.utils import create_notification
-            if client:
-                create_notification(
-                    recipient=client,
-                    title=f"مرحلة جديدة بانتظار موافقتك للطلب #{req.pk}",
-                    body=f"تم إنشاء مرحلة جديدة ضمن الاتفاقية للطلب '{req.title}'. يرجى مراجعتها والموافقة عليها للمتابعة.",
-                    url=milestone.get_absolute_url() if hasattr(milestone, "get_absolute_url") else None,
-                    actor=getattr(agreement, "employee", None),
-                    target=milestone,
-                )
+
+            create_notification(
+                recipient=client,
+                title=f"مرحلة جديدة بانتظار موافقتك للطلب #{getattr(req, 'pk', '')}",
+                body=(
+                    f"تم إنشاء/تسليم مرحلة جديدة ضمن الاتفاقية للطلب "
+                    f"'{getattr(req, 'title', '')}'. يرجى مراجعتها والاعتماد للمتابعة."
+                ),
+                url=milestone.get_absolute_url()
+                if hasattr(milestone, "get_absolute_url")
+                else (req.get_absolute_url() if req and hasattr(req, "get_absolute_url") else None),
+                actor=employee,
+                target=milestone,
+            )
     except Exception:
         pass
 
-    # إشعار للعميل عند وصول اتفاقية جديدة للموافقة عليها
+    # =========================
+    # 2) إشعار للموظف عند اعتماد/رفض مرحلة (transition فقط)
+    # =========================
     try:
-        if created and hasattr(agreement, "status") and str(getattr(agreement, "status", "")).lower() == str(getattr(Agreement.Status, "PENDING", "pending")).lower():
-            req = getattr(agreement, "request", None)
-            client = getattr(req, "client", None) if req else None
+        if old_status and new_status != old_status:
             from notifications.utils import create_notification
-            if client:
-                create_notification(
-                    recipient=client,
-                    title=f"اتفاقية جديدة بانتظار موافقتك للطلب #{req.pk}",
-                    body=f"تم إنشاء اتفاقية جديدة للطلب '{req.title}'. يرجى مراجعتها والموافقة عليها للبدء في التنفيذ.",
-                    url=agreement.get_absolute_url() if hasattr(agreement, "get_absolute_url") else None,
-                    actor=getattr(agreement, "employee", None),
-                    target=agreement,
-                )
+
+            if str(new_status).lower() == str(MS_APPROVED).lower():
+                if employee:
+                    create_notification(
+                        recipient=employee,
+                        title=f"تم اعتماد المرحلة للطلب #{getattr(req, 'pk', '')}",
+                        body=(
+                            f"قام العميل {client} باعتماد المرحلة "
+                            f"'{getattr(milestone, 'title', '')}' ضمن الاتفاقية "
+                            f"للطلب '{getattr(req, 'title', '')}'."
+                        ),
+                        url=milestone.get_absolute_url()
+                        if hasattr(milestone, "get_absolute_url")
+                        else None,
+                        actor=client,
+                        target=milestone,
+                    )
+
+            elif str(new_status).lower() == str(MS_REJECTED).lower():
+                if employee:
+                    create_notification(
+                        recipient=employee,
+                        title=f"تم رفض المرحلة من العميل للطلب #{getattr(req, 'pk', '')}",
+                        body=(
+                            f"قام العميل {client} برفض المرحلة "
+                            f"'{getattr(milestone, 'title', '')}' ضمن الاتفاقية "
+                            f"للطلب '{getattr(req, 'title', '')}'. "
+                            f"يرجى مراجعة السبب واتخاذ الإجراء المناسب."
+                        ),
+                        url=milestone.get_absolute_url()
+                        if hasattr(milestone, "get_absolute_url")
+                        else None,
+                        actor=client,
+                        target=milestone,
+                    )
     except Exception:
         pass
 
-    try:
-        # استيرادات مؤجلة لتفادي الدوران
-        from finance.models import Invoice
-    except Exception:
-        # إن لم يتوفر نموذج Invoice لأي سبب، لا نفعل شيئًا
+    # =========================
+    # 3) عدم تعديل حالة الطلب/الاتفاقية هنا
+    # =========================
+    return
+
+
+@receiver(post_save, sender=Agreement)
+def handle_agreement_created(sender, instance: Agreement, created: bool, **kwargs):
+    """
+    إشعار للعميل عند إنشاء اتفاقية جديدة بانتظار موافقته.
+    لا نغيّر حالة الطلب هنا إطلاقًا.
+    """
+    if not created:
         return
 
-    # خرائط الحالات
-    MS_APPROVED = _milestone_status_approved(Milestone.__class__ if isinstance(Milestone, type) else Milestone)
-    MS_PAID = _milestone_status_paid(Milestone.__class__ if isinstance(Milestone, type) else Milestone)
-    INV_ST = _invoice_statuses(Invoice)
+    agreement = instance
+    req = getattr(agreement, "request", None)
+    client = getattr(req, "client", None) if req else None
+    employee = getattr(agreement, "employee", None)
 
-    # توحيد الوصول لعلاقات الفواتير:
-    # قد يكون على Invoice FK إلى agreement، وقد يعتمد فقط على milestone.
-    # سنبحث وفق الحالتين لضمان التوافق.
-    def _invoices_for_agreement(ag):
-        # أولوية: إن كان Invoice يملك FK اسمه "agreement"
-        try:
-            return Invoice.objects.filter(agreement=ag)
-        except Exception:
-            # fallback: اجلب جميع فواتير Milestones التابعة للاتفاقية
-            return Invoice.objects.filter(milestone__agreement=ag)
+    AG_PENDING = _status_value(Agreement, "PENDING", "pending")
+    ag_status = getattr(agreement, "status", None)
 
-    def _invoice_for_milestone(ms):
-        try:
-            # أحيانًا تكون OneToOne: milestone.invoice
-            inv = getattr(ms, "invoice", None)
-            if inv is not None:
-                return inv
-        except Exception:
-            pass
-        # وإلا نحاول عبر FK عادي
-        try:
-            return Invoice.objects.get(milestone=ms)
-        except Invoice.DoesNotExist:
-            return None
+    try:
+        if client and ag_status and str(ag_status).lower() == str(AG_PENDING).lower():
+            from notifications.utils import create_notification
 
-    # العمليات الذرّية لتجنب السباقات
-    with transaction.atomic():
-        # قفل الصف الحالي للمرحلة أثناء التحديثات اللاحقة
-        # (قد لا يكون ضروريًا دائمًا، لكن يحسن الأمان في سيناريوهات concurency)
-        type(milestone).objects.select_for_update().filter(pk=milestone.pk)
-
-        # (1) تمت إزالة أي منطق لإنشاء فاتورة تلقائيًا عند اعتماد المرحلة نهائيًا.
-
-        # (2) فحص اكتمال الاتفاقية/الطلب: هل توجد فواتير غير مدفوعة؟
-        inv_qs = _invoices_for_agreement(agreement)
-
-        # إن لم توجد فواتير إطلاقًا لكن الاتفاقية معتمدة ومراحلها صفرية، لا نعلن اكتمالًا هنا.
-        if inv_qs.exists():
-            has_unpaid = inv_qs.filter(status__in=[INV_ST["UNPAID"], INV_ST["DUE"]]).exists()
-
-            if not has_unpaid:
-                # جميع الفواتير مدفوعة (أو لا توجد إلا مدفوعة/ملغاة)
-
-                # (اختياري) مزامنة حالة الميلستون إلى "PAID" إن كان ذلك منطقيًا ومتاحًا
-                # ننفذ فقط للمرحلة الحالية إذا كانت فاتورتها مدفوعة
-                # (ولن نكسر المشاريع التي لا تملك Milestone.Status.PAID أصلاً)
-                if hasattr(milestone, "status") and MS_PAID:
-                    ms_inv = _invoice_for_milestone(milestone)
-                    if ms_inv and str(getattr(ms_inv, "status", "")).lower() == str(INV_ST["PAID"]).lower():
-                        fields = ["status"]
-                        setattr(milestone, "status", MS_PAID)
-                        # إن كان لديك paid_at على الميلستون، نسنده من الفاتورة
-                        if hasattr(milestone, "paid_at") and hasattr(ms_inv, "paid_at"):
-                            setattr(milestone, "paid_at", getattr(ms_inv, "paid_at"))
-                            fields.append("paid_at")
-                        milestone.save(update_fields=fields)
-
-                # إعلان اكتمال الاتفاقية
-                ag_status = getattr(agreement, "status", None)
-                if ag_status is not None:
-                    completed = _agreement_completed_status(type(agreement))
-                    # لا نعيد الحفظ إن كانت بالفعل مكتملة
-                    if str(ag_status).lower() != str(completed).lower():
-                        agreement.status = completed
-                        try:
-                            agreement.save(update_fields=["status"])
-                        except Exception:
-                            # إن فشل التحديث (اختلاف حقول/صلاحيات) نتجاهل بهدوء
-                            pass
-
-                # إعلان اكتمال الطلب المرتبط
-                req = getattr(agreement, "request", None)
-                if req is not None and hasattr(req, "status"):
-                    req_completed = _request_completed_status(type(req))
-                    if str(getattr(req, "status", "")).lower() != str(req_completed).lower():
-                        setattr(req, "status", req_completed)
-                        try:
-                            req.save(update_fields=["status"])
-                        except Exception:
-                            pass
-
-    # انتهى: لا نرفع استثناءات حتى لا نفسد تسلسل حفظ الميلستون الأصلي.
+            create_notification(
+                recipient=client,
+                title=f"اتفاقية جديدة بانتظار موافقتك للطلب #{getattr(req, 'pk', '')}",
+                body=(
+                    f"تم إنشاء اتفاقية جديدة للطلب "
+                    f"'{getattr(req, 'title', '')}'. يرجى مراجعتها والموافقة عليها للبدء في التنفيذ."
+                ),
+                url=agreement.get_absolute_url()
+                if hasattr(agreement, "get_absolute_url")
+                else (req.get_absolute_url() if req and hasattr(req, "get_absolute_url") else None),
+                actor=employee,
+                target=agreement,
+            )
+    except Exception:
+        pass
