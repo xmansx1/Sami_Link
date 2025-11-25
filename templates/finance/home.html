@@ -123,20 +123,6 @@
         </div>
       </div>
 
-      {# التزامات العملاء (اختياري من الـview) #}
-      <div class="profile-section kpi-card"
-           style="background:linear-gradient(135deg,#f0fdf4 0%,var(--white) 100%);">
-        <div class="kpi-header">
-          <div class="kpi-icon" style="background:#dcfce7;color:#166534;">👥</div>
-          <div class="kpi-info">
-            <div class="kpi-title">التزامات العملاء</div>
-            <div class="kpi-subtitle">مبالغ مدفوعة لم تُصفّى بعد (بعد الخصومات والمرتجعات)</div>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:#166534;">
-          {{ customer_liability|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
 
       {# ضريبة غير مورّدة (اختياري من الـview) #}
       <div class="profile-section kpi-card"
