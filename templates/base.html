@@ -26,46 +26,89 @@
       padding: 0 1rem;
     }
 
-    /* ===== شريط تنبيه أعلى الصفحة (Auto hide) ===== */
-    .platform-notice {
-      position: sticky;
-      top: 0;
-      z-index: 9999;
-      background: linear-gradient(90deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);
-      color: #fff;
-      font-size: .95rem;
-      border-bottom: 1px solid rgba(255,255,255,.12);
-      transform: translateY(-110%);
-      opacity: 0;
-      transition: transform .6s cubic-bezier(.2,.8,.2,1), opacity .6s ease;
+    /* ==========================
+       رسائل النظام بمنتصف الشاشة
+    ===========================*/
+    .alerts-overlay{
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9998;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
     }
-    .platform-notice.show { transform: translateY(0); opacity: 1; }
-    .platform-notice.hide { transform: translateY(-110%); opacity: 0; }
-    .platform-notice .container {
-      display:flex; align-items:center; justify-content:space-between;
+    .alerts-stack{
+      width: min(720px, 94vw);
+      display: grid;
       gap: .75rem;
-      padding: .7rem 1rem;
     }
-    .platform-notice .notice-text {
-      display:flex; align-items:center; gap:.6rem; line-height:1.6;
+    .alert-card{
+      pointer-events: auto;
+      display: flex;
+      align-items: flex-start;
+      gap: .9rem;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 1rem 1.1rem;
+      box-shadow: 0 18px 60px rgba(15,23,42,.18);
+      transform: translateY(6px);
+      opacity: 0;
+      animation: alert-in .35s ease forwards;
     }
-    .platform-notice .notice-badge {
-      background: rgba(255,255,255,.12);
-      padding: .15rem .5rem;
-      border-radius: 999px;
-      font-size: .85rem;
-      white-space: nowrap;
+    @keyframes alert-in{
+      to{ transform: translateY(0); opacity: 1; }
     }
-    .platform-notice .notice-close {
+    .alert-icon{
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      display:flex; align-items:center; justify-content:center;
+      font-size: 1.2rem;
+      background:#f8fafc;
+      flex: 0 0 auto;
+    }
+    .alert-body{ flex: 1 1 auto; }
+    .alert-title{
+      font-weight: 800;
+      color:#0f172a;
+      margin-bottom: .25rem;
+      font-size: 1.05rem;
+    }
+    .alert-text{
+      color:#334155;
+      line-height: 1.8;
+      font-size: 1rem;
+      white-space: pre-line;
+    }
+    .alert-close{
       background: transparent;
       border: 0;
-      color: #fff;
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       cursor: pointer;
-      opacity: .8;
-      transition: opacity .2s ease, transform .2s ease;
+      color:#94a3b8;
+      transition: color .2s ease, transform .2s ease;
     }
-    .platform-notice .notice-close:hover { opacity: 1; transform: scale(1.06); }
+    .alert-close:hover{ color:#0f172a; transform: scale(1.08); }
+
+    /* ألوان حسب النوع */
+    .alert-card.success{ border-color:#bbf7d0; }
+    .alert-card.success .alert-icon{ background:#ecfdf5; }
+
+    .alert-card.error{ border-color:#fecaca; }
+    .alert-card.error .alert-icon{ background:#fef2f2; }
+
+    .alert-card.warning{ border-color:#fde68a; }
+    .alert-card.warning .alert-icon{ background:#fffbeb; }
+
+    .alert-card.info{ border-color:#bfdbfe; }
+    .alert-card.info .alert-icon{ background:#eff6ff; }
+
+    @media (max-width: 640px){
+      .alert-title{ font-size: 1rem; }
+      .alert-text{ font-size: .95rem; }
+    }
 
     /* ===== هيدر احترافي ===== */
     .main-header {
@@ -193,6 +236,31 @@
       box-shadow:0 8px 22px rgba(15,23,42,.08);
     }
 
+    /* ===== كرت تنبيه عدم التعامل خارج المنصة ===== */
+    .platform-warning-card{
+      display:flex; gap: .9rem; align-items:flex-start;
+      background: linear-gradient(180deg,#0f172a,#111827);
+      color:#fff;
+      border-radius: 18px;
+      padding: 1.05rem 1.15rem;
+      box-shadow: 0 14px 40px rgba(15,23,42,.18);
+      border:1px solid rgba(255,255,255,.08);
+      margin: 0.5rem 0 1rem;
+    }
+    .platform-warning-card .pw-icon{
+      width:46px;height:46px;border-radius:12px;
+      background: rgba(255,255,255,.1);
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.35rem; flex:0 0 auto;
+    }
+    .platform-warning-card .pw-title{
+      font-weight:900; font-size:1.05rem; margin-bottom:.25rem;
+    }
+    .platform-warning-card .pw-text{
+      color: rgba(255,255,255,.9);
+      line-height:1.8; font-size:.98rem;
+    }
+
     /* ===== للجوال ===== */
     @media (max-width: 900px){
       .main-header .header-content{ flex-wrap: wrap; }
@@ -212,28 +280,33 @@
 
 <body class="page-wrapper {% block body_class %}{% endblock %}">
 
-  {# ===== تنبيه أعلى الصفحة ===== #}
-  <div id="platform-notice" class="platform-notice" role="status" aria-live="polite">
-    <div class="container">
-      <div class="notice-text">
-        <span class="notice-badge">تنبيه مهم</span>
-        <span>
-          المنصّة غير مسؤولة عن أي تعاملات أو دفعات خارج سامي لينك. لضمان حقوقك، استخدم أدوات المنصّة فقط.
-        </span>
-      </div>
-      <button class="notice-close" type="button" aria-label="إغلاق التنبيه">✕</button>
-    </div>
-  </div>
-
-  {# نظام التوست للرسائل #}
-  <div id="toast-container" class="toast-container">
+  {# ===== رسائل منتصف الشاشة ===== #}
+  <div id="alerts-overlay" class="alerts-overlay" aria-live="polite" aria-atomic="true">
     {% if messages %}
-      {% for message in messages %}
-        <div class="toast {% if message.tags == 'error' %}error{% else %}success{% endif %}">
-          <div class="toast-message">{{ message }}</div>
-          <button class="toast-close" type="button">✕</button>
-        </div>
-      {% endfor %}
+      <div class="alerts-stack" role="status">
+        {% for message in messages %}
+          <div class="alert-card {% if message.tags %}{{ message.tags }}{% else %}info{% endif %}">
+            <div class="alert-icon">
+              {% if message.tags == "success" %}✅{% endif %}
+              {% if message.tags == "error" %}⚠️{% endif %}
+              {% if message.tags == "warning" %}🚧{% endif %}
+              {% if message.tags == "info" %}ℹ️{% endif %}
+              {% if not message.tags %}ℹ️{% endif %}
+            </div>
+            <div class="alert-body">
+              <div class="alert-title">
+                {% if message.tags == "success" %}تم بنجاح{% endif %}
+                {% if message.tags == "error" %}حدث خطأ{% endif %}
+                {% if message.tags == "warning" %}تنبيه{% endif %}
+                {% if message.tags == "info" %}معلومة{% endif %}
+                {% if not message.tags %}معلومة{% endif %}
+              </div>
+              <div class="alert-text">{{ message }}</div>
+            </div>
+            <button class="alert-close" type="button" aria-label="إغلاق">✕</button>
+          </div>
+        {% endfor %}
+      </div>
     {% endif %}
   </div>
 
@@ -491,6 +564,9 @@
     </div>
   </header>
 
+  {# ===== مساحة تنبيه عدم التعامل خارج المنصة (تحطه فقط في home و request_detail) ===== #}
+  {% block platform_notice %}{% endblock %}
+
   {# المحتوى الرئيسي #}
   <main class="page-main">
     {% block page_hero %}{% endblock %}
@@ -572,29 +648,6 @@
   <script>
     (function () {
 
-      // --- تنبيه أعلى الصفحة Auto-hide ---
-      var notice = document.getElementById("platform-notice");
-      if (notice) {
-        var closeBtn = notice.querySelector(".notice-close");
-
-        setTimeout(function () {
-          notice.classList.add("show");
-        }, 120);
-
-        var hideTimer = setTimeout(function () {
-          notice.classList.remove("show");
-          notice.classList.add("hide");
-        }, 5000);
-
-        if (closeBtn) {
-          closeBtn.addEventListener("click", function () {
-            clearTimeout(hideTimer);
-            notice.classList.remove("show");
-            notice.classList.add("hide");
-          });
-        }
-      }
-
       // --- قائمة الجوال ---
       var toggle = document.getElementById("menuToggle");
       var nav = document.getElementById("mainNav");
@@ -623,17 +676,30 @@
         });
       }
 
-      // --- إغلاق التوست يدويًا ---
-      document.addEventListener("click", function (e) {
-        if (e.target.classList.contains("toast-close")) {
-          var t = e.target.closest(".toast");
-          if (t) {
-            t.style.opacity = "0";
-            t.style.transform = "translateY(8px)";
-            setTimeout(function () { t.remove(); }, 250);
+      // --- Auto hide center alerts ---
+      var alertCards = document.querySelectorAll(".alert-card");
+      if (alertCards.length) {
+        alertCards.forEach(function(card){
+          var timer = setTimeout(function(){
+            card.style.opacity = "0";
+            card.style.transform = "translateY(10px)";
+            setTimeout(function(){ card.remove(); }, 260);
+          }, 4500);
+
+          // وقف الإخفاء لو المستخدم مرر الماوس
+          card.addEventListener("mouseenter", function(){ clearTimeout(timer); });
+
+          var close = card.querySelector(".alert-close");
+          if (close) {
+            close.addEventListener("click", function(){
+              clearTimeout(timer);
+              card.style.opacity = "0";
+              card.style.transform = "translateY(10px)";
+              setTimeout(function(){ card.remove(); }, 200);
+            });
           }
-        }
-      });
+        });
+      }
 
     })();
   </script>

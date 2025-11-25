@@ -900,19 +900,21 @@ def request_change_state(request, pk: int):
         if hasattr(req, "has_dispute"):
             req.has_dispute = False
     else:
-        # الانتقالات المسموحة
-        allowed_transitions = {
-            "in_progress": {"awaiting_review", "cancelled"},
-            "awaiting_review": {"in_progress", "awaiting_payment"},
-            "awaiting_payment": {"completed", "cancelled"},
-            "completed": set(),
-            "cancelled": set(),
-        }
-        # منع انتقال غير منطقي (إلا الإلغاء)
-        if new_state != "cancelled":
-            if current not in allowed_transitions or new_state not in allowed_transitions[current]:
-                messages.error(request, "لا يُسمح بالانتقال المطلوب من الحالة الحالية.")
-                return redirect(req.get_absolute_url())
+        # إذا كان المستخدم مديراً، يسمح له بتغيير الحالة من أي حالة لأي حالة
+        if not is_admin_user:
+            # الانتقالات المسموحة لغير المدير
+            allowed_transitions = {
+                "in_progress": {"awaiting_review", "cancelled"},
+                "awaiting_review": {"in_progress", "awaiting_payment"},
+                "awaiting_payment": {"completed", "cancelled"},
+                "completed": set(),
+                "cancelled": set(),
+            }
+            # منع انتقال غير منطقي (إلا الإلغاء)
+            if new_state != "cancelled":
+                if current not in allowed_transitions or new_state not in allowed_transitions[current]:
+                    messages.error(request, "لا يُسمح بالانتقال المطلوب من الحالة الحالية.")
+                    return redirect(req.get_absolute_url())
 
     # تحديد اسم حقل الحالة الفعلي (status أو state)
     field = _status_field_name(req)

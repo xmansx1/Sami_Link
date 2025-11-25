@@ -1,176 +1,334 @@
 {# dashboard/templates/dashboard/partials/_sidebar.html #}
 
-{# روابط آمنة حتى لو غاب مسار #}
 {% url 'dashboard:admin_dashboard' as dash_url %}
 {% url 'dashboard:requests_list' as req_url %}
+{% url 'dashboard:clients_list' as cli_url %}
+{% url 'dashboard:employees_list' as emp_url %}
+{% url 'dashboard:disputes_list' as dis_url %}
+
 {% url 'finance:home' as fin_home_url %}
 {% url 'finance:invoice_list' as inv_url %}
 {% url 'marketplace:offers_list' as off_url %}
 {% url 'agreements:list' as ag_url %}
-{% url 'disputes:list' as dis_url %}
-{% url 'dashboard:clients_list' as cli_url %}
-{% url 'dashboard:employees_list' as emp_url %}
 {% url 'notifications:list' as noti_url %}
 
 {% with appn=request.resolver_match.app_name urln=request.resolver_match.url_name %}
-<nav class="sb">
+<nav class="admin-sidebar">
 
-  {# ===== مجموعة سريعة أعلى السايدبار ===== #}
-  <div class="sb-quick">
-    <a href="/" class="sb-quick-link" title="الصفحة الرئيسية">
-      <span class="sb-ico">🏠</span>
+  <div class="sidebar-quick-actions">
+    <a href="/" class="sidebar-quick-link" title="الصفحة الرئيسية">
+      <span class="sidebar-icon">🏠</span>
       <span>الرئيسية</span>
     </a>
 
-    {# ✅ المالية تذهب إلى finance/home.html عبر finance:home #}
     {% if fin_home_url %}
-      <a href="{{ fin_home_url }}" class="sb-quick-link" title="لوحة المالية">
-        <span class="sb-ico">💰</span>
+      <a href="{{ fin_home_url }}" class="sidebar-quick-link" title="لوحة المالية">
+        <span class="sidebar-icon">💰</span>
         <span>المالية</span>
       </a>
     {% endif %}
   </div>
 
-  {# ===== إدارة المنصّة ===== #}
-  <div class="sb-section">
-    <div class="sb-section-title">إدارة المنصّة</div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">إدارة المنصّة</div>
 
     {% if dash_url %}
-      <a href="{{ dash_url }}" class="sb-link{% if appn == 'dashboard' %}{% if urln == 'admin_dashboard' %} active{% endif %}{% endif %}">
-        <i class="fa fa-gauge"></i>
+      <a href="{{ dash_url }}"
+         class="sidebar-link{% if appn == 'dashboard' and urln == 'admin_dashboard' %} active{% endif %}">
+        <span class="sidebar-icon">📊</span>
         <span>لوحة القيادة</span>
       </a>
     {% endif %}
 
     {% if req_url %}
-      <a href="{{ req_url }}" class="sb-link{% if appn == 'dashboard' %}{% if urln == 'requests_list' %} active{% endif %}{% endif %}">
-        <i class="fa fa-list"></i>
+      <a href="{{ req_url }}"
+         class="sidebar-link{% if appn == 'dashboard' and urln == 'requests_list' %} active{% endif %}">
+        <span class="sidebar-icon">📋</span>
         <span>الطلبات</span>
       </a>
     {% endif %}
 
     {% if off_url %}
-      <a href="{{ off_url }}" class="sb-link{% if appn == 'marketplace' %}{% if urln == 'offers_list' %} active{% endif %}{% endif %}">
-        <i class="fa fa-handshake"></i>
+      <a href="{{ off_url }}"
+         class="sidebar-link{% if appn == 'marketplace' and urln == 'offers_list' %} active{% endif %}">
+        <span class="sidebar-icon">🤝</span>
         <span>العروض</span>
       </a>
     {% endif %}
 
     {% if ag_url %}
-      <a href="{{ ag_url }}" class="sb-link{% if appn == 'agreements' %} active{% endif %}">
-        <i class="fa fa-file-signature"></i>
+      <a href="{{ ag_url }}"
+         class="sidebar-link{% if appn == 'agreements' %} active{% endif %}">
+        <span class="sidebar-icon">📝</span>
         <span>الاتفاقيات</span>
       </a>
     {% endif %}
 
-    {# الفواتير تظل لقائمة الفواتير #}
     {% if inv_url %}
-      <a href="{{ inv_url }}" class="sb-link{% if appn == 'finance' %}{% if urln == 'invoice_list' %} active{% endif %}{% endif %}">
-        <i class="fa fa-receipt"></i>
+      <a href="{{ inv_url }}"
+         class="sidebar-link{% if appn == 'finance' and urln == 'invoice_list' %} active{% endif %}">
+        <span class="sidebar-icon">🧾</span>
         <span>الفواتير</span>
       </a>
     {% endif %}
 
     {% if dis_url %}
-      <a href="{{ dis_url }}" class="sb-link{% if appn == 'disputes' %} active{% endif %}">
-        <i class="fa fa-scale-balanced"></i>
+      <a href="{{ dis_url }}"
+         class="sidebar-link{% if appn == 'dashboard' and urln == 'disputes_list' %} active{% endif %}">
+        <span class="sidebar-icon">⚖️</span>
         <span>النزاعات</span>
       </a>
     {% endif %}
   </div>
 
-  {# ===== المستخدمون ===== #}
-  <div class="sb-section mt-2">
-    <div class="sb-section-title">إدارة المستخدمين</div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">إدارة المستخدمين</div>
 
     {% if cli_url %}
-      <a href="{{ cli_url }}" class="sb-link{% if appn == 'dashboard' %}{% if urln == 'clients_list' %} active{% endif %}{% endif %}">
-        <i class="fa fa-user-group"></i>
+      <a href="{{ cli_url }}"
+         class="sidebar-link{% if appn == 'dashboard' and urln == 'clients_list' %} active{% endif %}">
+        <span class="sidebar-icon">👥</span>
         <span>العملاء</span>
       </a>
     {% endif %}
 
     {% if emp_url %}
-      <a href="{{ emp_url }}" class="sb-link{% if appn == 'dashboard' %}{% if urln == 'employees_list' %} active{% endif %}{% endif %}">
-        <i class="fa fa-users-gear"></i>
+      <a href="{{ emp_url }}"
+         class="sidebar-link{% if appn == 'dashboard' and urln == 'employees_list' %} active{% endif %}">
+        <span class="sidebar-icon">👨‍💼</span>
         <span>الموظفون</span>
       </a>
     {% endif %}
   </div>
 
-  {# ===== النظام ===== #}
-  <div class="sb-section mt-2">
-    <div class="sb-section-title">النظام</div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">النظام</div>
 
     {% if noti_url %}
-      <a href="{{ noti_url }}" class="sb-link{% if appn == 'notifications' %} active{% endif %}">
-        <i class="fa fa-bell"></i>
+      <a href="{{ noti_url }}"
+         class="sidebar-link{% if appn == 'notifications' %} active{% endif %}">
+        <span class="sidebar-icon">🔔</span>
         <span>الإشعارات</span>
       </a>
     {% endif %}
   </div>
 
-  <div class="sb-footer">
-    <div class="sb-footer-title">SamiLink</div>
-    <div class="sb-footer-sub">لوحة الإدارة</div>
+  <div class="sidebar-footer">
+    <div class="sidebar-footer-title">سامي لينك</div>
+    <div class="sidebar-footer-sub">لوحة الإدارة</div>
   </div>
 
 </nav>
 {% endwith %}
 
-
 <style>
-.sb{display:flex;flex-direction:column;gap:12px}
-
-.sb-quick{display:grid;gap:8px;margin-bottom:6px}
-.sb-quick-link{
-  display:flex;align-items:center;gap:.6rem;
-  background:rgba(255,255,255,.06);
-  color:#e2e8f0;padding:.6rem .75rem;border-radius:.9rem;
-  font-weight:700;text-decoration:none;transition:all .18s ease;
-  border:1px solid rgba(255,255,255,.06)
-}
-.sb-quick-link:hover{background:rgba(255,255,255,.12);color:#fff;transform:translateY(-1px)}
-.sb-ico{font-size:1.1rem}
-
-.sb-section{display:flex;flex-direction:column;gap:4px}
-.sb-section-title{
-  font-size:.82rem;color:#94a3b8;font-weight:800;letter-spacing:.3px;
-  margin:.35rem .35rem .15rem
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem;
+  background: var(--dark-800);
+  color: var(--dark-300);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
 }
 
-.sb-link{
-  display:flex;align-items:center;gap:.65rem;
-  padding:.65rem .85rem;border-radius:.85rem;
-  color:#cbd5e1;text-decoration:none;font-weight:700;
-  transition:all .18s ease;border:1px solid transparent;
-  position:relative
-}
-.sb-link i{width:22px;text-align:center;color:#94a3b8;transition:all .18s ease}
-.sb-link:hover{
-  background:#141b2b;color:#fff;border-color:rgba(255,255,255,.06);
-  transform:translateX(-2px)
-}
-.sb-link:hover i{color:#fff}
-
-.sb-link.active{
-  background:#111827;color:#fff;border-color:rgba(255,255,255,.08);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)
-}
-.sb-link.active i{color:#fff}
-.sb-link.active::before{
-  content:"";position:absolute;right:-6px;top:10px;bottom:10px;width:4px;
-  border-radius:999px;background:#a5b4fc;
+.sidebar-quick-actions {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
-.sb-footer{
-  margin-top:auto;padding:10px 8px;border-top:1px dashed rgba(255,255,255,.08);
-  color:#94a3b8;text-align:center
+.sidebar-quick-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--dark-700);
+  color: var(--dark-300);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  text-decoration: none;
+  transition: var(--transition);
+  border: 1px solid var(--dark-600);
 }
-.sb-footer-title{font-weight:900;color:#e2e8f0}
-.sb-footer-sub{font-size:.8rem}
 
-@media (max-width:768px){
-  .sb-link{padding:.7rem .9rem}
+.sidebar-quick-link:hover {
+  background: var(--primary-600);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-section-title {
+  font-size: 0.8rem;
+  color: var(--dark-400);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin: 0.5rem 0.75rem 0.25rem;
+  text-transform: uppercase;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  color: var(--dark-300);
+  text-decoration: none;
+  font-weight: 600;
+  transition: var(--transition);
+  border: 1px solid transparent;
+  position: relative;
+}
+
+.sidebar-link:hover {
+  background: var(--dark-700);
+  color: var(--dark-100);
+  transform: translateX(-2px);
+  border-color: var(--dark-600);
+}
+
+.sidebar-link.active {
+  background: var(--primary-600);
+  color: white;
+  border-color: var(--primary-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-link.active::before {
+  content: "";
+  position: absolute;
+  right: -1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  border-radius: var(--radius-full);
+  background: var(--primary-400);
+}
+
+.sidebar-icon {
+  font-size: 1.1rem;
+  width: 1.5rem;
+  text-align: center;
+  transition: var(--transition);
+}
+
+.sidebar-link:hover .sidebar-icon,
+.sidebar-link.active .sidebar-icon {
+  transform: scale(1.1);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1rem 0.75rem;
+  border-top: 1px solid var(--dark-700);
+  color: var(--dark-400);
+  text-align: center;
+}
+
+.sidebar-footer-title {
+  font-weight: 800;
+  color: var(--primary-400);
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.sidebar-footer-sub {
+  font-size: 0.75rem;
+  color: var(--dark-500);
+}
+
+/* تأثيرات الحركة */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sidebar-link {
+  animation: slideIn 0.3s ease-out;
+}
+
+.sidebar-link:nth-child(1) { animation-delay: 0.1s; }
+.sidebar-link:nth-child(2) { animation-delay: 0.15s; }
+.sidebar-link:nth-child(3) { animation-delay: 0.2s; }
+.sidebar-link:nth-child(4) { animation-delay: 0.25s; }
+.sidebar-link:nth-child(5) { animation-delay: 0.3s; }
+.sidebar-link:nth-child(6) { animation-delay: 0.35s; }
+
+/* التصميم المتجاوب */
+@media (max-width: 768px) {
+  .admin-sidebar {
+    height: auto;
+    position: relative;
+    padding: 1rem;
+  }
+  
+  .sidebar-quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .sidebar-link {
+    padding: 0.875rem 1rem;
+  }
+  
+  .sidebar-link.active::before {
+    right: -0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-sidebar {
+    gap: 1rem;
+    padding: 1rem 0.75rem;
+  }
+  
+  .sidebar-section-title {
+    margin: 0.25rem 0.5rem;
+  }
+  
+  .sidebar-link {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9rem;
+  }
+  
+  .sidebar-icon {
+    font-size: 1rem;
+    width: 1.25rem;
+  }
+}
+
+/* شريط التمرير المخصص */
+.admin-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-sidebar::-webkit-scrollbar-track {
+  background: var(--dark-700);
+}
+
+.admin-sidebar::-webkit-scrollbar-thumb {
+  background: var(--dark-600);
+  border-radius: var(--radius-full);
+}
+
+.admin-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--dark-500);
 }
 </style>

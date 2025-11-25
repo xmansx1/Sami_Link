@@ -253,6 +253,13 @@ def dispute_create(request: HttpRequest, request_id: int):
     if request.method == "POST":
         form = DisputeForm(request.POST, request.FILES)
         if form.is_valid():
+            # تحقق من وجود نزاع سابق مفتوح أو قيد المراجعة
+            existing_dispute = req.disputes.filter(status__in=["open", "in_review"]).first()
+            if existing_dispute:
+                from django.contrib import messages
+                messages.error(request, "لا يمكن فتح نزاع بسبب فتح نزاع سابق وتم حله من قبل الإدارة.")
+                return render(request, "disputes/open.html", {"form": form, "req": req})
+
             dispute = form.save(commit=False)
             dispute.request = req
             dispute.opened_by = request.user

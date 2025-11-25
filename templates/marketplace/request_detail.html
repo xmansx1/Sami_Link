@@ -3,6 +3,62 @@
 
 {% block title %}طلب #{{ req.pk }}{% endblock %}
 
+{# تحسين عرض النصوص متعددة الأسطر + كرت العرض المختار #}
+{% block extra_head %}
+  {{ block.super }}
+  <style>
+    /* نصوص متعددة الأسطر بشكل احترافي */
+    .details-prose{
+      white-space: pre-wrap; /* يحافظ على أسطر المستخدم */
+      word-break: break-word;
+      line-height: 1.9;
+      font-size: 1rem;
+    }
+    .details-prose p{ margin: 0 0 .6rem 0; }
+    .details-prose ul, .details-prose ol{
+      padding-inline-start: 1.25rem;
+      margin: .5rem 0;
+    }
+    .details-prose li{ margin: .25rem 0; }
+
+    /* كرت تفاصيل العرض المختار */
+    .selected-offer-details{
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.1rem;
+      margin-top: .9rem;
+    }
+    .selected-offer-details .so-title{
+      font-weight: 800;
+      color: #9a3412;
+      margin-bottom: .5rem;
+      display:flex; align-items:center; gap:.5rem;
+    }
+  </style>
+{% endblock %}
+
+{# تنبيه المنصّة (يختفي بعد 3 ثواني) #}
+{% block platform_notice %}
+  <div id="platformNoticeCard" class="platform-warning-card" role="status" aria-live="polite">
+    <div class="pw-icon">🛡️</div>
+    <div class="pw-body">
+      <div class="pw-title">تنبيه مهم قبل إتمام التعامل</div>
+      <div class="pw-text">
+        المنصّة غير مسؤولة عن أي تعاملات أو دفعات خارج سامي لينك.
+        حفاظًا على حقوقك، أكمل الاتفاق والدفع داخل المنصّة فقط.
+      </div>
+    </div>
+    <button type="button"
+            class="alert-close"
+            id="platformNoticeClose"
+            aria-label="إغلاق التنبيه"
+            style="color:#fff;opacity:.9;margin-inline-start:auto;">
+      ✕
+    </button>
+  </div>
+{% endblock %}
+
 {% block content %}
 
 <section class="page-section request-detail-page">
@@ -106,16 +162,6 @@
                   </button>
                 </form>
 
-                <form method="post"
-                      action="{% url 'marketplace:request_change_status' req.pk %}"
-                      class="inline-form"
-                      onsubmit="return confirm('سيتم تعليم الطلب «بانتظار اتفاقية». متابعة؟');">
-                  {% csrf_token %}
-                  <input type="hidden" name="state" value="agreement_pending">
-                  <button class="btn btn-secondary btn-sm" aria-label="تعيين بانتظار اتفاقية">
-                    📝 بانتظار اتفاقية
-                  </button>
-                </form>
 
                 <form method="post"
                       action="{% url 'marketplace:request_change_status' req.pk %}"
@@ -146,19 +192,6 @@
                 </form>
               </div>
             {% elif request.user.id == req.assigned_employee_id %}
-              <div class="request-status-panel">
-                <span class="status-panel-label">تغيير الحالة:</span>
-                <form method="post"
-                      action="{% url 'marketplace:request_change_status' req.pk %}"
-                      class="inline-form"
-                      onsubmit="return confirm('سيتم تعليم الطلب «قيد التنفيذ». متابعة؟');">
-                  {% csrf_token %}
-                  <input type="hidden" name="state" value="in_progress">
-                  <button class="btn btn-secondary btn-sm">
-                    🚀 قيد التنفيذ
-                  </button>
-                </form>
-              </div>
             {% endif %}
           </div>
         {% endif %}
@@ -261,7 +294,6 @@
               </div>
 
               {% if req.selected_offer %}
-                {# ⭐ مربع العرض المختار المحسّن #}
                 <div class="summary-box selected-offer-box"
                      style="background: #fffbeb; padding: 1.25rem 1.5rem; border-radius: var(--radius-xl); margin-bottom: 1rem; border: 1px solid #facc15; box-shadow: 0 6px 14px rgba(250, 204, 21, 0.12);">
                   <div class="summary-box-header"
@@ -294,6 +326,15 @@
                       </span>
                       <span class="summary-unit">ريال</span>
                     </div>
+
+                    {% if selected_offer.note %}
+                      <div class="selected-offer-details">
+                        <div class="so-title">📌 تفاصيل العرض المختار</div>
+                        <div class="details-prose">
+                          {{ selected_offer.note|urlize|linebreaksbr }}
+                        </div>
+                      </div>
+                    {% endif %}
                   </div>
                 </div>
               {% endif %}
@@ -348,15 +389,19 @@
         {# تفاصيل الطلب #}
         <div class="profile-section">
           <div class="card-section-title">📄 التفاصيل</div>
-          <div class="card-text prose-text">
-            {{ req.details|default:"—"|urlize|linebreaksbr }}
+          <div class="card-text prose-text details-prose">
+            {% if req.details %}
+              {{ req.details|urlize|linebreaksbr }}
+            {% else %}
+              —
+            {% endif %}
           </div>
         </div>
 
         {% if req.links %}
           <div class="profile-section">
             <div class="card-section-title">🔗 روابط مرتبطة</div>
-            <div class="card-text prose-text">
+            <div class="card-text prose-text details-prose">
               {{ req.links|urlize|linebreaksbr }}
             </div>
           </div>
@@ -476,8 +521,8 @@
                 <div class="note-meta" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">
                   👤 {{ n.author }} — {{ n.created_at|date:"Y-m-d H:i" }}
                 </div>
-                <div class="note-text">
-                  {{ n.text }}
+                <div class="note-text details-prose">
+                  {{ n.text|linebreaksbr }}
                 </div>
               </div>
             {% empty %}
@@ -522,7 +567,7 @@
                   </div>
 
                   {% if off.note %}
-                    <div class="offer-note" style="background: var(--white); padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem;">
+                    <div class="offer-note details-prose" style="background: var(--white); padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem;">
                       {{ off.note|urlize|linebreaksbr }}
                     </div>
                   {% endif %}
@@ -533,7 +578,6 @@
                       <strong>{{ off.proposed_duration_days }}</strong> يوم
                     </span>
 
-                    {# ✅ إجمالي العميل فقط (P + VAT) بدون عمولة #}
                     <span class="badge badge-primary" style="font-size: 1.1em; background: #f0fdf4; color: #166534; display: flex; flex-direction: column; align-items: flex-start;">
                       <span>
                         العرض للعميل:
@@ -550,7 +594,6 @@
                     </span>
                   </div>
 
-                  {# قيمة السعر المقترح لإجراء fallback JS عند الحاجة #}
                   <span class="off-net"
                         data-net="{{ off.proposed_price }}"
                         style="display:none;"></span>
@@ -703,13 +746,15 @@
                         </div>
 
                         {% if ms.delivered_note %}
-                          <div class="milestone-note" style="background: var(--primary-50); padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem;">
-                            <span class="label" style="font-weight: 600;">📝 ملاحظة التسليم:</span> {{ ms.delivered_note }}
+                          <div class="milestone-note details-prose" style="background: var(--primary-50); padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem;">
+                            <span class="label" style="font-weight: 600;">📝 ملاحظة التسليم:</span>
+                            {{ ms.delivered_note|linebreaksbr }}
                           </div>
                         {% endif %}
                         {% if ms.rejected_reason %}
-                          <div class="milestone-note milestone-note-error" style="background: #fef2f2; padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem; border-left: 4px solid #ef4444;">
-                            <span class="label" style="font-weight: 600;">❌ سبب الرفض:</span> {{ ms.rejected_reason }}
+                          <div class="milestone-note milestone-note-error details-prose" style="background: #fef2f2; padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem; border-left: 4px solid #ef4444;">
+                            <span class="label" style="font-weight: 600;">❌ سبب الرفض:</span>
+                            {{ ms.rejected_reason|linebreaksbr }}
                           </div>
                         {% endif %}
 
@@ -772,14 +817,12 @@
                               </div>
                             </form>
                           {% else %}
-                            <button class="btn btn-secondary btn-sm btn-disabled" disabled
-                                    title="لا يمكن التسليم الآن">
+                            <button class="btn btn-secondary btn-sm btn-disabled" disabled title="لا يمكن التسليم الآن">
                               📤 تسليم المرحلة
                             </button>
                           {% endif %}
                         {% else %}
-                          <button class="btn btn-secondary btn-sm btn-disabled" disabled
-                                  title="الفاتورة مدفوعة">
+                          <button class="btn btn-secondary btn-sm btn-disabled" disabled title="الفاتورة مدفوعة">
                             📤 تسليم المرحلة
                           </button>
                         {% endif %}
@@ -796,8 +839,7 @@
                             </button>
                           </form>
 
-                          <button class="btn btn-danger btn-sm"
-                                  data-reject-modal="#rej-{{ ms.id }}">
+                          <button class="btn btn-danger btn-sm" data-reject-modal="#rej-{{ ms.id }}">
                             ❌ رفض
                           </button>
 
@@ -833,9 +875,7 @@
                                   </p>
                                 </div>
                                 <div class="modal-footer employee-actions">
-                                  <button type="button"
-                                          class="btn btn-outline btn-sm"
-                                          data-close-modal>
+                                  <button type="button" class="btn btn-outline btn-sm" data-close-modal>
                                     إلغاء
                                   </button>
                                   <button class="btn btn-danger btn-sm">
@@ -856,8 +896,7 @@
                       {% endif %}
 
                       {% if ms.invoice %}
-                        <a href="{% url 'finance:invoice_detail' ms.invoice.id %}"
-                           class="btn btn-outline btn-sm">
+                        <a href="{% url 'finance:invoice_detail' ms.invoice.id %}" class="btn btn-outline btn-sm">
                           🧾 عرض الفاتورة
                         </a>
                       {% endif %}
@@ -948,6 +987,26 @@
   {{ block.super }}
   <script>
   (function () {
+
+    // --- إخفاء تنبيه المنصّة بعد 3 ثواني ---
+    var pn = document.getElementById("platformNoticeCard");
+    var pnClose = document.getElementById("platformNoticeClose");
+    if (pn) {
+      var hidePlatformNotice = function(){
+        pn.style.opacity = "0";
+        pn.style.transform = "translateY(6px)";
+        setTimeout(function(){ pn.remove(); }, 220);
+      };
+
+      setTimeout(hidePlatformNotice, 15000);
+
+      if (pnClose) {
+        pnClose.addEventListener("click", function(){
+          hidePlatformNotice();
+        });
+      }
+    }
+
     // نحتاج للضريبة فقط كـ fallback في حال لم يصل إجمالي العميل من الباك-إند
     var vatPercentRaw = "{{ vat_percent|default_if_none:'' }}";
 

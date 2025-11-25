@@ -409,11 +409,17 @@ def _build_invoice_summary(qs: QuerySet, paid_val: str, unpaid_val: str) -> Dict
         "employee_cancelled": Decimal("0.00"),
     }
 
+
     inv_list = list(qs.select_related("agreement"))
     for inv in inv_list:
         ag = getattr(inv, "agreement", None)
-
+        status = (getattr(inv, "status", "") or "").lower()
+        # استبعاد الفواتير الملغاة أو المسترجعة أو التي قيمتها صفر
+        if status in {(cancelled_val or "").lower(), (refunded_val or "").lower()}:
+            continue
         client_total = _invoice_client_total(inv, ag)
+        if client_total <= 0:
+            continue
 
         fee = vat = net_emp = None
         fee_raw = getattr(inv, "platform_fee_amount", None)
@@ -452,16 +458,12 @@ def _build_invoice_summary(qs: QuerySet, paid_val: str, unpaid_val: str) -> Dict
         summary["vat_total"] += vat
         summary["employee_total"] += net_emp
 
-        status = (getattr(inv, "status", "") or "").lower()
         if status == (paid_val or "").lower():
             summary["client_paid"] += client_total
             summary["employee_paid"] += net_emp
         elif status == (unpaid_val or "").lower():
             summary["client_unpaid"] += client_total
             summary["employee_unpaid"] += net_emp
-        elif status in {(cancelled_val or "").lower(), (refunded_val or "").lower()}:
-            summary["client_refunded"] += client_total
-            summary["employee_cancelled"] += net_emp
 
     for key in list(summary.keys()):
         if key == "count":
@@ -1282,18 +1284,11 @@ def client_payments(request: HttpRequest) -> HttpResponse:
     if date_to:
         invs = invs.filter(issued_at__date__lte=date_to)
 
-    all_invoices = (
-        Invoice.objects
-        .select_related("agreement", "agreement__request")
-        .filter(agreement__request__client_id=user.id)
-        .order_by("-issued_at", "-id")
-    )
-
-    summary_all = _build_invoice_summary(all_invoices, paid_val=paid_val, unpaid_val=unpaid_val)
+    summary_filtered = _build_invoice_summary(invs, paid_val=paid_val, unpaid_val=unpaid_val)
     totals = {
-        "total": summary_all["client_total"],
-        "paid": summary_all["client_paid"],
-        "unpaid": summary_all["client_unpaid"],
+        "total": summary_filtered["client_total"],
+        "paid": summary_filtered["client_paid"],
+        "unpaid": summary_filtered["client_unpaid"],
     }
 
     methods = (
@@ -2425,7 +2420,7 @@ def disputes_dashboard(request: HttpRequest):
     disputes = (
         Dispute.objects.filter(status__in=ACTIVE_SET)
         .select_related("request")
-        .order_by("-created_at", "-id")
+        .order_by("-opened_at", "-id")
     )
 
     rows = []

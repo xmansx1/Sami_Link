@@ -4,135 +4,170 @@
 {% block title %}صرفيات الموظفين{% endblock %}
 
 {% block content %}
-<section class="page-section" dir="rtl">
-  <div class="container mx-auto px-4 py-6">
-
-    <div class="mb-6">
-      <div class="section-badge">👷 Payouts</div>
-      <h1 class="text-2xl md:text-3xl font-extrabold mt-2">صرفيات الموظفين</h1>
-      <p class="text-sm text-gray-600 mt-1">
+<section class="page-section payouts-page">
+  <div class="container">
+    
+    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
+      <div class="section-badge">👷 صرفيات الموظفين</div>
+      <h1 class="section-title">صرفيات الموظفين</h1>
+      <p class="section-description">
         متابعة أوامر الصرف حسب السياسة: الطلبات المكتملة فقط وصافي الموظف = P - عمولة المنصة.
       </p>
     </div>
 
-    {# ===== KPIs ===== #}
-    <div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
       <div class="profile-section">
         <div class="card-section-title">📌 إجمالي الصرفيات</div>
-        <div class="stat-value">{{ totals.total|default:0|floatformat:2 }} ريال</div>
+        <div class="stat-value" style="font-size: 1.75rem; font-weight: 800; color: var(--primary-600); margin: 0.5rem 0;">
+          {{ totals.total|default:0|floatformat:2 }} ريال
+        </div>
         <div class="card-section-note">عدد الأوامر: {{ totals.count|default:0 }}</div>
       </div>
-      <div class="profile-section" style="background:linear-gradient(135deg,#fef3c7 0%, #fff 100%);">
+      <div class="profile-section" style="background: linear-gradient(135deg, var(--secondary-50) 0%, var(--white) 100%);">
         <div class="card-section-title">⏳ معلّقة</div>
-        <div class="stat-value">{{ totals.pending|default:0|floatformat:2 }} ريال</div>
+        <div class="stat-value" style="font-size: 1.75rem; font-weight: 800; color: var(--secondary-600); margin: 0.5rem 0;">
+          {{ totals.pending|default:0|floatformat:2 }} ريال
+        </div>
       </div>
-      <div class="profile-section" style="background:linear-gradient(135deg,#dcfce7 0%, #fff 100%);">
+      <div class="profile-section" style="background: linear-gradient(135deg, var(--primary-50) 0%, var(--white) 100%);">
         <div class="card-section-title">✅ تم صرفها</div>
-        <div class="stat-value">{{ totals.paid|default:0|floatformat:2 }} ريال</div>
+        <div class="stat-value" style="font-size: 1.75rem; font-weight: 800; color: var(--primary-600); margin: 0.5rem 0;">
+          {{ totals.paid|default:0|floatformat:2 }} ريال
+        </div>
       </div>
-      <div class="profile-section" style="background:linear-gradient(135deg,#fee2e2 0%, #fff 100%);">
+      <div class="profile-section" style="background: linear-gradient(135deg, #fef2f2 0%, var(--white) 100%);">
         <div class="card-section-title">🚫 ملغاة</div>
-        <div class="stat-value">{{ totals.cancelled|default:0|floatformat:2 }} ريال</div>
+        <div class="stat-value" style="font-size: 1.75rem; font-weight: 800; color: #ef4444; margin: 0.5rem 0;">
+          {{ totals.cancelled|default:0|floatformat:2 }} ريال
+        </div>
       </div>
     </div>
 
-    {# ===== فلاتر ===== #}
-    <div class="profile-section mt-6">
-      <div class="card-section-title">فلترة وبحث</div>
+    <div class="profile-section">
+      <div class="card-section-title">🔍 فلترة وبحث</div>
 
-      <form method="get" class="mt-3" style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;">
-        <select name="status" class="input input-sm w-40">
-          <option value="pending" {% if status_q == 'pending' %}selected{% endif %}>معلقة</option>
-          <option value="paid" {% if status_q == 'paid' %}selected{% endif %}>مدفوعة</option>
-          <option value="cancelled" {% if status_q == 'cancelled' %}selected{% endif %}>ملغاة</option>
-          <option value="all" {% if status_q == 'all' %}selected{% endif %}>الكل</option>
-        </select>
+      <form method="get" class="filter-form" style="margin-top: 1rem;">
+        <div class="filter-grid" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end;">
+          <div class="form-field">
+            <label class="form-label">الحالة</label>
+            <select name="status" class="input input-sm">
+              <option value="pending" {% if status_q == 'pending' %}selected{% endif %}>معلقة</option>
+              <option value="paid" {% if status_q == 'paid' %}selected{% endif %}>مدفوعة</option>
+              <option value="cancelled" {% if status_q == 'cancelled' %}selected{% endif %}>ملغاة</option>
+              <option value="all" {% if status_q == 'all' %}selected{% endif %}>الكل</option>
+            </select>
+          </div>
 
-        <input name="q" value="{{ q }}" class="input input-sm flex-1 min-w-[200px]" placeholder="بحث برقم طلب/اتفاقية/موظف">
+          <div class="form-field" style="flex: 1; min-width: 200px;">
+            <label class="form-label">بحث</label>
+            <input name="q" value="{{ q }}" class="input input-sm" placeholder="بحث برقم طلب/اتفاقية/موظف">
+          </div>
 
-        <select name="period" class="input input-sm w-40">
-          <option value="" {% if not period %}selected{% endif %}>آخر 30 يوم</option>
-          <option value="today" {% if period == 'today' %}selected{% endif %}>اليوم</option>
-          <option value="7d" {% if period == '7d' %}selected{% endif %}>آخر 7 أيام</option>
-          <option value="30d" {% if period == '30d' %}selected{% endif %}>آخر 30 يوم</option>
-          <option value="custom" {% if period == 'custom' %}selected{% endif %}>مخصص</option>
-        </select>
+          <div class="form-field">
+            <label class="form-label">الفترة</label>
+            <select name="period" class="input input-sm">
+              <option value="" {% if not period %}selected{% endif %}>آخر 30 يوم</option>
+              <option value="today" {% if period == 'today' %}selected{% endif %}>اليوم</option>
+              <option value="7d" {% if period == '7d' %}selected{% endif %}>آخر 7 أيام</option>
+              <option value="30d" {% if period == '30d' %}selected{% endif %}>آخر 30 يوم</option>
+              <option value="custom" {% if period == 'custom' %}selected{% endif %}>مخصص</option>
+            </select>
+          </div>
 
-        <input type="date" name="from" value="{{ from }}" class="input input-sm w-44">
-        <input type="date" name="to" value="{{ to }}" class="input input-sm w-44">
+          <div class="form-field">
+            <label class="form-label">من</label>
+            <input type="date" name="from" value="{{ from }}" class="input input-sm">
+          </div>
 
-        <button class="btn btn-primary btn-sm" type="submit">تطبيق</button>
-        <a href="{% url 'finance:payouts_list' %}" class="btn btn-outline btn-sm">إعادة ضبط</a>
+          <div class="form-field">
+            <label class="form-label">إلى</label>
+            <input type="date" name="to" value="{{ to }}" class="input input-sm">
+          </div>
+
+          <div class="form-field" style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-primary btn-sm" type="submit">تطبيق</button>
+            <a href="{% url 'finance:payouts_list' %}" class="btn btn-outline btn-sm">إعادة ضبط</a>
+          </div>
+        </div>
       </form>
     </div>
 
-    {# ===== جدول الصرفيات ===== #}
-    <div class="profile-section mt-6">
-      <div class="card-section-title">قائمة الصرفيات</div>
+    <div class="profile-section" style="margin-top: 1.5rem;">
+      <div class="card-section-title">📋 قائمة الصرفيات</div>
 
       {% if payouts %}
-        <div class="overflow-x-auto rounded-2xl bg-white shadow mt-3">
-          <table class="min-w-full text-sm">
+        <div class="table-wrapper" style="margin-top: 1rem;">
+          <table class="table table-clean">
             <thead>
-              <tr class="text-gray-600 border-b">
-                <th class="py-2 px-3 text-right">#</th>
-                <th class="py-2 px-3 text-right">الموظف</th>
-                <th class="py-2 px-3 text-right">الطلب</th>
-                <th class="py-2 px-3 text-right">الاتفاقية</th>
-                <th class="py-2 px-3 text-right">الصافي</th>
-                <th class="py-2 px-3 text-right">الحالة</th>
-                <th class="py-2 px-3 text-right">تاريخ الإنشاء</th>
-                <th class="py-2 px-3 text-right">تاريخ الصرف</th>
-                <th class="py-2 px-3 text-right">إجراءات</th>
+              <tr>
+                <th>#</th>
+                <th>الموظف</th>
+                <th>الطلب</th>
+                <th>الاتفاقية</th>
+                <th>الصافي</th>
+                <th>الحالة</th>
+                <th>تاريخ الإنشاء</th>
+                <th>تاريخ الصرف</th>
+                <th>إجراءات</th>
               </tr>
             </thead>
             <tbody>
               {% for p in payouts %}
-                <tr class="border-b hover:bg-gray-50">
-                  <td class="py-2 px-3">#{{ p.pk }}</td>
-                  <td class="py-2 px-3">{{ p.employee }}</td>
+                <tr class="scroll-reveal">
+                  <td class="text-muted">#{{ p.pk }}</td>
+                  <td>
+                    <div class="employee-info">{{ p.employee }}</div>
+                  </td>
 
-                  <td class="py-2 px-3">
+                  <td>
                     {% if p.agreement and p.agreement.request %}
-                      <a href="{% url 'marketplace:request_detail' p.agreement.request.pk %}">
+                      <a href="{% url 'marketplace:request_detail' p.agreement.request.pk %}" class="link">
                         #{{ p.agreement.request.pk }}
                       </a>
                     {% else %}
-                      —
+                      <span class="text-muted">—</span>
                     {% endif %}
                   </td>
 
-                  <td class="py-2 px-3">
+                  <td>
                     {% if p.agreement %}
-                      #{{ p.agreement.pk }}
+                      <span class="text-muted">#{{ p.agreement.pk }}</span>
                     {% else %}
-                      —
+                      <span class="text-muted">—</span>
                     {% endif %}
                   </td>
 
-                  <td class="py-2 px-3 font-semibold">{{ p.amount|floatformat:2 }} ريال</td>
-
-                  <td class="py-2 px-3">
-                    <span class="badge badge-default">{{ p.get_status_display }}</span>
+                  <td>
+                    <span class="value-strong">{{ p.amount|floatformat:2 }} ريال</span>
                   </td>
 
-                  <td class="py-2 px-3">{{ p.issued_at|date:"Y-m-d" }}</td>
-                  <td class="py-2 px-3">
+                  <td>
+                    <span class="badge 
+                               {% if p.status == 'paid' %}badge-verified
+                               {% elif p.status == 'pending' %}badge-pending
+                               {% elif p.status == 'cancelled' %}badge-rejected
+                               {% else %}badge-default{% endif %}">
+                      {{ p.get_status_display }}
+                    </span>
+                  </td>
+
+                  <td class="text-muted">{{ p.issued_at|date:"Y-m-d" }}</td>
+                  <td class="text-muted">
                     {% if p.paid_at %}{{ p.paid_at|date:"Y-m-d" }}{% else %}—{% endif %}
                   </td>
 
-                  <td class="py-2 px-3">
+                  <td>
                     {% if p.status == 'pending' %}
-                      <form method="post" action="{% url 'finance:mark_payout_paid' p.pk %}">
+                      <form method="post" action="{% url 'finance:mark_payout_paid' p.pk %}" class="payout-form">
                         {% csrf_token %}
-                        <div style="display:flex;flex-wrap:wrap;gap:.25rem;align-items:center;">
-                          <input name="method" class="input input-sm w-28" placeholder="طريقة">
-                          <input name="ref_code" class="input input-sm w-36" placeholder="مرجع">
+                        <div class="form-row" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                          <input name="method" class="input input-sm" placeholder="طريقة" style="width: 100px;">
+                          <input name="ref_code" class="input input-sm" placeholder="مرجع" style="width: 120px;">
                           <button class="btn btn-primary btn-sm" type="submit">وسم كمدفوع</button>
                         </div>
                       </form>
                     {% else %}
-                      —
+                      <span class="text-muted">—</span>
                     {% endif %}
                   </td>
                 </tr>
@@ -141,10 +176,206 @@
           </table>
         </div>
       {% else %}
-        <p class="text-sm text-gray-500 mt-3">لا توجد صرفيات للعرض.</p>
+        <div class="empty-state" style="text-align: center; padding: 3rem; color: var(--dark-500);">
+          <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">💸</div>
+          <p>لا توجد صرفيات للعرض</p>
+        </div>
       {% endif %}
     </div>
 
   </div>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script>
+  (function () {
+    if (typeof initScrollReveal === 'function') {
+      initScrollReveal();
+    }
+
+    document.querySelectorAll('.btn').forEach(button => {
+      button.addEventListener('click', function() {
+        if (typeof animateButtonClick === 'function') {
+          animateButtonClick(this);
+        }
+      });
+    });
+
+    const filterForm = document.querySelector('.filter-form');
+    if (filterForm) {
+      const inputs = filterForm.querySelectorAll('input, select');
+      inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+          this.style.borderColor = 'var(--primary-500)';
+          this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
+        });
+        
+        input.addEventListener('blur', function() {
+          this.style.borderColor = '';
+          this.style.boxShadow = '';
+        });
+      });
+    }
+
+    document.querySelectorAll('.table-clean tbody tr').forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.background = 'var(--primary-50)';
+      });
+      
+      row.addEventListener('mouseleave', function() {
+        this.style.background = '';
+      });
+    });
+
+  })();
+  </script>
+
+  <style>
+  .payouts-page .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .payouts-page .filter-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .payouts-page .form-field {
+    margin-bottom: 0;
+  }
+
+  .payouts-page .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--dark-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .payouts-page .input {
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    transition: var(--transition);
+  }
+
+  .payouts-page .input-sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .payouts-page .input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  }
+
+  .payouts-page .table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--dark-200);
+  }
+
+  .payouts-page .table-clean {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .payouts-page .table-clean th {
+    background: var(--dark-50);
+    color: var(--dark-700);
+    font-weight: 600;
+    padding: 1rem;
+    text-align: right;
+    border-bottom: 1px solid var(--dark-200);
+  }
+
+  .payouts-page .table-clean td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--dark-100);
+    vertical-align: middle;
+  }
+
+  .payouts-page .table-clean tr:last-child td {
+    border-bottom: none;
+  }
+
+  .payouts-page .employee-info {
+    font-weight: 600;
+    color: var(--dark-900);
+  }
+
+  .payouts-page .link {
+    color: var(--primary-600);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .payouts-page .link:hover {
+    color: var(--primary-700);
+    text-decoration: underline;
+  }
+
+  .payouts-page .value-strong {
+    font-weight: 700;
+    color: var(--primary-600);
+  }
+
+  .payouts-page .text-muted {
+    color: var(--dark-500);
+  }
+
+  .payouts-page .payout-form .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .payouts-page .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--dark-500);
+  }
+
+  @media (max-width: 768px) {
+    .payouts-page .filter-grid {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .payouts-page .form-field {
+      width: 100%;
+    }
+    
+    .payouts-page .payout-form .form-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .payouts-page .payout-form .input {
+      width: 100%;
+    }
+    
+    .payouts-page .table-wrapper {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .payouts-page .stats-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .payouts-page .table-clean th,
+    .payouts-page .table-clean td {
+      padding: 0.75rem 0.5rem;
+    }
+  }
+  </style>
 {% endblock %}

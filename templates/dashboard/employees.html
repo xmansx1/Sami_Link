@@ -1,35 +1,45 @@
-{% extends "base.html" %}
+{% extends "dashboard/base_admin.html" %}
 {% block title %}إدارة الموظفين{% endblock %}
+
+{% block page_header %}
+<div class="profile-section" style="margin-bottom: 1.5rem;">
+  <div class="section-header" style="text-align: right;">
+    <div class="section-badge">
+      👥 إدارة الموظفين
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; gap: 1rem;">
+      <div>
+        <h1 class="section-title" style="margin: 0;">
+          إدارة الموظفين
+        </h1>
+        <div class="page-subtitle" style="color: var(--dark-500); font-size: 0.95rem; margin-top: 0.25rem;">
+          عرض وإدارة حسابات الموظفين المسجلين في المنصّة
+        </div>
+      </div>
+      <div class="text-left" style="min-width: 200px;">
+        <div class="badge badge-default">
+          📅 تاريخ اليوم: {{ today|date:"Y-m-d" }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
 {% block content %}
 
 <section class="page-section employees-management">
   <div class="container">
     
-    {# ===== رأس الصفحة ===== #}
-    <div class="section-header" style="text-align: right; margin-bottom: 2rem;">
-      <div class="section-badge">
-        👥 إدارة الموظفين
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-        <h1 class="section-title" style="margin: 0;">
-          إدارة الموظفين
-        </h1>
-        <div class="page-subtitle" style="color: var(--dark-500); font-size: 0.95rem;">
-          عرض وإدارة حسابات الموظفين
-        </div>
-      </div>
-    </div>
-
-    {# ===== فلاتر البحث ===== #}
-    <div class="profile-section" style="margin-bottom: 2rem;">
+    <div class="profile-section" style="margin-bottom: 1.5rem;">
       <form method="get" class="search-form">
-        <div class="form-grid-3" style="display: grid; grid-template-columns: 1fr auto auto; gap: 1rem;">
+        <div class="form-grid-3" style="display: grid; grid-template-columns: 1fr auto auto; gap: 0.75rem; align-items: center;">
           <div class="form-field">
             <input class="input" 
                    type="text" 
                    name="q" 
                    value="{{ q }}" 
-                   placeholder="🔍 بحث بالاسم أو البريد…"
+                   placeholder="🔍 بحث بالاسم أو البريد أو اسم المستخدم…"
                    style="width: 100%;">
           </div>
           <button class="btn btn-primary">
@@ -42,7 +52,6 @@
       </form>
     </div>
 
-    {# ===== جدول الموظفين ===== #}
     <div class="profile-section">
       <div class="table-wrapper">
         <table class="table table-clean">
@@ -58,7 +67,7 @@
           </thead>
           <tbody>
             {% for u in page_obj %}
-            <tr class="scroll-reveal">
+            <tr>
               <td class="text-muted">#{{ u.id }}</td>
               
               <td>
@@ -79,24 +88,37 @@
               
               <td>
                 <div class="email-info">
-                  <span class="email-text">{{ u.email }}</span>
+                  <span class="email-text">
+                    {% if u.email %}
+                      {{ u.email }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </span>
                 </div>
               </td>
               
               <td>
                 <span class="badge 
-                           {% if u.role == 'admin' %}badge-verified
+                           {% if u.role == 'admin' or u.is_superuser or u.is_staff %}badge-verified
                            {% elif u.role == 'employee' or u.role == 'tech' %}badge-pending
                            {% elif u.role == 'finance' %}badge-default
-                           {% else %}badge-rejected{% endif %}">
+                           {% elif u.role == 'client' %}badge-rejected
+                           {% else %}badge-default{% endif %}">
                   {% if u.role %}
                     {% if u.role == 'admin' %}مدير
-                    {% elif u.role == 'employee' or u.role == 'tech' %}موظف
-                    {% elif u.role == 'finance' %}مالي
+                    {% elif u.role == 'tech' or u.role == 'employee' %}موظف تقني
+                    {% elif u.role == 'finance' %}مالية
                     {% elif u.role == 'client' %}عميل
+                    {% elif u.role == 'gm' %}مدير عام
+                    {% elif u.role == 'manager' %}إدارة
                     {% else %}{{ u.role }}{% endif %}
                   {% else %}
-                    -
+                    {% if u.is_superuser or u.is_staff %}
+                      موظف نظام
+                    {% else %}
+                      -
+                    {% endif %}
                   {% endif %}
                 </span>
               </td>
@@ -113,7 +135,7 @@
                 <div class="table-actions">
                   <a href="{% url 'admin:accounts_user_change' u.id %}" 
                      class="btn btn-outline btn-sm"
-                     title="تعديل الموظف">
+                     title="تعديل الموظف في لوحة الإدارة">
                     ✏️ تحرير
                   </a>
                   <a href="{% url 'admin:accounts_user_delete' u.id %}" 
@@ -131,7 +153,7 @@
                 <div class="empty-state">
                   <div class="empty-icon" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">👥</div>
                   <h3 class="card-section-title" style="margin-bottom: 0.5rem;">لا توجد نتائج</h3>
-                  <p class="card-section-note">لم يتم العثور على موظفين مطابقين لمعايير البحث</p>
+                  <p class="card-section-note">لم يتم العثور على موظفين مطابقين لمعايير البحث الحالية</p>
                 </div>
               </td>
             </tr>
@@ -141,7 +163,6 @@
       </div>
     </div>
 
-    {# ===== ترقيم الصفحات ===== #}
     {% if page_obj %}
     <div class="pagination profile-section" style="text-align: center; padding: 1.5rem;">
       <div class="pagination-inner employee-actions">
@@ -170,8 +191,6 @@
     </div>
     {% endif %}
 
-    {# ===== إحصائيات سريعة ===== #}
-
   </div>
 </section>
 
@@ -181,14 +200,14 @@
   {{ block.super }}
   <script>
   (function () {
-    // تهيئة تأثيرات التمرير
-    if (typeof initScrollReveal === 'function') {
-      initScrollReveal();
-    }
+    // إزالة تأثيرات التمرير المسببة للمشكلة
+    document.querySelectorAll('.scroll-reveal').forEach(el => {
+      el.classList.remove('scroll-reveal');
+    });
 
     // تأثيرات على الأزرار
-    document.querySelectorAll('.btn').forEach(button => {
-      button.addEventListener('click', function() {
+    document.querySelectorAll('.employees-management .btn').forEach(function (button) {
+      button.addEventListener('click', function () {
         if (typeof animateButtonClick === 'function') {
           animateButtonClick(this);
         }
@@ -196,80 +215,46 @@
     });
 
     // تأثيرات على صفوف الجدول
-    document.querySelectorAll('.table-clean tbody tr').forEach(row => {
-      row.addEventListener('mouseenter', function() {
+    document.querySelectorAll('.employees-management .table-clean tbody tr').forEach(function (row) {
+      row.addEventListener('mouseenter', function () {
         this.style.background = 'var(--primary-50)';
-        this.style.transform = 'translateX(-5px)';
       });
       
-      row.addEventListener('mouseleave', function() {
+      row.addEventListener('mouseleave', function () {
         this.style.background = '';
-        this.style.transform = 'translateX(0)';
       });
-
-      // تأثير على أزرار الإجراءات عند المرور
-      const actions = this.querySelector('.table-actions');
-      if (actions) {
-        row.addEventListener('mouseenter', function() {
-          actions.style.opacity = '1';
-        });
-        
-        row.addEventListener('mouseleave', function() {
-          actions.style.opacity = '0.9';
-        });
-      }
     });
 
-    // تحسين تجربة البحث
-    const searchForm = document.querySelector('.search-form');
-    const searchInput = searchForm?.querySelector('input[name="q"]');
-    
-    if (searchInput) {
-      searchInput.addEventListener('focus', function() {
-        this.style.borderColor = 'var(--primary-500)';
-        this.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.1)';
-      });
-      
-      searchInput.addEventListener('blur', function() {
-        this.style.borderColor = '';
-        this.style.boxShadow = '';
-      });
+    // تأكيد الحذف مع عرض اسم الموظف إن توفر
+    document.querySelectorAll('.employees-management a[href*="delete"]').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        var row = this.closest('tr');
+        var userNameEl = row ? row.querySelector('.employee-name') : null;
+        var userEmailEl = row ? row.querySelector('.email-text') : null;
+        var userName = userNameEl ? userNameEl.textContent.trim() : '';
+        var userEmail = userEmailEl ? userEmailEl.textContent.trim() : '';
 
-      // بحث أثناء الكتابة (اختياري)
-      searchInput.addEventListener('input', function() {
-        if (this.value.length > 2) {
-          this.style.background = 'var(--primary-50)';
-        } else {
-          this.style.background = '';
-        }
-      });
-    }
-
-    // تأكيد الحذف بمزيد من التفاصيل
-    document.querySelectorAll('a[href*="delete"]').forEach(link => {
-      link.addEventListener('click', function(e) {
-        const row = this.closest('tr');
-        const userName = row?.querySelector('.employee-name')?.textContent?.trim();
-        const userEmail = row?.querySelector('.email-text')?.textContent?.trim();
-        
+        var msg = 'هل أنت متأكد من حذف الموظف؟';
         if (userName || userEmail) {
-          const message = `هل أنت متأكد من حذف الموظف:\n${userName ? 'الاسم: ' + userName : ''}\n${userEmail ? 'البريد: ' + userEmail : ''}\n\nهذا الإجراء لا يمكن التراجع عنه.`;
-          
-          if (!confirm(message)) {
-            e.preventDefault();
-            return false;
-          }
+          msg = 'هل أنت متأكد من حذف الموظف:\n';
+          if (userName) msg += 'الاسم: ' + userName + '\n';
+          if (userEmail) msg += 'البريد: ' + userEmail + '\n';
+          msg += '\nهذا الإجراء لا يمكن التراجع عنه.';
+        }
+
+        if (!confirm(msg)) {
+          e.preventDefault();
+          return false;
         }
       });
     });
 
-    // تأثيرات على البادجات حسب الدور
-    document.querySelectorAll('.badge').forEach(badge => {
-      badge.addEventListener('mouseenter', function() {
-        this.style.transform = 'scale(1.05)';
+    // تأثيرات بسيطة على البادجات
+    document.querySelectorAll('.employees-management .badge').forEach(function (badge) {
+      badge.addEventListener('mouseenter', function () {
+        this.style.transform = 'scale(1.03)';
       });
-      
-      badge.addEventListener('mouseleave', function() {
+      badge.addEventListener('mouseleave', function () {
         this.style.transform = 'scale(1)';
       });
     });
@@ -280,6 +265,27 @@
   <style>
   .employees-management .form-grid-3 {
     grid-template-columns: 1fr auto auto;
+  }
+
+  .employees-management .form-field {
+    margin-bottom: 0;
+  }
+
+  .employees-management .input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--dark-300);
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    transition: var(--transition);
+  }
+
+  .employees-management .input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
   }
 
   .employees-management .table-wrapper {
@@ -336,8 +342,7 @@
   .employees-management .table-actions {
     display: flex;
     gap: 0.5rem;
-    opacity: 0.9;
-    transition: opacity 0.3s ease;
+    flex-wrap: wrap;
   }
 
   .employees-management .text-muted {
@@ -358,6 +363,16 @@
     opacity: 0.5;
   }
 
+  .employees-management .empty-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--dark-600);
+  }
+
+  .employees-management .empty-description {
+    color: var(--dark-500);
+  }
+
   .employees-management .pagination-inner {
     display: flex;
     justify-content: center;
@@ -367,30 +382,6 @@
 
   .employees-management .pagination-info {
     padding: 0.5rem 1rem;
-  }
-
-  .employees-management .quick-stats {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-
-  .employees-management .stat-item {
-    text-align: center;
-    padding: 1rem;
-    background: var(--white);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--dark-200);
-  }
-
-  .employees-management .stat-label {
-    font-size: 0.875rem;
-    color: var(--dark-600);
-    margin-bottom: 0.5rem;
-  }
-
-  .employees-management .stat-number {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary-600);
   }
 
   @media (max-width: 768px) {
@@ -410,18 +401,10 @@
       flex-direction: column;
       gap: 0.5rem;
     }
-    
-    .employees-management .quick-stats {
-      grid-template-columns: repeat(2, 1fr);
-    }
   }
 
   @media (max-width: 480px) {
-    .employees-management .quick-stats {
-      grid-template-columns: 1fr;
-    }
-    
-    .employees-management .table-clean {
+    .employees-management .table-wrapper {
       font-size: 0.875rem;
     }
     
@@ -431,45 +414,11 @@
     }
   }
 
-  /* تأثيرات الحركة */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
+  /* إزالة تأثيرات التمرير المسببة للمشكلة */
   .employees-management .scroll-reveal {
-    animation: fadeIn 0.6s ease-out;
-  }
-
-  /* تخصيص البادجات حسب الدور */
-  .employees-management .badge-verified {
-    background: var(--primary-100);
-    color: var(--primary-700);
-    border: 1px solid var(--primary-200);
-  }
-
-  .employees-management .badge-pending {
-    background: var(--secondary-100);
-    color: var(--secondary-700);
-    border: 1px solid var(--secondary-200);
-  }
-
-  .employees-management .badge-default {
-    background: var(--dark-100);
-    color: var(--dark-700);
-    border: 1px solid var(--dark-200);
-  }
-
-  .employees-management .badge-rejected {
-    background: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
   }
   </style>
 {% endblock %}

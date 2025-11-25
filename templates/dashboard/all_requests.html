@@ -1,66 +1,171 @@
+{# dashboard/templates/dashboard/all_requests.html #}
 {% extends "dashboard/base_admin.html" %}
+
 {% block title %}جميع الطلبات{% endblock %}
+
+{# رأس الصفحة #}
+{% block page_header %}
+<div class="profile-section" style="margin-bottom: 1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;">
+    <div>
+      <div class="section-badge" style="margin-bottom:.5rem;">
+        🧾 عرض شامل لكل الطلبات
+      </div>
+      <h1 class="section-title" style="margin:0 0 .25rem;">
+        جميع الطلبات في المنصّة
+      </h1>
+      <p class="section-description" style="margin:0;color:var(--dark-500);font-size:.9rem;">
+        يمكنك من هنا متابعة كل الطلبات بغضّ النظر عن حالتها أو مالكها، مع إمكانية البحث السريع.
+      </p>
+    </div>
+
+    <div class="profile-section" style="min-width:210px;text-align:center;padding:.75rem 1rem;">
+      <div style="font-size:.85rem;color:var(--dark-500);margin-bottom:.25rem;">📆 تاريخ اليوم</div>
+      <div style="font-weight:800;font-size:1.1rem;color:var(--dark-800);">
+        {{ today|default:None|date:"Y-m-d" }}
+      </div>
+      {% if page_obj %}
+        <div style="margin-top:.4rem;font-size:.85rem;color:var(--dark-500);">
+          إجمالي: <strong>{{ page_obj.paginator.count }}</strong> طلب
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="profile-section">
-  <h2 class="section-title">جميع الطلبات</h2>
-  <form method="get" style="margin-bottom: 1rem;">
-    <input type="text" name="q" value="{{ q }}" placeholder="بحث بالعنوان..." class="input" style="width: 300px;">
-    <button class="btn btn-primary" type="submit">بحث</button>
+
+  {# نموذج البحث #}
+  <form method="get" class="fade-in" style="margin-bottom:1rem;">
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;">
+      <input
+        type="text"
+        name="q"
+        value="{{ q }}"
+        placeholder="بحث بالعنوان أو باسم العميل..."
+        class="input"
+        style="min-width:230px;max-width:320px;flex:1 1 220px;"
+      >
+      <button class="btn btn-blue" type="submit">
+        🔍 بحث
+      </button>
+      {% if q %}
+        <a href="{% url 'dashboard:all_requests' %}" class="btn btn-gray">
+          إعادة تعيين
+        </a>
+      {% endif %}
+    </div>
   </form>
+
+  {# جدول الطلبات #}
   <div class="table-wrapper">
     <table class="table table-clean">
       <thead>
         <tr>
-          <th>#</th>
+          <th style="width:70px;">#</th>
           <th>العنوان</th>
           <th>العميل</th>
           <th>الحالة</th>
-          <th>التاريخ</th>
-          <th>عرض</th>
+          <th style="width:180px;">التاريخ</th>
+          <th style="width:80px;text-align:center;">عرض</th>
         </tr>
       </thead>
       <tbody>
         {% for r in page_obj %}
-        <tr>
-          <td class="text-muted">#{{ r.id }}</td>
-          <td>{{ r.title|default:"—" }}</td>
-          <td>
-            {% if r.client %}
-              {% if r.client.name %}{{ r.client.name }}
-              {% elif r.client.phone %}{{ r.client.phone }}
-              {% elif r.client.email %}{{ r.client.email }}
-              {% else %}{{ r.client }}{% endif %}
-            {% else %}—{% endif %}
-          </td>
-          <td>
-            {% if r.status %}<span class="badge badge-default">{{ r.status }}</span>
-            {% elif r.state %}<span class="badge badge-default">{{ r.state }}</span>
-            {% else %}<span class="badge badge-default">غير محدد</span>{% endif %}
-          </td>
-          <td class="text-muted">
-            {% if r.created_at %}{{ r.created_at|date:"Y-m-d H:i" }}
-            {% else %}{{ r.id }}{% endif %}
-          </td>
-          <td>
-            <a href="{% url 'marketplace:request_detail' r.id %}" class="btn btn-sm btn-outline" title="عرض الطلب">
-              <span style="font-size:1.2em;vertical-align:middle;">👁️</span>
-            </a>
-          </td>
-        </tr>
+          <tr class="scroll-reveal">
+            <td class="text-muted">#{{ r.id }}</td>
+
+            <td>
+              <div style="font-weight:600;">
+                {{ r.title|default:"—" }}
+              </div>
+            </td>
+
+            <td>
+              {% if r.client %}
+                {% if r.client.name %}
+                  {{ r.client.name }}
+                {% elif r.client.phone %}
+                  {{ r.client.phone }}
+                {% elif r.client.email %}
+                  {{ r.client.email }}
+                {% else %}
+                  {{ r.client }}
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <td>
+              {% if r.status %}
+                <span class="badge">{{ r.status }}</span>
+              {% elif r.state %}
+                <span class="badge">{{ r.state }}</span>
+              {% else %}
+                <span class="badge">غير محدد</span>
+              {% endif %}
+            </td>
+
+            <td class="text-muted">
+              {% if r.created_at %}
+                {{ r.created_at|date:"Y-m-d H:i" }}
+              {% elif r.submitted_at %}
+                {{ r.submitted_at|date:"Y-m-d H:i" }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <td style="text-align:center;">
+              <a
+                href="{% url 'marketplace:request_detail' r.id %}"
+                class="btn btn-xs btn-gray"
+                title="عرض الطلب"
+              >
+                👁️
+              </a>
+            </td>
+          </tr>
         {% empty %}
-        <tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">لا توجد طلبات</td></tr>
+          <tr>
+            <td colspan="6" class="text-center text-muted" style="padding:2rem;">
+              لا توجد طلبات مطابقة حاليًا.
+            </td>
+          </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  <div style="margin-top: 1rem;">
-    {% if page_obj.has_previous %}
-      <a href="?q={{ q }}&page={{ page_obj.previous_page_number }}" class="btn btn-outline">السابق</a>
-    {% endif %}
-    <span>صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-      <a href="?q={{ q }}&page={{ page_obj.next_page_number }}" class="btn btn-outline">التالي</a>
-    {% endif %}
-  </div>
+
+  {# الترقيم #}
+  {% if page_obj %}
+    <div style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:space-between;">
+      <div class="text-muted" style="font-size:.9rem;">
+        صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+        {% if page_obj.has_previous %}
+          <a
+            href="?q={{ q }}&page={{ page_obj.previous_page_number }}"
+            class="btn btn-gray btn-sm"
+          >
+            السابق
+          </a>
+        {% endif %}
+        {% if page_obj.has_next %}
+          <a
+            href="?q={{ q }}&page={{ page_obj.next_page_number }}"
+            class="btn btn-gray btn-sm"
+          >
+            التالي
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
 </div>
 {% endblock %}

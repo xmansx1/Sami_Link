@@ -3,6 +3,27 @@
 {% load static %}
 {% block title %}منصة سامي لينك التقنية — وسيط سعودي موثوق{% endblock %}
 
+{# ===== تنبيه عدم التعامل خارج المنصة (يظهر هنا فقط) ===== #}
+{% block platform_notice %}
+  <div id="platformNoticeCard" class="platform-warning-card" role="status" aria-live="polite">
+    <div class="pw-icon">🛡️</div>
+    <div class="pw-body">
+      <div class="pw-title">تنبيه مهم قبل البدء</div>
+      <div class="pw-text">
+        المنصّة غير مسؤولة عن أي تعاملات أو دفعات خارج سامي لينك.
+        حفاظًا على حقوقك، أكمل الاتفاق والدفع داخل المنصّة فقط.
+      </div>
+    </div>
+    <button type="button"
+            class="alert-close"
+            id="platformNoticeClose"
+            aria-label="إغلاق التنبيه"
+            style="color:#fff;opacity:.9;margin-inline-start:auto;">
+      ✕
+    </button>
+  </div>
+{% endblock %}
+
 {% block page_hero %}
 {# قسم البطل - خارج المحتوى الرئيسي للاستفادة من التخطيط الخاص #}
 <section id="hero" class="hero-section">
@@ -109,6 +130,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </section>
@@ -193,7 +215,6 @@
           <article class="mini-tech-card scroll-reveal" aria-label="تقني">
             <div class="mini-tech-head">
               <div class="mini-tech-avatar">
-                {# نفس منطق _tech_mini_grid.html #}
                 {% if i.avatar_url %}
                   <img src="{{ i.avatar_url }}" alt="تقني سعودي {{ i }}" loading="lazy" />
                 {% elif i.avatar %}
@@ -301,6 +322,26 @@
 {{ block.super }}
 <script>
 (function() {
+
+    // --- إخفاء تنبيه المنصّة بعد 3 ثواني ---
+    var pn = document.getElementById("platformNoticeCard");
+    var pnClose = document.getElementById("platformNoticeClose");
+    if (pn) {
+      var hidePlatformNotice = function(){
+        pn.style.opacity = "0";
+        pn.style.transform = "translateY(6px)";
+        setTimeout(function(){ pn.remove(); }, 220);
+      };
+
+      setTimeout(hidePlatformNotice, 60000);
+
+      if (pnClose) {
+        pnClose.addEventListener("click", function(){
+          hidePlatformNotice();
+        });
+      }
+    }
+
     if (typeof initScrollReveal === 'function') {
         initScrollReveal();
     }
