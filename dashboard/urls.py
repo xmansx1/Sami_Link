@@ -20,4 +20,7 @@ urlpatterns = [
 
     # إدارة النزاعات
     path("disputes/", views.disputes_list, name="disputes_list"),
+
+    # رسائل التواصل
+    path("messages/", views.contact_messages_list, name="contact_messages_list"),
 ]

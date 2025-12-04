@@ -3,7 +3,9 @@ from django.shortcuts import render
 from django.views.generic import TemplateView
 
 from accounts.models import User  # تأكد أن المسار صحيح في مشروعك
-
+from django.contrib import messages
+from django.shortcuts import redirect
+from .models import SiteSetting, ContactMessage
 
 class BasePageView(TemplateView):
     """
@@ -22,7 +24,12 @@ class BasePageView(TemplateView):
         # عنوان الصفحة الافتراضي (يمكن تجاوزه من القالب)
         ctx["page_title"] = getattr(self, "page_title", None)
 
-        # لو احتجنا لاحقاً نضيف سياق مشترك لكل الصفحات العامة
+        # جلب إعدادات الموقع (لبيانات التواصل)
+        site_settings = SiteSetting.objects.first()
+        if not site_settings:
+            site_settings = SiteSetting.objects.create()
+        ctx["site_settings"] = site_settings
+
         return ctx
 
 
@@ -38,8 +45,19 @@ def _get_home_context() -> dict:
     # جلب التقنيين (يمكنك تعديل الفلتر حسب الأدوار عندك)
     team_members = (
         User.objects.filter(role__in=["employee", "tech"], is_active=True)
+        .select_related("employee_profile")
         .order_by("-id")[:12]
     )
+
+    # معالجة المهارات لتحويلها من نص CSV إلى قائمة
+    for member in team_members:
+        member.skills_list = []
+        if hasattr(member, "employee_profile") and member.employee_profile:
+            if member.employee_profile.skills:
+                # تقسيم النص بالفواصل وأخذ أول 3 مهارات
+                member.skills_list = [
+                    s.strip() for s in member.employee_profile.skills.split(",") if s.strip()
+                ][:3]
 
     metrics = {
         "active_requests": 0,        # يمكن ربطها لاحقاً من موديل الطلبات
@@ -48,9 +66,16 @@ def _get_home_context() -> dict:
         "employees_count": team_members.count(),
     }
 
+    # جلب إعدادات الموقع (لبيانات التواصل في الهوم)
+    site_settings = SiteSetting.objects.first()
+    if not site_settings:
+        # إنشاء إعدادات افتراضية إذا لم تكن موجودة
+        site_settings = SiteSetting.objects.create()
+
     return {
         "team_members": team_members,
         "metrics": metrics,
+        "site_settings": site_settings,
     }
 
 
@@ -85,6 +110,27 @@ class ContactView(BasePageView):
     template_name = "website/contact.html"
     page_slug = "contact"
     page_title = "اتصل بنا"
+
+    def post(self, request, *args, **kwargs):
+        name = request.POST.get("name")
+        email = request.POST.get("email")
+        phone = request.POST.get("phone")
+        subject = request.POST.get("subject")
+        message = request.POST.get("message")
+
+        if name and email and message:
+            ContactMessage.objects.create(
+                name=name,
+                email=email,
+                phone=phone,
+                subject=subject or "بدون عنوان",
+                message=message
+            )
+            messages.success(request, "تم إرسال رسالتك بنجاح! سنتواصل معك قريباً.")
+            return redirect("website:contact")
+        
+        messages.error(request, "الرجاء تعبئة جميع الحقول المطلوبة.")
+        return self.render_to_response(self.get_context_data())
 
 
 # الخصوصية

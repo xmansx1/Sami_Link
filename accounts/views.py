@@ -17,6 +17,8 @@ from django.utils.translation import gettext_lazy as _
 from django.views.generic import FormView, CreateView, TemplateView, UpdateView
 
 from .forms import LoginForm, RegisterForm, ProfileUpdateForm
+from profiles.forms import EmployeeProfileForm
+from profiles.models import EmployeeProfile
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +131,7 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
     """
     تعديل الملف الشخصي للمستخدم الحالي.
     - يستخدم ProfileUpdateForm.
+    - يدعم تعديل بيانات الموظف إذا كان المستخدم موظفاً.
     """
     template_name = "accounts/profile_edit.html"
     form_class = ProfileUpdateForm
@@ -137,17 +140,40 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
     def get_object(self):
         return self.request.user
 
-    def form_valid(self, form: ProfileUpdateForm) -> HttpResponse:
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if getattr(self.request.user, 'role', None) == 'employee':
+            profile, _ = EmployeeProfile.objects.get_or_create(user=self.request.user)
+            if 'employee_form' not in context:
+                context['employee_form'] = EmployeeProfileForm(instance=profile)
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        
+        employee_form = None
+        if getattr(request.user, 'role', None) == 'employee':
+            profile, _ = EmployeeProfile.objects.get_or_create(user=request.user)
+            employee_form = EmployeeProfileForm(request.POST, request.FILES, instance=profile)
+
+        if form.is_valid() and (employee_form is None or employee_form.is_valid()):
+            return self.form_valid(form, employee_form)
+        else:
+            return self.form_invalid(form, employee_form)
+
+    def form_valid(self, form, employee_form=None):
+        if employee_form:
+            employee_form.save()
         messages.success(self.request, _("تم تحديث ملفك الشخصي."))
         logger.info("Profile updated for user %s", self.request.user.pk)
         return super().form_valid(form)
 
-    def form_invalid(self, form: ProfileUpdateForm) -> HttpResponse:
+    def form_invalid(self, form, employee_form=None):
         messages.error(self.request, _("تعذّر تحديث الملف الشخصي. يرجى مراجعة الحقول."))
         logger.warning("Profile update failed for user %s: %s",
                        getattr(self.request.user, "pk", None), form.errors.as_json())
-        # نستخدم render للحفاظ على بيانات الإدخال
-        return render(self.request, self.template_name, {"form": form})
+        return self.render_to_response(self.get_context_data(form=form, employee_form=employee_form))
 
 
 # -------------------------------

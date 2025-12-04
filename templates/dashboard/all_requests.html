@@ -1,171 +1,348 @@
-{# dashboard/templates/dashboard/all_requests.html #}
 {% extends "dashboard/base_admin.html" %}
+{% load humanize %}
 
-{% block title %}جميع الطلبات{% endblock %}
+{% block title %}إدارة الطلبات | سامي لينك{% endblock %}
 
-{# رأس الصفحة #}
 {% block page_header %}
-<div class="profile-section" style="margin-bottom: 1.25rem;">
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;">
-    <div>
-      <div class="section-badge" style="margin-bottom:.5rem;">
-        🧾 عرض شامل لكل الطلبات
+<div class="dashboard-header">
+  <div class="header-content">
+    <div class="welcome-section">
+      <div class="badge-pill">
+        <span class="pulse-dot"></span>
+        إدارة العمليات
       </div>
-      <h1 class="section-title" style="margin:0 0 .25rem;">
-        جميع الطلبات في المنصّة
+      <h1 class="welcome-title">
+        سجل الطلبات الشامل
       </h1>
-      <p class="section-description" style="margin:0;color:var(--dark-500);font-size:.9rem;">
-        يمكنك من هنا متابعة كل الطلبات بغضّ النظر عن حالتها أو مالكها، مع إمكانية البحث السريع.
+      <p class="welcome-subtitle">
+        متابعة مركزية لجميع طلبات المنصة، مع أدوات البحث والفلترة المتقدمة.
       </p>
     </div>
 
-    <div class="profile-section" style="min-width:210px;text-align:center;padding:.75rem 1rem;">
-      <div style="font-size:.85rem;color:var(--dark-500);margin-bottom:.25rem;">📆 تاريخ اليوم</div>
-      <div style="font-weight:800;font-size:1.1rem;color:var(--dark-800);">
-        {{ today|default:None|date:"Y-m-d" }}
-      </div>
-      {% if page_obj %}
-        <div style="margin-top:.4rem;font-size:.85rem;color:var(--dark-500);">
-          إجمالي: <strong>{{ page_obj.paginator.count }}</strong> طلب
+    <div class="header-stats">
+      <div class="stat-pill">
+        <span class="stat-icon">📊</span>
+        <div class="stat-info">
+          <span class="stat-label">إجمالي الطلبات</span>
+          <span class="stat-value">{{ page_obj.paginator.count|default:0|intcomma }}</span>
         </div>
-      {% endif %}
+      </div>
     </div>
   </div>
 </div>
 {% endblock %}
 
 {% block content %}
-<div class="profile-section">
+<div class="dashboard-container">
 
-  {# نموذج البحث #}
-  <form method="get" class="fade-in" style="margin-bottom:1rem;">
-    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;">
-      <input
-        type="text"
-        name="q"
-        value="{{ q }}"
-        placeholder="بحث بالعنوان أو باسم العميل..."
-        class="input"
-        style="min-width:230px;max-width:320px;flex:1 1 220px;"
-      >
-      <button class="btn btn-blue" type="submit">
-        🔍 بحث
-      </button>
-      {% if q %}
-        <a href="{% url 'dashboard:all_requests' %}" class="btn btn-gray">
-          إعادة تعيين
-        </a>
-      {% endif %}
+  {# --- Search & Filter Section --- #}
+  <div class="section-container fade-in-up">
+    <div class="search-card">
+        <form method="get" class="search-form">
+            <div class="search-input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input 
+                    type="text" 
+                    name="q" 
+                    value="{{ q|default:'' }}" 
+                    placeholder="بحث برقم الطلب، عنوان المشروع، أو اسم العميل..."
+                    class="modern-input"
+                >
+            </div>
+            <button type="submit" class="btn-modern primary">بحث</button>
+            {% if q %}
+            <a href="{% url 'dashboard:all_requests' %}" class="btn-modern ghost">إلغاء الفلتر</a>
+            {% endif %}
+        </form>
     </div>
-  </form>
-
-  {# جدول الطلبات #}
-  <div class="table-wrapper">
-    <table class="table table-clean">
-      <thead>
-        <tr>
-          <th style="width:70px;">#</th>
-          <th>العنوان</th>
-          <th>العميل</th>
-          <th>الحالة</th>
-          <th style="width:180px;">التاريخ</th>
-          <th style="width:80px;text-align:center;">عرض</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in page_obj %}
-          <tr class="scroll-reveal">
-            <td class="text-muted">#{{ r.id }}</td>
-
-            <td>
-              <div style="font-weight:600;">
-                {{ r.title|default:"—" }}
-              </div>
-            </td>
-
-            <td>
-              {% if r.client %}
-                {% if r.client.name %}
-                  {{ r.client.name }}
-                {% elif r.client.phone %}
-                  {{ r.client.phone }}
-                {% elif r.client.email %}
-                  {{ r.client.email }}
-                {% else %}
-                  {{ r.client }}
-                {% endif %}
-              {% else %}
-                —
-              {% endif %}
-            </td>
-
-            <td>
-              {% if r.status %}
-                <span class="badge">{{ r.status }}</span>
-              {% elif r.state %}
-                <span class="badge">{{ r.state }}</span>
-              {% else %}
-                <span class="badge">غير محدد</span>
-              {% endif %}
-            </td>
-
-            <td class="text-muted">
-              {% if r.created_at %}
-                {{ r.created_at|date:"Y-m-d H:i" }}
-              {% elif r.submitted_at %}
-                {{ r.submitted_at|date:"Y-m-d H:i" }}
-              {% else %}
-                —
-              {% endif %}
-            </td>
-
-            <td style="text-align:center;">
-              <a
-                href="{% url 'marketplace:request_detail' r.id %}"
-                class="btn btn-xs btn-gray"
-                title="عرض الطلب"
-              >
-                👁️
-              </a>
-            </td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="6" class="text-center text-muted" style="padding:2rem;">
-              لا توجد طلبات مطابقة حاليًا.
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
   </div>
 
-  {# الترقيم #}
-  {% if page_obj %}
-    <div style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:space-between;">
-      <div class="text-muted" style="font-size:.9rem;">
-        صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
-        {% if page_obj.has_previous %}
-          <a
-            href="?q={{ q }}&page={{ page_obj.previous_page_number }}"
-            class="btn btn-gray btn-sm"
-          >
-            السابق
-          </a>
-        {% endif %}
-        {% if page_obj.has_next %}
-          <a
-            href="?q={{ q }}&page={{ page_obj.next_page_number }}"
-            class="btn btn-gray btn-sm"
-          >
-            التالي
-          </a>
-        {% endif %}
-      </div>
+  {# --- Requests Table --- #}
+  <div class="section-container fade-in-up" style="animation-delay: 0.1s;">
+    <div class="card-shadow table-card">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th width="80">#</th>
+                    <th>المشروع</th>
+                    <th>العميل</th>
+                    <th>الحالة</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th width="100">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in page_obj %}
+                <tr>
+                    <td class="text-muted font-weight-bold">#{{ r.id }}</td>
+                    <td>
+                        <div class="table-main-text">{{ r.title|default:"—" }}</div>
+                        {% if r.category %}
+                        <div class="table-sub-text">{{ r.category }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar sm">{{ r.client.name|first|default:"?" }}</div>
+                            <div>
+                                <div class="font-weight-bold">{{ r.client.name|default:r.client }}</div>
+                                {% if r.client.phone %}
+                                <div class="text-muted text-xs">{{ r.client.phone }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% with status=r.status|default:r.state %}
+                        <span class="status-pill 
+                            {% if status == 'completed' %}success-light
+                            {% elif status == 'in_progress' %}primary-light
+                            {% elif status == 'new' %}neutral-light
+                            {% elif status == 'cancelled' %}danger-light
+                            {% else %}warning-light{% endif %}">
+                            {{ r.get_status_display|default:status }}
+                        </span>
+                        {% endwith %}
+                    </td>
+                    <td class="text-muted">
+                        <div class="date-cell">
+                            <span>{{ r.created_at|date:"Y/m/d" }}</span>
+                            <small>{{ r.created_at|date:"H:i" }}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <a href="{% url 'marketplace:request_detail' r.id %}" class="btn-icon" title="عرض التفاصيل">
+                            👁️
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <div class="empty-content">
+                            <span class="empty-icon">📭</span>
+                            <h3>لا توجد طلبات</h3>
+                            <p>لم يتم العثور على أي طلبات مطابقة لمعايير البحث.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-  {% endif %}
+
+    {# --- Pagination --- #}
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pagination-container">
+        <span class="page-info">
+            صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
+        </span>
+        <div class="pagination-controls">
+            {% if page_obj.has_previous %}
+            <a href="?q={{ q }}&page={{ page_obj.previous_page_number }}" class="btn-page">السابق</a>
+            {% else %}
+            <span class="btn-page disabled">السابق</span>
+            {% endif %}
+            
+            {% if page_obj.has_next %}
+            <a href="?q={{ q }}&page={{ page_obj.next_page_number }}" class="btn-page">التالي</a>
+            {% else %}
+            <span class="btn-page disabled">التالي</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+  </div>
 
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+    /* Reusing variables from admin_dashboard but ensuring they are present if this page is loaded standalone */
+    :root {
+        --dash-bg: #f8fafc;
+        --card-bg: #ffffff;
+        --primary-soft: #f0fdf4;
+        --primary-strong: #16a34a;
+        --text-main: #1e293b;
+        --text-sub: #64748b;
+        --border-light: #e2e8f0;
+        --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        --radius-card: 16px;
+    }
+
+    /* Layout */
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        font-family: 'Tajawal', sans-serif;
+        color: var(--text-main);
+    }
+
+    /* Header Styles (Copied & Adapted) */
+    .dashboard-header {
+        background: linear-gradient(120deg, #ffffff 0%, #f0fdf4 100%);
+        padding: 2rem 1.5rem;
+        border-bottom: 1px solid var(--border-light);
+        margin-bottom: 2rem;
+    }
+    .header-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    .badge-pill {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        background: rgba(22, 163, 74, 0.1); color: var(--primary-strong);
+        padding: 0.25rem 0.75rem; border-radius: 20px;
+        font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem;
+    }
+    .pulse-dot {
+        width: 8px; height: 8px; background: var(--primary-strong);
+        border-radius: 50%; animation: pulse-green 2s infinite;
+    }
+    .welcome-title { font-size: 1.8rem; font-weight: 900; margin: 0 0 0.25rem 0; }
+    .welcome-subtitle { color: var(--text-sub); margin: 0; font-size: 1rem; }
+
+    .stat-pill {
+        background: #fff; padding: 0.75rem 1.25rem; border-radius: 12px;
+        box-shadow: var(--shadow-card); display: flex; align-items: center;
+        gap: 0.75rem; border: 1px solid var(--border-light);
+    }
+    .stat-icon { font-size: 1.5rem; }
+    .stat-info { display: flex; flex-direction: column; line-height: 1.2; }
+    .stat-label { font-size: 0.75rem; color: var(--text-sub); }
+    .stat-value { font-weight: 800; font-size: 1.1rem; }
+
+    /* Search Card */
+    .search-card {
+        background: var(--card-bg);
+        padding: 1.5rem;
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        margin-bottom: 2rem;
+    }
+    .search-form { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .search-input-wrapper {
+        flex: 1;
+        position: relative;
+        display: flex; align-items: center;
+    }
+    .search-icon {
+        position: absolute; right: 1rem; color: var(--text-sub); pointer-events: none;
+    }
+    .modern-input {
+        width: 100%;
+        padding: 0.75rem 2.5rem 0.75rem 1rem;
+        border: 1px solid var(--border-light);
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+    }
+    .modern-input:focus { outline: none; border-color: var(--primary-strong); }
+    
+    .btn-modern {
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .btn-modern.primary { background: var(--primary-strong); color: white; }
+    .btn-modern.primary:hover { background: #15803d; }
+    .btn-modern.ghost { background: #f1f5f9; color: var(--text-sub); }
+    .btn-modern.ghost:hover { background: #e2e8f0; }
+
+    /* Table Styles */
+    .card-shadow {
+        background: var(--card-bg);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+    }
+    .modern-table { width: 100%; border-collapse: collapse; }
+    .modern-table th {
+        background: #f8fafc; padding: 1rem 1.5rem; text-align: right;
+        font-size: 0.85rem; color: var(--text-sub); font-weight: 600;
+        border-bottom: 1px solid var(--border-light);
+    }
+    .modern-table td {
+        padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-light);
+        vertical-align: middle;
+    }
+    .modern-table tr:hover { background: #fcfcfc; }
+    
+    .table-main-text { font-weight: 700; color: var(--text-main); }
+    .table-sub-text { font-size: 0.8rem; color: var(--text-sub); margin-top: 0.2rem; }
+    
+    .user-cell { display: flex; align-items: center; gap: 0.75rem; }
+    .user-avatar.sm {
+        width: 36px; height: 36px; background: #e2e8f0; color: #64748b;
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.9rem;
+    }
+    .text-xs { font-size: 0.75rem; }
+
+    .status-pill {
+        display: inline-block; padding: 0.25rem 0.75rem; border-radius: 20px;
+        font-size: 0.75rem; font-weight: 700;
+    }
+    .status-pill.success-light { background: #dcfce7; color: #166534; }
+    .status-pill.primary-light { background: #dbeafe; color: #1e40af; }
+    .status-pill.warning-light { background: #fef3c7; color: #92400e; }
+    .status-pill.danger-light { background: #fee2e2; color: #991b1b; }
+    .status-pill.neutral-light { background: #f1f5f9; color: #475569; }
+
+    .date-cell { display: flex; flex-direction: column; font-size: 0.9rem; }
+    .date-cell small { color: var(--text-sub); font-size: 0.75rem; }
+
+    .btn-icon {
+        width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+        border-radius: 8px; background: #f8fafc; color: var(--text-sub);
+        text-decoration: none; transition: all 0.2s;
+    }
+    .btn-icon:hover { background: var(--primary-soft); color: var(--primary-strong); }
+
+    /* Empty State */
+    .empty-state { text-align: center; padding: 4rem 2rem; }
+    .empty-icon { font-size: 3rem; display: block; margin-bottom: 1rem; opacity: 0.5; }
+    .empty-content h3 { margin: 0 0 0.5rem; font-size: 1.2rem; }
+    .empty-content p { color: var(--text-sub); margin: 0; }
+
+    /* Pagination */
+    .pagination-container {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 1.5rem 0; border-top: 1px solid var(--border-light); margin-top: 1rem;
+    }
+    .page-info { color: var(--text-sub); font-size: 0.9rem; }
+    .pagination-controls { display: flex; gap: 0.5rem; }
+    .btn-page {
+        padding: 0.5rem 1rem; border-radius: 8px; background: #fff;
+        border: 1px solid var(--border-light); color: var(--text-main);
+        text-decoration: none; font-size: 0.9rem; transition: all 0.2s;
+    }
+    .btn-page:hover:not(.disabled) { border-color: var(--primary-strong); color: var(--primary-strong); }
+    .btn-page.disabled { opacity: 0.5; cursor: not-allowed; background: #f8fafc; }
+
+    /* Animation */
+    .fade-in-up { animation: fadeInUp 0.6s ease-out forwards; opacity: 0; transform: translateY(20px); }
+    @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+    }
+</style>
 {% endblock %}

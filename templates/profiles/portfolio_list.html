@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}معرض أعمالي{% endblock %}
+
+{% block extra_head %}
+<style>
+    .portfolio-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid #e2e8f0;
+    }
+    .portfolio-card {
+        border: none;
+        border-radius: 16px;
+        transition: all 0.3s ease;
+        background: #fff;
+        overflow: hidden;
+        height: 100%;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+    }
+    .portfolio-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .portfolio-img-wrapper {
+        position: relative;
+        height: 200px; /* ارتفاع ثابت ومناسب */
+        overflow: hidden;
+        background: #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .portfolio-img-wrapper img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+    .portfolio-card:hover .portfolio-img-wrapper img {
+        transform: scale(1.05);
+    }
+    .portfolio-img-placeholder {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #cbd5e1;
+        font-size: 3rem;
+    }
+    .status-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.4rem 0.85rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 2;
+        letter-spacing: 0.5px;
+    }
+    .status-badge.public { background: rgba(34, 197, 94, 0.9); color: white; }
+    .status-badge.private { background: rgba(234, 179, 8, 0.9); color: white; }
+    
+    .platform-project-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.25rem;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .platform-project-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 4px;
+        background: #22c55e;
+    }
+    .platform-project-card:hover {
+        border-color: #22c55e;
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
+    }
+    .verified-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: #dcfce7;
+        color: #166534;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: #f8fafc;
+        border: 2px dashed #cbd5e1;
+        border-radius: 16px;
+    }
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    
+    <!-- Header Section -->
+    <div class="portfolio-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h1 class="h3 fw-bold mb-1 text-dark">معرض أعمالي</h1>
+            <p class="text-muted mb-0">اعرض أفضل أعمالك ومشاريعك المنجزة لجذب المزيد من العملاء</p>
+        </div>
+        <div>
+            <a href="{% url 'profiles:portfolio_add' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-2"></i> إضافة عمل جديد
+            </a>
+        </div>
+    </div>
+
+    <!-- Manual Portfolio Items -->
+    {% if items %}
+        <div class="row g-4 mb-5">
+            {% for item in items %}
+            <div class="col-md-6 col-lg-4">
+                <div class="portfolio-card">
+                    <div class="portfolio-img-wrapper">
+                        {% if item.image %}
+                            <img src="{{ item.image.url }}" alt="{{ item.title }}">
+                        {% else %}
+                            <div class="portfolio-img-placeholder bg-light">
+                                <i class="fas fa-image"></i>
+                            </div>
+                        {% endif %}
+                        
+                        <span class="status-badge {% if item.is_public %}public{% else %}private{% endif %}">
+                            {% if item.is_public %}
+                                <i class="fas fa-globe ms-1"></i> عام
+                            {% else %}
+                                <i class="fas fa-lock ms-1"></i> خاص
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="card-body p-4 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title fw-bold mb-0 text-dark" style="font-size: 1.1rem; line-height: 1.5;">{{ item.title }}</h5>
+                        </div>
+                        
+                        <p class="card-text text-secondary mb-4 flex-grow-1 line-clamp-2" style="font-size: 0.95rem;">
+                            {{ item.description|default:"لا يوجد وصف" }}
+                        </p>
+
+                        <div class="mb-4">
+                            {% for tag in item.tags_list|slice:":3" %}
+                                <span class="badge bg-white text-primary border border-primary-subtle px-3 py-2 rounded-pill me-1 mb-1">
+                                    {{ tag }}
+                                </span>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                            <div class="btn-group">
+                                <a href="{% url 'profiles:portfolio_edit' item.pk %}" class="btn btn-light text-secondary hover-primary" title="تعديل">
+                                    <i class="fas fa-pen"></i>
+                                </a>
+                                <a href="{% url 'profiles:portfolio_delete' item.pk %}" class="btn btn-light text-danger hover-danger" title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                            
+                            {% if item.link %}
+                                <a href="{{ item.link }}" target="_blank" class="btn btn-outline-primary rounded-pill px-4 fw-bold" style="font-size: 0.9rem;">
+                                    زيارة الرابط <i class="fas fa-external-link-alt ms-1"></i>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state mb-5">
+            <div class="mb-3 text-muted opacity-50">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+            </div>
+            <h3 class="h5 fw-bold text-dark">لا توجد أعمال مضافة يدوياً</h3>
+            <p class="text-muted mb-4">قم بإضافة نماذج من أعمالك السابقة لزيادة فرصك في الحصول على مشاريع.</p>
+            <a href="{% url 'profiles:portfolio_add' %}" class="btn btn-outline-primary">
+                <i class="fas fa-plus ms-2"></i> إضافة أول عمل
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Platform Completed Projects -->
+    {% if platform_completed_requests %}
+    <div class="mt-5 pt-4 border-top">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="bg-success bg-opacity-10 p-2 rounded-circle text-success">
+                <i class="fas fa-check-circle fa-lg"></i>
+            </div>
+            <h3 class="h4 fw-bold mb-0">مشاريع تم إنجازها عبر المنصة</h3>
+        </div>
+        
+        <div class="row g-3">
+            {% for req in platform_completed_requests %}
+            <div class="col-md-6 col-xl-4">
+                <div class="platform-project-card h-100">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="verified-badge">
+                            <i class="fas fa-certificate"></i> موثق
+                        </span>
+                        <small class="text-muted font-monospace">{{ req.updated_at|date:"Y-m-d" }}</small>
+                    </div>
+                    
+                    <h5 class="fw-bold mb-2">
+                        <a href="{% url 'marketplace:request_detail' req.pk %}" class="text-decoration-none text-dark stretched-link">
+                            {{ req.title }}
+                        </a>
+                    </h5>
+                    
+                    <p class="text-muted small mb-0 line-clamp-2">
+                        {{ req.details|truncatewords:20 }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

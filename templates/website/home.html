@@ -5,23 +5,138 @@
 
 {# ===== تنبيه عدم التعامل خارج المنصة (يظهر هنا فقط) ===== #}
 {% block platform_notice %}
-  <div id="platformNoticeCard" class="platform-warning-card" role="status" aria-live="polite">
-    <div class="pw-icon">🛡️</div>
-    <div class="pw-body">
-      <div class="pw-title">تنبيه مهم قبل البدء</div>
-      <div class="pw-text">
-        المنصّة غير مسؤولة عن أي تعاملات أو دفعات خارج سامي لينك.
-        حفاظًا على حقوقك، أكمل الاتفاق والدفع داخل المنصّة فقط.
-      </div>
+<style>
+    .security-alert-wrapper {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 1.25rem 0;
+        position: relative;
+        overflow: hidden;
+    }
+    .security-alert-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    }
+    .security-container {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    .security-icon-box {
+        width: 52px;
+        height: 52px;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ef4444;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+        animation: pulse-red 2s infinite;
+    }
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2); }
+        70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .security-content {
+        flex: 1;
+    }
+    .security-title {
+        color: white;
+        font-weight: 800;
+        font-size: 1.1rem;
+        margin-bottom: 0.35rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .security-badge {
+        background: #ef4444;
+        color: white;
+        font-size: 0.75rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 6px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+    .security-desc {
+        color: #cbd5e1;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin: 0;
+        max-width: 800px;
+    }
+    .security-close-btn {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #94a3b8;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .security-close-btn:hover {
+        background: rgba(255,255,255,0.15);
+        color: white;
+        transform: rotate(90deg);
+    }
+    @media (max-width: 768px) {
+        .security-container {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+            padding: 0 1rem;
+        }
+        .security-title {
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .security-close-btn {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+            width: 32px;
+            height: 32px;
+            font-size: 0.9rem;
+        }
+    }
+</style>
+
+<div class="security-alert-wrapper" id="platformSecurityNotice">
+    <div class="security-container">
+        <div class="security-icon-box">
+            <i class="fas fa-shield-halved"></i>
+        </div>
+        <div class="security-content">
+            <div class="security-title">
+                تنبيه مهم قبل البدء
+                <span class="security-badge">هام جداً</span>
+            </div>
+            <p class="security-desc">
+                المنصّة غير مسؤولة عن أي تعاملات أو دفعات خارج سامي لينك. حفاظًا على حقوقك، أكمل الاتفاق والدفع داخل المنصّة فقط.
+            </p>
+        </div>
+        <button class="security-close-btn" onclick="document.getElementById('platformSecurityNotice').remove()" aria-label="إغلاق">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
-    <button type="button"
-            class="alert-close"
-            id="platformNoticeClose"
-            aria-label="إغلاق التنبيه"
-            style="color:#fff;opacity:.9;margin-inline-start:auto;">
-      ✕
-    </button>
-  </div>
+</div>
 {% endblock %}
 
 {% block page_hero %}
@@ -31,6 +146,7 @@
     <div class="hero-content fade-in">
       <div class="hero-text">
         <div class="hero-badge">
+          <i class="fas fa-shield-alt text-primary me-2"></i>
           <span>وسيط سعودي منظم</span>
         </div>
 
@@ -45,46 +161,50 @@
 
         <div class="hero-features">
           <div class="hero-feature">
-            <div class="hero-feature-icon">✓</div>
+            <div class="hero-feature-icon"><i class="fas fa-check-circle"></i></div>
             <div class="hero-feature-text">إخفاء بيانات العميل أثناء مرحلة العروض لرفع مستوى الأمان والخصوصية</div>
           </div>
           <div class="hero-feature">
-            <div class="hero-feature-icon">✓</div>
+            <div class="hero-feature-icon"><i class="fas fa-check-circle"></i></div>
             <div class="hero-feature-text">مسار مالي منظم مع فواتير نظامية ورسوم وضريبة محددة بوضوح</div>
           </div>
           <div class="hero-feature">
-            <div class="hero-feature-icon">✓</div>
+            <div class="hero-feature-icon"><i class="fas fa-check-circle"></i></div>
             <div class="hero-feature-text">تقنيون سعوديون تم التحقق من هوياتهم وخبراتهم قبل الانضمام للمنصة</div>
           </div>
         </div>
 
         <div class="hero-actions">
           <a href="{% url 'marketplace:request_create' %}" class="btn btn-primary">
-            ➕ اطلب خدمة
+            <i class="fas fa-plus me-2"></i> اطلب خدمة
           </a>
 
           {% if user.is_authenticated %}
             {% if user.role == 'client' %}
               <a href="{% url 'marketplace:my_requests' %}" class="btn btn-secondary">
-                📋 إدارة طلباتي
+                <i class="fas fa-clipboard-list me-2"></i> إدارة طلباتي
               </a>
             {% elif user.role == 'employee' or user.role == 'tech' %}
               <a href="{% url 'marketplace:my_tasks' %}" class="btn btn-secondary">
-                🛠️ عرض مهامي
+                <i class="fas fa-tools me-2"></i> عرض مهامي
               </a>
             {% else %}
               <a href="{% url 'dashboard:admin_dashboard' %}" class="btn btn-secondary">
-                📊 الانتقال للوحة التحكم
+                <i class="fas fa-chart-pie me-2"></i> الانتقال للوحة التحكم
               </a>
             {% endif %}
           {% else %}
             <a href="{% url 'accounts:register' %}" class="btn btn-secondary">
-              🚀 ابدأ الآن
+              <i class="fas fa-rocket me-2"></i> ابدأ الآن
             </a>
           {% endif %}
 
           <a href="#how-it-works" class="btn btn-outline">
-            ℹ️ تعرف على المنصة
+            <i class="fas fa-info-circle me-2"></i> تعرف على المنصة
+          </a>
+          
+          <a href="{% url 'website:contact' %}" class="btn btn-outline">
+            <i class="fas fa-envelope me-2"></i> تواصل معنا
           </a>
         </div>
       </div>
@@ -142,7 +262,7 @@
 <section id="how-it-works" class="section how-it-works">
   <div class="container">
     <div class="section-header scroll-reveal">
-      <div class="section-badge">🔄 عملية منظمة</div>
+      <div class="section-badge"><i class="fas fa-sync-alt me-2"></i> عملية منظمة</div>
       <h2 class="section-title">كيف تعمل منصة سامي لينك؟</h2>
       <p class="section-description">
         رحلة منظمة من الطلب حتى الإكمال، بخطوات بسيطة وواضحة لكل من العميل والتقني.
@@ -152,7 +272,7 @@
     <div class="steps-grid">
       <div class="step-card scroll-reveal">
         <div class="step-number-large">١</div>
-        <div class="step-icon">📝</div>
+        <div class="step-icon"><i class="fas fa-file-signature"></i></div>
         <h3 class="step-title">إنشاء الطلب</h3>
         <p class="step-description">
           يقوم العميل بإنشاء طلب جديد، وتوضيح طبيعة المشروع أو المهمة، والمدة المتوقعة والميزانية، مع إمكانية إرفاق ملفات توضيحية.
@@ -161,7 +281,7 @@
 
       <div class="step-card scroll-reveal">
         <div class="step-number-large">٢</div>
-        <div class="step-icon">💼</div>
+        <div class="step-icon"><i class="fas fa-briefcase"></i></div>
         <h3 class="step-title">استقبال العروض</h3>
         <p class="step-description">
           تُرسل إشعارات للتقنيين المناسبين، ويقومون بتقديم عروضهم داخل المنصة مع تفاصيل السعر، المدة، وطريقة التنفيذ.
@@ -170,7 +290,7 @@
 
       <div class="step-card scroll-reveal">
         <div class="step-number-large">٣</div>
-        <div class="step-icon">📄</div>
+        <div class="step-icon"><i class="fas fa-file-invoice-dollar"></i></div>
         <h3 class="step-title">الاتفاقية والفواتير</h3>
         <p class="step-description">
           بعد اختيار العرض الأنسب، تُنشأ اتفاقية تحتوي على مراحل عمل ودفعات، وتُربط آليًا بفواتير تصدر من المنصة.
@@ -179,7 +299,7 @@
 
       <div class="step-card scroll-reveal">
         <div class="step-number-large">٤</div>
-        <div class="step-icon">✅</div>
+        <div class="step-icon"><i class="fas fa-check-circle"></i></div>
         <h3 class="step-title">التنفيذ والتسليم</h3>
         <p class="step-description">
           يتم متابعة التنفيذ ورسائل المحادثة ورفع الملفات عبر المنصة، مع إمكانية فتح نزاع عند الحاجة لضبط حقوق جميع الأطراف.
@@ -193,7 +313,7 @@
 <section id="team" class="section team-section team-section--mini">
   <div class="container">
     <div class="section-header scroll-reveal">
-      <div class="section-badge">👥 التقنيون</div>
+      <div class="section-badge"><i class="fas fa-users me-2"></i> التقنيون</div>
       <h2 class="section-title">التقنيون السعوديون في سامي لينك</h2>
       <p class="section-description">
         تقنيون سعوديون تم التحقق من هوياتهم وخبراتهم قبل قبولهم في المنصة.
@@ -210,49 +330,15 @@
         {% include "website/_tech_mini_grid.html" %}
       {% endwith %}
     {% else %}
-      <div class="mini-tech-grid">
-        {% for i in "1234" %}
-          <article class="mini-tech-card scroll-reveal" aria-label="تقني">
-            <div class="mini-tech-head">
-              <div class="mini-tech-avatar">
-                {% if i.avatar_url %}
-                  <img src="{{ i.avatar_url }}" alt="تقني سعودي {{ i }}" loading="lazy" />
-                {% elif i.avatar %}
-                  <img src="{{ i.avatar.url }}" alt="تقني سعودي {{ i }}" loading="lazy" />
-                {% elif i.image %}
-                  <img src="{{ i.image.url }}" alt="تقني سعودي {{ i }}" loading="lazy" />
-                {% elif i.photo %}
-                  <img src="{{ i.photo.url }}" alt="تقني سعودي {{ i }}" loading="lazy" />
-                {% elif i.profile_image %}
-                  <img src="{{ i.profile_image.url }}" alt="تقني سعودي {{ i }}" loading="lazy" />
-                {% elif i.profile and i.profile.avatar %}
-                  <img src="{{ i.profile.avatar.url }}" alt="تقني سعودي {{ i }}" loading="lazy" />
-                {% elif i.profile and i.profile.photo %}
-                  <img src="{{ i.profile.photo.url }}" alt="تقني سعودي {{ i }}" loading="lazy" />
-                {% elif i.profile and i.profile.image %}
-                  <img src="{{ i.profile.image.url }}" alt="تقني سعودي {{ i }}" loading="lazy" />
-                {% else %}
-                  <img src="{% static 'img/avatar-placeholder.png' %}" alt="تقني سعودي {{ i }}" loading="lazy" />
-                {% endif %}
-              </div>
-              <div class="mini-tech-info">
-                <div class="mini-tech-name">تقني سعودي {{ i }}</div>
-                <div class="mini-tech-sub">تقني سعودي معتمد</div>
-              </div>
-            </div>
-            <div class="mini-tech-skills">
-              <span class="skill-tag-small">Django</span>
-              <span class="skill-tag-small">React</span>
-              <span class="skill-tag-small">API</span>
-            </div>
-          </article>
-        {% endfor %}
+      <div class="text-center py-5 text-muted">
+        <i class="fas fa-users-slash fa-3x mb-3 opacity-50"></i>
+        <p>لا يوجد تقنيون متاحون للعرض حالياً.</p>
       </div>
     {% endif %}
 
     <div class="center-actions scroll-reveal" style="margin-top: 1.75rem;">
       <a href="{% url 'profiles:employees_list' %}" class="btn btn-secondary">
-        👥 عرض جميع التقنيين
+        <i class="fas fa-users me-2"></i> عرض جميع التقنيين
       </a>
     </div>
   </div>
@@ -264,53 +350,57 @@
     <div class="contact-grid">
       <div class="contact-info scroll-reveal">
         <div class="section-header" style="text-align: right;">
-          <div class="section-badge">📞 دعم مستمر</div>
-          <h2 class="section-title">تواصل مع فريق سامي لينك</h2>
+          <div class="section-badge"><i class="fas fa-headset me-2"></i> دعم مستمر</div>
+          <h2 class="section-title">{{ site_settings.contact_title|default:"تواصل مع فريق سامي لينك" }}</h2>
           <p class="section-description" style="margin: 0;">
-            للاستفسارات، الشراكات، أو التجربة الأولى للمنصة؛ يسعدنا تواصلك معنا عبر البريد الإلكتروني أو الواتساب.
+            {{ site_settings.contact_description|default:"للاستفسارات، الشراكات، أو التجربة الأولى للمنصة؛ يسعدنا تواصلك معنا عبر البريد الإلكتروني أو الواتساب." }}
           </p>
         </div>
 
         <div class="contact-methods">
           <div class="contact-method">
-            <div class="contact-icon">📧</div>
+            <div class="contact-icon"><i class="fas fa-envelope"></i></div>
             <div class="contact-details">
               <div class="contact-label">البريد الإلكتروني الرسمي</div>
-              <a href="mailto:support@samilink.sa" class="contact-value">support@samilink.sa</a>
+              <a href="mailto:{{ site_settings.email|default:'support@samilink.sa' }}" class="contact-value">{{ site_settings.email|default:'support@samilink.sa' }}</a>
             </div>
           </div>
 
           <div class="contact-method">
-            <div class="contact-icon">💬</div>
+            <div class="contact-icon"><i class="fab fa-whatsapp"></i></div>
             <div class="contact-details">
               <div class="contact-label">واتساب خدمة العملاء</div>
-              <a href="https://wa.me/966500000000" class="contact-value">+966 50 000 0000</a>
+              <a href="https://wa.me/{{ site_settings.whatsapp|default:'966500000000'|cut:' ' }}" class="contact-value">{{ site_settings.whatsapp|default:'+966 50 000 0000' }}</a>
             </div>
           </div>
 
           <div class="contact-method">
-            <div class="contact-icon">🕒</div>
+            <div class="contact-icon"><i class="fas fa-clock"></i></div>
             <div class="contact-details">
               <div class="contact-label">أوقات العمل</div>
-              <div class="contact-value">الأحد - الخميس: ٨ ص - ٥ م</div>
+              <div class="contact-value">{{ site_settings.working_hours|default:'الأحد - الخميس: ٨ ص - ٥ م' }}</div>
             </div>
           </div>
+        </div>
+
+        <div style="margin-top: 2rem;">
+          <a href="{% url 'website:contact' %}" class="btn btn-primary">
+            <i class="fas fa-paper-plane me-2"></i> فتح نموذج التواصل
+          </a>
         </div>
       </div>
 
       <div class="contact-sidebar scroll-reveal">
-        <div class="sidebar-badge">🚀 جاهزون لمرافقتك</div>
-        <h3 class="sidebar-title">من أول طلب حتى التسليم</h3>
+        <div class="sidebar-badge">
+          <i class="fas fa-rocket me-2"></i>
+          {{ site_settings.partnership_card_badge|default:'جاهزون لمرافقتك' }}
+        </div>
+        <h3 class="sidebar-title">{{ site_settings.partnership_card_title|default:'من أول طلب حتى التسليم' }}</h3>
         <p class="sidebar-description">
-          يمكن تهيئة المنصة للاستخدام الداخلي في شركتك أو فريقك، مع صلاحيات مالية وإدارية متقدمة
-          وتقارير متابعة مخصصة بحسب احتياج الإدارة.
+          {{ site_settings.partnership_card_description|default:'يمكن تهيئة المنصة للاستخدام الداخلي في شركتك أو فريقك، مع صلاحيات مالية وإدارية متقدمة وتقارير متابعة مخصصة بحسب احتياج الإدارة.' }}
         </p>
 
-        <div style="margin-top: 1.5rem;">
-          <a href="mailto:support@samilink.sa?subject=طلب شراكة" class="btn btn-primary">
-            🤝 طلب شراكة
-          </a>
-        </div>
+
       </div>
     </div>
   </div>
@@ -460,20 +550,41 @@
 }
 
 /* الصورة الشخصية */
+.mini-tech-avatar-wrapper {
+    position: relative;
+    flex: 0 0 auto;
+}
+
 .mini-tech-avatar {
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
     border-radius: 999px;
     overflow: hidden;
     background: var(--primary-50, #eff6ff);
-    border: 2px solid var(--primary-200, #bfdbfe);
-    flex: 0 0 auto;
+    border: 2px solid var(--white);
+    box-shadow: 0 0 0 2px var(--primary-100, #dbeafe);
 }
 .mini-tech-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display:block;
+}
+
+.verified-badge {
+    position: absolute;
+    bottom: 0;
+    right: -2px;
+    width: 18px;
+    height: 18px;
+    background: var(--primary-600, #2563eb);
+    color: #fff;
+    border-radius: 50%;
+    border: 2px solid var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
 }
 
 .mini-tech-info {
@@ -489,12 +600,22 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 1rem;
 }
 
 .mini-tech-sub {
     color: var(--muted, #64748b);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
+    margin-bottom: 0.1rem;
+}
+
+.mini-tech-rating {
+    font-size: 0.8rem;
+    color: var(--dark-800);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .mini-tech-skills {

@@ -448,7 +448,9 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
                     form.add_error(None, "يجب أن يكون مجموع مدة الأيام في جميع المراحل أكبر من صفر.")
                 else:
                     try:
-                        ag = form.save()
+                        ag = form.save(commit=False)
+                        ag.duration_days = milestones_days
+                        ag.save()
                         _save_formset_strict(formset, ag)
                     except Exception as e:
                         extra_errors.append(str(e))
@@ -503,6 +505,13 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 # ========================= Agreement: قبول/رفض =========================
+@login_required
+@transaction.atomic
+def accept(request: HttpRequest, pk: int) -> HttpResponse:
+    ag = get_object_or_404(Agreement.objects.select_related("request"), pk=pk)
+    return accept_by_request(request, ag.request.pk)
+
+
 @login_required
 @transaction.atomic
 def accept_by_request(request: HttpRequest, request_id: int) -> HttpResponse:
@@ -568,7 +577,7 @@ def reject(request: HttpRequest, pk: int) -> HttpResponse:
         messages.error(request, "غير مصرح برفض هذه الاتفاقية.")
         return redirect("agreements:detail", pk=ag.pk)
 
-    reason = (request.POST.get("reason") or "").strip()
+    reason = (request.POST.get("rejection_reason") or request.POST.get("reason") or "").strip()
     if len(reason) < 5:
         messages.error(request, "الرجاء توضيح سبب الرفض (5 أحرف على الأقل).")
         return render(request, "agreements/agreement_reject.html", {"agreement": ag, "req": req})

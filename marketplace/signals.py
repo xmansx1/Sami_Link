@@ -4,11 +4,13 @@ from __future__ import annotations
 import logging
 
 from django.core.exceptions import FieldDoesNotExist
+from django.db.models import Avg
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 
-from .models import Offer, Request
+from profiles.models import PortfolioItem, EmployeeProfile
+from .models import Offer, Request, Review
 
 logger = logging.getLogger(__name__)
 
@@ -172,3 +174,49 @@ def handle_offer_selection(sender, instance: Offer, created: bool, **kwargs):
             )
     except Exception:
         pass
+
+
+@receiver(post_save, sender=Request)
+def create_portfolio_item_on_completion(sender, instance, created, **kwargs):
+    """
+    عند اكتمال الطلب، يتم إنشاء عنصر في معرض الأعمال للموظف تلقائيًا.
+    """
+    # التحقق من الحالة "مكتمل" ووجود موظف مسند
+    status_val = _get_req_status(instance)
+    COMPLETED = _status_value(Request, "COMPLETED", "completed")
+
+    if status_val == COMPLETED and instance.assigned_employee:
+        # التحقق من عدم وجود العنصر مسبقًا (بناءً على العنوان والموظف)
+        exists = PortfolioItem.objects.filter(
+            owner=instance.assigned_employee,
+            title=instance.title
+        ).exists()
+        
+        if not exists:
+            # إنشاء عنصر جديد في معرض الأعمال
+            PortfolioItem.objects.create(
+                owner=instance.assigned_employee,
+                title=instance.title,
+                description=instance.details,
+                tags="عمل منصة, مكتمل",
+                is_public=True
+            )
+
+
+@receiver(post_save, sender=Review)
+def update_employee_rating(sender, instance, created, **kwargs):
+    if created:
+        employee = instance.reviewee
+        try:
+            profile = employee.employee_profile
+            # Calculate new average and count
+            reviews = Review.objects.filter(reviewee=employee)
+            count = reviews.count()
+            avg = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+            
+            profile.recalc_metrics(
+                rating_avg=avg,
+                reviews_count=count
+            )
+        except EmployeeProfile.DoesNotExist:
+            pass

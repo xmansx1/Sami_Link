@@ -4,7 +4,8 @@
 {% url 'dashboard:requests_list' as req_url %}
 {% url 'dashboard:clients_list' as cli_url %}
 {% url 'dashboard:employees_list' as emp_url %}
-{% url 'dashboard:disputes_list' as dis_url %}
+{% url 'disputes:list' as dis_url %}
+{% url 'dashboard:contact_messages_list' as msg_url %}
 
 {% url 'finance:home' as fin_home_url %}
 {% url 'finance:invoice_list' as inv_url %}
@@ -74,9 +75,17 @@
 
     {% if dis_url %}
       <a href="{{ dis_url }}"
-         class="sidebar-link{% if appn == 'dashboard' and urln == 'disputes_list' %} active{% endif %}">
+         class="sidebar-link{% if appn == 'disputes' %} active{% endif %}">
         <span class="sidebar-icon">⚖️</span>
         <span>النزاعات</span>
+      </a>
+    {% endif %}
+
+    {% if msg_url %}
+      <a href="{{ msg_url }}"
+         class="sidebar-link{% if appn == 'dashboard' and urln == 'contact_messages_list' %} active{% endif %}">
+        <span class="sidebar-icon">📩</span>
+        <span>رسائل التواصل</span>
       </a>
     {% endif %}
   </div>

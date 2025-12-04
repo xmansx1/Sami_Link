@@ -422,7 +422,7 @@ class Agreement(models.Model):
                 prev = Agreement.objects.only("duration_days", "total_amount", "status").get(pk=self.pk)
             except Agreement.DoesNotExist:
                 prev = None
-            if prev and prev.status != Agreement.Status.DRAFT:
+            if prev and prev.status not in [Agreement.Status.DRAFT, Agreement.Status.REJECTED]:
                 # السماح بتعديل المدة فقط عند الموافقة أو الرفض على طلب التمديد
                 allow_duration_change = False
                 # السماح إذا كان هناك طلب تمديد فعال وتمت الموافقة أو الرفض
@@ -667,15 +667,15 @@ class Milestone(models.Model):
             total_existing = agg["total"] or 0
             total_with_current = total_existing + self.due_days
 
-            if total_with_current > max_days:
-                raise ValidationError(
-                    {
-                        "due_days": (
-                            f"مجموع مدد المراحل ({total_with_current} يومًا) "
-                            f"يتجاوز مدة المشروع المتفق عليها ({max_days} يومًا)."
-                        )
-                    }
-                )
+            # if total_with_current > max_days:
+            #     raise ValidationError(
+            #         {
+            #             "due_days": (
+            #                 f"مجموع مدد المراحل ({total_with_current} يومًا) "
+            #                 f"يتجاوز مدة المشروع المتفق عليها ({max_days} يومًا)."
+            #             )
+            #         }
+            #     )
 
     def __str__(self) -> str:
         return f"Milestone#{self.pk} A{self.agreement_id} — {self.title} ({self.order})"

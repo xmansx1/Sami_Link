@@ -245,16 +245,13 @@ def _agreement_P(ag: Agreement) -> Decimal:
 
 def _invoice_client_total(inv: Invoice, ag: Optional[Agreement] = None) -> Decimal:
     """
-    إجمالي العميل من الفاتورة وفق السياسة الجديدة:
-    الأفضلية للكاش داخل الفاتورة، ثم fallback للحساب من الاتفاقية.
+    إجمالي العميل من الفاتورة.
+    نعتمد على inv.amount باعتباره المبلغ النهائي (Grand Total) الذي يدفعه العميل.
+    نتجاهل total_amount لأنه قد يكون محسوبًا بشكل خاطئ (Double Tax) في بعض الحالات.
     """
-    for field in ("client_total_amount", "client_total", "total_amount"):
-        if hasattr(inv, field):
-            val = getattr(inv, field, None)
-            if val is not None:
-                d = _as_decimal(val)
-                if d > 0:
-                    return _q2(d)
+    val = _as_decimal(getattr(inv, "amount", 0))
+    if val > 0:
+        return _q2(val)
 
     # fallback: إن كان لدينا اتفاقية نحسب منها
     if ag:
@@ -266,15 +263,45 @@ def _invoice_client_total(inv: Invoice, ag: Optional[Agreement] = None) -> Decim
         except Exception:
             pass
 
-    return _q2(_as_decimal(getattr(inv, "amount", 0)))
+    return Decimal("0.00")
 
 
 def _invoice_breakdown(inv: Invoice) -> Dict[str, Decimal]:
     """
     Breakdown موحد لكل الفواتير:
-    - إن كانت مرتبطة باتفاقية: نستخدم compute_agreement_totals
-    - وإلا نحسب من amount كصافي P
+    - نعتبر inv.amount هو الإجمالي (Grand Total).
+    - نستخرج منه P و VAT و Fee عكسيًا.
+    - نتجاهل inv.total_amount لتجنب مشكلة الضريبة المزدوجة.
     """
+    grand_total = _as_decimal(getattr(inv, "amount", 0))
+
+    if grand_total > 0:
+        vat_rate = _as_decimal(getattr(inv, "vat_percent", 0))
+        fee_rate = _as_decimal(getattr(inv, "platform_fee_percent", 0))
+
+        # P * (1 + V) = G  =>  P = G / (1 + V)
+        if vat_rate >= 0:
+            P = grand_total / (Decimal("1") + vat_rate)
+        else:
+            P = grand_total
+
+        P = _q2(P)
+        vat_val = _q2(grand_total - P)  # الفرق هو الضريبة لضمان التطابق
+        fee_val = _q2(P * fee_rate)
+        net_emp = _q2(P - fee_val)
+
+        return {
+            "P": P,
+            "fee_percent": _q2(fee_rate * 100),
+            "platform_fee": fee_val,
+            "taxable": P,
+            "vat_percent": _q2(vat_rate * 100),
+            "vat_amount": vat_val,
+            "grand_total": grand_total,
+            "net_for_employee": net_emp,
+        }
+
+    # 2) fallback: الحساب من الاتفاقية
     ag = getattr(inv, "agreement", None)
     if ag:
         try:
@@ -282,17 +309,14 @@ def _invoice_breakdown(inv: Invoice) -> Dict[str, Decimal]:
         except Exception:
             logger.exception("_invoice_breakdown: compute_agreement_totals failed inv=%s", inv.pk)
 
-    # فواتير عامة: نفترض amount صافي للموظف ونستنتج منه
-    from finance.utils import calculate_financials_from_net
-
-    net_amount = _as_decimal(getattr(inv, "amount", 0))
-    platform_fee_percent = _normalize_rate(getattr(inv, "platform_fee_percent", None))
-    vat_rate = _normalize_rate(getattr(inv, "vat_percent", None))
-    return calculate_financials_from_net(
-        net_amount,
-        platform_fee_percent=platform_fee_percent,
-        vat_rate=vat_rate,
-    )
+    # 3) فواتير عامة (fallback أخير): نفترض amount هو الإجمالي أيضًا
+    return {
+        "grand_total": Decimal("0.00"),
+        "P": Decimal("0.00"),
+        "vat_amount": Decimal("0.00"),
+        "platform_fee": Decimal("0.00"),
+        "net_for_employee": Decimal("0.00"),
+    }
 
 
 # ===========================
@@ -870,17 +894,14 @@ def tax_dashboard(request: HttpRequest):
             continue
         seen_agreements.add(ag.id)
 
-        try:
-            totals = compute_agreement_totals(ag)
-        except Exception:
-            logger.exception("compute_agreement_totals failed in tax_dashboard")
-            continue
+        # FIX: Use _invoice_breakdown to respect inv.amount as Grand Total
+        bd = _invoice_breakdown(inv)
 
-        vat_amount = _as_decimal(totals.get("vat_amount", 0))
-        taxable = _as_decimal(totals.get("taxable", 0))
-        grand_total = _as_decimal(totals.get("grand_total", 0))
-        P = _as_decimal(totals.get("P", 0))
-        fee = _as_decimal(totals.get("platform_fee", 0))
+        vat_amount = _as_decimal(bd.get("vat_amount", 0))
+        taxable = _as_decimal(bd.get("taxable", 0))
+        grand_total = _as_decimal(bd.get("grand_total", 0))
+        P = _as_decimal(bd.get("P", 0))
+        fee = _as_decimal(bd.get("platform_fee", 0))
 
         is_paid = (getattr(inv, "status", "") == PAID_VAL)
 
@@ -1606,12 +1627,11 @@ def employee_dues(request: HttpRequest) -> HttpResponse:
 
         req_obj = getattr(ag, "request", None)
 
-        bd = breakdown_by_agreement.get(ag.id, {}) or {}
-        P = _as_decimal(bd.get("P", inv.amount or 0))
+        # FIX: Use _invoice_breakdown(inv) to get correct P and Net
+        bd = _invoice_breakdown(inv)
+        P = _as_decimal(bd.get("P", 0))
         fee = _as_decimal(bd.get("platform_fee", 0))
-        net_emp = _as_decimal(bd.get("net_for_employee", P - fee))
-        if net_emp < 0:
-            net_emp = Decimal("0.00")
+        net_emp = _as_decimal(bd.get("net_for_employee", 0))
 
         if ag.id not in seen_agreements:
             net_total += net_emp
@@ -1782,15 +1802,19 @@ def employee_dues_admin(request: HttpRequest) -> HttpResponse:
             if not held_reason:
                 eligible_now = now >= ready_at
 
-        try:
-            bd = compute_agreement_totals(ag)
-        except Exception:
-            logger.exception("employee_dues_admin: compute_agreement_totals failed ag=%s", ag.id)
-            continue
+        bd = {}
+        if invoice_to_link:
+             bd = _invoice_breakdown(invoice_to_link)
+        else:
+             try:
+                 bd = compute_agreement_totals(ag)
+             except Exception:
+                 logger.exception("employee_dues_admin: compute_agreement_totals failed ag=%s", ag.id)
+                 continue
 
         P = _as_decimal(bd.get("P", 0))
         fee = _as_decimal(bd.get("platform_fee", 0))
-        net_emp = _as_decimal(bd.get("net_for_employee", P - fee))
+        net_emp = _as_decimal(bd.get("net_for_employee", 0))
         if net_emp < 0:
             net_emp = Decimal("0.00")
 
@@ -2003,10 +2027,13 @@ def collections_report(request: HttpRequest):
 
     invs = invs.order_by("-paid_at", "-issued_at", "-id")
 
+    # نعتمد على amount كإجمالي (Grand Total) لتجنب مشكلة الضريبة المزدوجة في total_amount
+    amount_expr = F("amount")
+
     totals_raw = invs.aggregate(
-        total=Sum("amount"),
-        unpaid=Sum("amount", filter=Q(status=unpaid_val)),
-        paid=Sum("amount", filter=Q(status=paid_val)),
+        total=Sum(amount_expr),
+        unpaid=Sum(amount_expr, filter=Q(status=unpaid_val)),
+        paid=Sum(amount_expr, filter=Q(status=paid_val)),
     )
     totals = {
         "total": _q2(totals_raw.get("total") or Decimal("0.00")),
@@ -2023,7 +2050,7 @@ def collections_report(request: HttpRequest):
     )
     by_method = (
         invs.values("method")
-        .annotate(cnt=Count("id"), amt=Sum("amount"))
+        .annotate(cnt=Count("id"), amt=Sum(amount_expr))
         .order_by("method")
     )
 
@@ -2126,7 +2153,7 @@ def export_invoices_csv(request: HttpRequest):
                 inv.agreement_id,
                 getattr(getattr(inv, "agreement", None), "request_id", ""),
                 milestone_title,
-                f"{_q2(inv.amount or Decimal('0.00'))}",
+                f"{_invoice_client_total(inv)}",
                 inv.get_status_display() if hasattr(inv, "get_status_display") else getattr(inv, "status", ""),
                 inv.issued_at.strftime("%Y-%m-%d %H:%M") if getattr(inv, "issued_at", None) else "",
                 inv.paid_at.strftime("%Y-%m-%d %H:%M") if getattr(inv, "paid_at", None) else "",

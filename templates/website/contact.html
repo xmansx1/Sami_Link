@@ -1,32 +1,334 @@
 {% extends "base.html" %}
-{% block title %}تواصل معنا — {{ SITE_NAME|default:"SamiLink" }}{% endblock %}
+{% load static %}
+
+{% block title %}{{ site_settings.site_name|default:"سامي لينك" }} - اتصل بنا{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* --- Page Header --- */
+    .page-header {
+        background: radial-gradient(circle at top right, #f1f5f9 0%, #ffffff 50%, #eff6ff 100%);
+        padding: 6rem 0 4rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .header-blob {
+        position: absolute;
+        width: 400px;
+        height: 400px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+        border-radius: 50%;
+        filter: blur(60px);
+        z-index: 0;
+    }
+    .blob-left { top: -100px; left: -100px; }
+    .blob-right { bottom: -100px; right: -100px; }
+
+    .header-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .header-title {
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--dark);
+        margin-bottom: 1rem;
+    }
+
+    .header-subtitle {
+        font-size: 1.2rem;
+        color: var(--secondary);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* --- Contact Section --- */
+    .contact-section {
+        padding: 4rem 0 6rem;
+        background: white;
+    }
+
+    .contact-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 3rem;
+        align-items: start;
+    }
+
+    /* Info Card */
+    .contact-info-card {
+        background: #0f172a;
+        color: white;
+        padding: 3rem;
+        border-radius: 24px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .info-bg-pattern {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px);
+        background-size: 30px 30px;
+        opacity: 0.1;
+    }
+
+    .contact-info-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .contact-icon {
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .contact-details h4 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: white;
+    }
+
+    .contact-details p {
+        color: #94a3b8;
+        margin: 0;
+        line-height: 1.6;
+    }
+
+    .social-links {
+        display: flex;
+        gap: 1rem;
+        margin-top: 3rem;
+    }
+
+    .social-btn {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        transition: all 0.3s;
+        text-decoration: none;
+    }
+
+    .social-btn:hover {
+        background: var(--primary);
+        transform: translateY(-3px);
+    }
+
+    /* Form Card */
+    .contact-form-card {
+        background: white;
+        padding: 3rem;
+        border-radius: 24px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    .input-icon {
+        position: absolute;
+        top: 50%;
+        right: 1.2rem;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        transition: color 0.3s;
+        pointer-events: none;
+        font-size: 1.1rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.8rem 3rem 0.8rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        transition: all 0.3s;
+        background: #f8fafc;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary);
+        background: white;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+
+    .form-control:focus + .input-icon {
+        color: var(--primary);
+    }
+
+    textarea.form-control {
+        resize: vertical;
+        min-height: 150px;
+        padding-top: 1rem;
+    }
+    
+    textarea.form-control + .input-icon {
+        top: 1.5rem;
+        transform: none;
+    }
+
+    @media (max-width: 992px) {
+        .contact-grid { grid-template-columns: 1fr; }
+        .header-title { font-size: 2.5rem; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<section class="max-w-3xl mx-auto rtl py-12 px-4" dir="rtl">
-  <div class="rounded-2xl border bg-white dark:bg-slate-800 p-8 shadow space-y-6">
-    <h1 class="text-3xl font-extrabold">تواصل معنا</h1>
-    <p class="text-slate-600 dark:text-slate-300">يسعدنا تواصلك. اكتب لنا وسنعود إليك قريبًا.</p>
 
-    <form method="post" action="#" onsubmit="alert('تم إرسال الرسالة (نموج تجريبي).'); return false;">
-      {% csrf_token %}
-      <div class="grid md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm mb-1">الاسم</label>
-          <input type="text" class="w-full rounded-xl border px-3 py-2" required>
+<!-- Page Header -->
+<header class="page-header">
+    <div class="header-blob blob-left"></div>
+    <div class="header-blob blob-right"></div>
+    <div class="container header-content">
+        <h1 class="header-title">تواصل معنا</h1>
+        <p class="header-subtitle">
+            نحن هنا لمساعدتك. سواء كان لديك استفسار حول خدماتنا، أو تحتاج إلى دعم فني، أو ترغب في مناقشة شراكة جديدة.
+        </p>
+    </div>
+</header>
+
+<!-- Contact Section -->
+<section class="contact-section">
+    <div class="container">
+        <div class="contact-grid">
+            
+            <!-- Contact Info (Left Side) -->
+            <div class="contact-info-card">
+                <div class="info-bg-pattern"></div>
+                <div class="position-relative z-1">
+                    <h3 class="fw-bold mb-5">بيانات التواصل</h3>
+                    
+                    <div class="contact-info-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="contact-details">
+                            <h4>البريد الإلكتروني</h4>
+                            <p>{{ site_settings.email }}</p>
+                            <p class="small opacity-75">نرد عادةً خلال 24 ساعة</p>
+                        </div>
+                    </div>
+
+                    <div class="contact-info-item">
+                        <div class="contact-icon">
+                            <i class="fab fa-whatsapp"></i>
+                        </div>
+                        <div class="contact-details">
+                            <h4>واتساب</h4>
+                            <p dir="ltr">{{ site_settings.whatsapp }}</p>
+                            <p class="small opacity-75">متاح للمحادثات الفورية</p>
+                        </div>
+                    </div>
+
+                    <div class="contact-info-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="contact-details">
+                            <h4>ساعات العمل</h4>
+                            <p>{{ site_settings.working_hours }}</p>
+                        </div>
+                    </div>
+
+                    <div class="social-links">
+                        <a href="#" class="social-btn"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-btn"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Form (Right Side) -->
+            <div class="contact-form-card">
+                <h3 class="fw-bold mb-4">أرسل لنا رسالة</h3>
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} mb-4 rounded-3">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post" action="{% url 'website:contact' %}">
+                    {% csrf_token %}
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label">الاسم الكامل</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="name" class="form-control" placeholder="أدخل اسمك" required>
+                                <i class="fas fa-user input-icon"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">البريد الإلكتروني</label>
+                            <div class="input-wrapper">
+                                <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
+                                <i class="fas fa-envelope input-icon"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">رقم الجوال</label>
+                            <div class="input-wrapper">
+                                <input type="tel" name="phone" class="form-control" placeholder="05xxxxxxxx">
+                                <i class="fas fa-phone-alt input-icon"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">الموضوع</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="subject" class="form-control" placeholder="كيف يمكننا مساعدتك؟" required>
+                                <i class="fas fa-heading input-icon"></i>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">الرسالة</label>
+                            <div class="input-wrapper">
+                                <textarea name="message" class="form-control" placeholder="اكتب تفاصيل رسالتك هنا..." required></textarea>
+                                <i class="fas fa-comment-alt input-icon"></i>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow-lg hover-scale">
+                                <i class="fas fa-paper-plane me-2"></i> إرسال الرسالة
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
         </div>
-        <div>
-          <label class="block text-sm mb-1">البريد الإلكتروني</label>
-          <input type="email" class="w-full rounded-xl border px-3 py-2" required>
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-sm mb-1">الرسالة</label>
-          <textarea rows="5" class="w-full rounded-xl border px-3 py-2" required></textarea>
-        </div>
-      </div>
-      <div class="mt-4">
-        <button class="btn btn-primary">إرسال</button>
-      </div>
-    </form>
-  </div>
+    </div>
 </section>
+
 {% endblock %}

@@ -212,6 +212,64 @@
     font-size: .75rem;
     color: var(--dark-500);
   }
+
+  /* Chat Styles */
+  .dispute-messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 5px;
+  }
+
+  .dispute-message {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    position: relative;
+  }
+
+  .dispute-message.message-own {
+    background: #f0f9ff;
+    border-color: #bae6fd;
+    align-self: flex-start;
+    width: 95%;
+  }
+
+  .dispute-message.message-internal {
+    background: #fffbeb;
+    border-color: #fde68a;
+    border-left: 4px solid #f59e0b;
+  }
+
+  .message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+  }
+
+  .message-sender {
+    font-weight: 700;
+    color: #343a40;
+  }
+
+  .message-body {
+    font-size: 0.95rem;
+    color: #212529;
+    white-space: pre-wrap;
+  }
+
+  .message-attachment {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #dee2e6;
+  }
 </style>
 {% endblock %}
 
@@ -271,7 +329,7 @@
           الرجوع لتفاصيل الطلب
         </a>
       {% endif %}
-      <a href="{% url 'dashboard:disputes_list' %}?q={{ dispute.request_id }}" class="btn btn-light btn-sm btn-small">
+      <a href="{% url 'disputes:list' %}?q={{ dispute.request_id }}" class="btn btn-light btn-sm btn-small">
         قائمة نزاعات الطلب
       </a>
     </div>
@@ -279,7 +337,7 @@
 
   <div class="dispute-main-layout">
 
-    {# العمود الرئيسي: السبب + التفاصيل + الملاحظات #}
+    {# العمود الرئيسي: السبب + التفاصيل + الملاحظات + المحادثة #}
     <div>
 
       <div class="dispute-card">
@@ -313,6 +371,81 @@
             لا توجد تفاصيل إضافية مسجّلة.
           {% endif %}
         </div>
+      </div>
+
+      <!-- Conversation Section -->
+      <div class="dispute-card">
+        <h2 class="dispute-card-title">المحادثة والردود</h2>
+        
+        <div class="dispute-messages-list">
+            {% for msg in messages_list %}
+                <div class="dispute-message {% if msg.sender == request.user %}message-own{% endif %} {% if msg.is_internal %}message-internal{% endif %}">
+                    <div class="message-header">
+                        <span class="message-sender">{{ msg.sender.get_full_name|default:msg.sender.email }}</span>
+                        <span class="message-time">{{ msg.created_at|date:"Y-m-d H:i" }}</span>
+                        {% if msg.is_internal %}
+                            <span class="badge bg-warning text-dark" style="font-size: 0.7em;">ملاحظة داخلية</span>
+                        {% endif %}
+                    </div>
+                    <div class="message-body">
+                        {{ msg.content|linebreaks }}
+                    </div>
+                    {% if msg.attachment %}
+                        <div class="message-attachment">
+                            <a href="{{ msg.attachment.url }}" target="_blank" class="btn btn-sm btn-light">
+                                <i class="fas fa-paperclip"></i> عرض المرفق
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            {% empty %}
+                <p class="text-muted text-center py-3">لا توجد رسائل حتى الآن.</p>
+            {% endfor %}
+        </div>
+
+        {% if dispute.is_active %}
+            <hr class="my-4">
+            <h3 class="dispute-card-title">إضافة رد</h3>
+            <form method="post" enctype="multipart/form-data" class="dispute-reply-form">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="mb-3">
+                    {{ form.content }}
+                    {% if form.content.errors %}
+                        <div class="text-danger small">{{ form.content.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small text-muted">مرفق (اختياري)</label>
+                    {{ form.attachment }}
+                    {% if form.attachment.errors %}
+                        <div class="text-danger small">{{ form.attachment.errors }}</div>
+                    {% endif %}
+                </div>
+
+                {% if request.user.role == 'admin' or request.user.role == 'finance' or request.user.is_superuser %}
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="is_internal" id="id_is_internal" class="form-check-input">
+                        <label for="id_is_internal" class="form-check-label text-warning">
+                            ملاحظة داخلية (لا تظهر للعميل/الموظف)
+                        </label>
+                    </div>
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary">
+                    إرسال الرد
+                </button>
+            </form>
+        {% else %}
+            <div class="alert alert-secondary mt-3">
+                النزاع مغلق، لا يمكن إضافة ردود جديدة.
+            </div>
+        {% endif %}
       </div>
 
       {% if dispute.resolution_note %}
@@ -448,7 +581,7 @@
           الرجوع لتفاصيل الطلب
         </a>
       {% endif %}
-      <a href="{% url 'dashboard:disputes_list' %}?q={{ dispute.request_id }}" class="btn btn-outline btn-sm">
+      <a href="{% url 'disputes:list' %}?q={{ dispute.request_id }}" class="btn btn-outline btn-sm">
         كافة النزاعات لنفس الطلب
       </a>
     </div>

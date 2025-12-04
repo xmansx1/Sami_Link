@@ -257,7 +257,8 @@ def breakdown_for_offer(offer) -> PriceBreakdown:
         getattr(offer, "price", None),
     )
     if P is None:
-        raise ValueError("Offer لا يحتوي على قيمة سعر صالحة.")
+        # في حال عدم وجود سعر (عرض جديد)، نعتبره 0 لتفادي الخطأ
+        P = Decimal("0.00")
 
     client_id = None
     category = None

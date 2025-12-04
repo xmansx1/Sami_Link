@@ -1,26 +1,287 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}كيف تعمل المنصة — سامي لينك{% endblock %}
+{% block title %}كيف تعمل المنصة — {{ SITE_NAME|default:"SamiLink" }}{% endblock %}
 
 {% block content %}
-<section class="py-20 bg-white">
-  <div class="container mx-auto">
-    <h1 class="text-4xl text-center font-extrabold text-[var(--brand-main)] mb-12">
-      كيف تعمل منصة سامي لينك؟
-    </h1>
+<style>
+  /* Hero Section */
+  .workflow-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    padding: 5rem 0;
+    text-align: center;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .workflow-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    background: linear-gradient(to right, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-subtitle {
+    font-size: 1.2rem;
+    color: #cbd5e1;
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.8;
+  }
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+  /* Timeline Section */
+  .timeline-section {
+    padding: 5rem 0;
+    background: #f8fafc;
+    position: relative;
+  }
+  .timeline-line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #e2e8f0;
+    transform: translateX(-50%);
+  }
+  @media (max-width: 991px) {
+    .timeline-line { left: 2rem; }
+  }
 
-      {% for step,title,desc in steps %}
-      <div class="text-center bg-gray-50 p-8 rounded-2xl shadow">
-        <div class="text-[var(--brand-main)] text-5xl font-black mb-4">{{ step }}</div>
-        <h3 class="font-bold text-xl mb-3">{{ title }}</h3>
-        <p class="text-gray-600 text-sm">{{ desc }}</p>
+  .step-item {
+    position: relative;
+    margin-bottom: 4rem;
+  }
+  .step-item:last-child { margin-bottom: 0; }
+  
+  .step-content {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+    position: relative;
+    transition: transform 0.3s ease;
+  }
+  .step-content:hover {
+    transform: translateY(-5px);
+    border-color: #3b82f6;
+  }
+  
+  .step-number {
+    width: 50px;
+    height: 50px;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    box-shadow: 0 0 0 8px #f8fafc;
+  }
+
+  /* Desktop Layout (Alternating) */
+  @media (min-width: 992px) {
+    .step-item:nth-child(odd) .step-content {
+      margin-left: auto;
+      margin-right: 50px; /* Space for line */
+      width: calc(50% - 50px);
+      text-align: left;
+    }
+    .step-item:nth-child(even) .step-content {
+      margin-right: auto;
+      margin-left: 50px;
+      width: calc(50% - 50px);
+      text-align: right;
+    }
+    .step-number {
+      left: 50%;
+      margin-left: -25px;
+    }
+    /* Arrows */
+    .step-item:nth-child(odd) .step-content::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: -10px;
+      margin-top: -10px;
+      border-width: 10px 0 10px 10px;
+      border-style: solid;
+      border-color: transparent transparent transparent #fff;
+    }
+    .step-item:nth-child(even) .step-content::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: -10px;
+      margin-top: -10px;
+      border-width: 10px 10px 10px 0;
+      border-style: solid;
+      border-color: transparent #fff transparent transparent;
+    }
+    /* RTL Adjustments for Desktop */
+    .rtl .step-item:nth-child(odd) .step-content {
+      text-align: left; /* Keep content aligned naturally */
+    }
+    .rtl .step-item:nth-child(even) .step-content {
+      text-align: right;
+    }
+  }
+
+  /* Mobile Layout */
+  @media (max-width: 991px) {
+    .step-content {
+      margin-left: 4rem;
+    }
+    .step-number {
+      left: 2rem;
+      margin-left: -25px;
+    }
+    .step-content::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: -10px;
+      margin-top: -10px;
+      border-width: 10px 10px 10px 0;
+      border-style: solid;
+      border-color: transparent #fff transparent transparent;
+    }
+  }
+
+  .step-icon {
+    font-size: 2.5rem;
+    color: #3b82f6;
+    margin-bottom: 1rem;
+  }
+  .step-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.75rem;
+  }
+  .step-desc {
+    color: #64748b;
+    line-height: 1.7;
+  }
+
+  /* CTA */
+  .workflow-cta {
+    background: #fff;
+    padding: 4rem 0;
+    text-align: center;
+    border-top: 1px solid #e2e8f0;
+  }
+</style>
+
+<div class="workflow-hero">
+  <div class="container">
+    <h1 class="hero-title">رحلة مشروعك معنا</h1>
+    <p class="hero-subtitle">
+      خطوات بسيطة وواضحة تضمن لك تجربة عمل احترافية، آمنة، وناجحة من البداية وحتى الاستلام.
+    </p>
+  </div>
+</div>
+
+<section class="timeline-section rtl" dir="ltr"> <!-- Force LTR for timeline structure, content handles RTL text -->
+  <div class="container position-relative">
+    <div class="timeline-line"></div>
+
+    <!-- Step 1 -->
+    <div class="step-item">
+      <div class="step-number">1</div>
+      <div class="step-content text-end"> <!-- text-end for RTL text inside -->
+        <div class="step-icon">
+          <i class="fa-solid fa-file-circle-plus"></i>
+        </div>
+        <h3 class="step-title">أضف مشروعك</h3>
+        <p class="step-desc">
+          ابدأ بكتابة تفاصيل مشروعك، حدد الميزانية المتوقعة، والمدة الزمنية. كلما كانت التفاصيل أوضح، حصلت على عروض أدق.
+        </p>
       </div>
-      {% endfor %}
-
     </div>
+
+    <!-- Step 2 -->
+    <div class="step-item">
+      <div class="step-number">2</div>
+      <div class="step-content text-end">
+        <div class="step-icon">
+          <i class="fa-solid fa-users-rays"></i>
+        </div>
+        <h3 class="step-title">تلقى العروض</h3>
+        <p class="step-desc">
+          سيقوم الخبراء والمستقلون بمراجعة طلبك وتقديم عروضهم الفنية والمالية. ستصلك إشعارات فورية بكل عرض جديد.
+        </p>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-item">
+      <div class="step-number">3</div>
+      <div class="step-content text-end">
+        <div class="step-icon">
+          <i class="fa-solid fa-check-double"></i>
+        </div>
+        <h3 class="step-title">اختر الأنسب</h3>
+        <p class="step-desc">
+          قارن العروض، راجع ملفات المستقلين وتقييماتهم السابقة، وتحدث معهم عبر الرسائل الخاصة لاختيار الشريك الأمثل لمشروعك.
+        </p>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-item">
+      <div class="step-number">4</div>
+      <div class="step-content text-end">
+        <div class="step-icon">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h3 class="step-title">الدفع الآمن (Escrow)</h3>
+        <p class="step-desc">
+          قم بإيداع قيمة المشروع في حساب الضمان الخاص بالمنصة. لن يتم تحويل المبلغ للمستقل إلا بعد استلامك للعمل وموافقتك عليه.
+        </p>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-item">
+      <div class="step-number">5</div>
+      <div class="step-content text-end">
+        <div class="step-icon">
+          <i class="fa-solid fa-hand-holding-dollar"></i>
+        </div>
+        <h3 class="step-title">الاستلام والاعتماد</h3>
+        <p class="step-desc">
+          بعد انتهاء التنفيذ، راجع العمل النهائي. عند رضاك التام، قم باعتماد الاستلام ليتم تحرير الدفعة للمستقل. مبروك نجاح المشروع!
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="workflow-cta">
+  <div class="container">
+    <h2 class="text-3xl font-bold mb-4 text-slate-800">جاهز للبدء؟</h2>
+    <p class="text-slate-600 mb-8 text-lg">
+      انضم الآن إلى آلاف العملاء والمستقلين الذين يثقون في {{ SITE_NAME|default:"SamiLink" }}.
+    </p>
+    <a href="{% url 'marketplace:request_create' %}" class="btn btn-primary btn-lg rounded-pill px-5 py-3 fw-bold shadow-lg">
+      <i class="fa-solid fa-rocket me-2"></i> ابدأ مشروعك الجديد
+    </a>
   </div>
 </section>
 {% endblock %}

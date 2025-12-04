@@ -8,17 +8,20 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import Http404, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from django.views.generic import DetailView, ListView
+from django.views.generic import DetailView, ListView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.urls import reverse_lazy
 
 from marketplace.models import Request
 
-from .models import EmployeeProfile
+from .models import EmployeeProfile, PortfolioItem
+from .forms import PortfolioItemForm
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +84,12 @@ class EmployeeListView(ListView):
                 "updated_at",
             )
             .filter(public_visible=True, user__is_active=True, user__role="employee")
+            .annotate(
+                real_completed_jobs_count=Count(
+                    "user__assigned_requests",
+                    filter=Q(user__assigned_requests__status="completed")
+                )
+            )
             .order_by("-rating", "-updated_at")
         )
 
@@ -186,16 +195,21 @@ class EmployeeDetailView(DetailView):
 
         # المشاريع المكتملة لهذا الموظف
         try:
+            base_qs = Request.objects.filter(
+                assigned_employee=emp.user,
+                status='completed'
+            )
+            # العدد الكلي
+            total_count = base_qs.count()
+            ctx["completed_requests_count"] = total_count
+            
+            # آخر 10 مشاريع للعرض
             completed_qs = (
-                Request.objects.select_related("client")
-                .filter(
-                    assigned_employee=emp.user,
-                    status='completed'  # استخدام string مباشرة بدلاً من Request.Status.COMPLETED
-                )
-                .order_by("-updated_at", "-created_at")[:10]  # تحديد عدد النتائج
+                base_qs.select_related("client")
+                .order_by("-updated_at", "-created_at")[:10]
             )
             ctx["completed_requests"] = completed_qs
-            ctx["completed_requests_count"] = completed_qs.count()
+            
         except Exception as e:
             # في حالة وجود أي خطأ، نعطي قيم افتراضية
             ctx["completed_requests"] = []
@@ -285,3 +299,55 @@ def whatsapp_redirect(request, user_id: int):
 
     logger.info("WA redirect: caller=%s employee=%s ip=%s msg_len=%s", caller_id, user_id, ip, len(msg))
     return redirect(wa_url)
+
+
+# ======================
+# إدارة معرض الأعمال (Portfolio)
+# ======================
+class PortfolioListView(LoginRequiredMixin, ListView):
+    model = PortfolioItem
+    template_name = "profiles/portfolio_list.html"
+    context_object_name = "items"
+
+    def get_queryset(self):
+        return PortfolioItem.objects.filter(owner=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # جلب الطلبات المكتملة التي أنجزها الموظف في المنصة
+        # نفترض أن الحالة "completed" هي الحالة النهائية
+        # يمكن تعديل الفلتر حسب تعريف الحالات في مشروعك
+        context['platform_completed_requests'] = Request.objects.filter(
+            assigned_employee=self.request.user,
+            status='completed'  # أو استخدام Status.COMPLETED إذا كان متاحاً
+        ).order_by('-updated_at')
+        return context
+
+class PortfolioCreateView(LoginRequiredMixin, CreateView):
+    model = PortfolioItem
+    form_class = PortfolioItemForm
+    template_name = "profiles/portfolio_form.html"
+    success_url = reverse_lazy('profiles:portfolio_list')
+
+    def form_valid(self, form):
+        form.instance.owner = self.request.user
+        return super().form_valid(form)
+
+class PortfolioUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = PortfolioItem
+    form_class = PortfolioItemForm
+    template_name = "profiles/portfolio_form.html"
+    success_url = reverse_lazy('profiles:portfolio_list')
+
+    def test_func(self):
+        obj = self.get_object()
+        return obj.owner == self.request.user
+
+class PortfolioDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+    model = PortfolioItem
+    template_name = "profiles/portfolio_confirm_delete.html"
+    success_url = reverse_lazy('profiles:portfolio_list')
+
+    def test_func(self):
+        obj = self.get_object()
+        return obj.owner == self.request.user

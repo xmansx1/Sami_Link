@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if object %}تعديل العمل{% else %}إضافة عمل جديد{% endif %}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .form-card {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+        background: #fff;
+        overflow: hidden;
+    }
+    .form-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+        padding: 2rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .form-body {
+        padding: 2rem;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.5rem;
+    }
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+    .form-text {
+        color: #64748b;
+        font-size: 0.875rem;
+        margin-top: 0.35rem;
+    }
+    .btn-submit {
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 10px;
+        transition: all 0.2s;
+    }
+    .btn-submit:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+    .file-upload-wrapper {
+        background: #f8fafc;
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    .file-upload-wrapper:hover {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+    /* Custom Checkbox */
+    .form-check-input {
+        width: 1.2em;
+        height: 1.2em;
+        margin-top: 0.15em;
+        cursor: pointer;
+    }
+    .form-check-label {
+        cursor: pointer;
+        user-select: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'profiles:portfolio_list' %}" class="text-decoration-none text-muted">معرض أعمالي</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{% if object %}تعديل العمل{% else %}إضافة عمل جديد{% endif %}</li>
+                </ol>
+            </nav>
+
+            <div class="form-card">
+                <div class="form-header">
+                    <h1 class="h3 fw-bold mb-1 text-dark">{% if object %}تعديل العمل{% else %}إضافة عمل جديد{% endif %}</h1>
+                    <p class="text-muted mb-0">قم بتعبئة البيانات التالية لعرض عملك بشكل احترافي</p>
+                </div>
+                
+                <div class="form-body">
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger rounded-3 mb-4">
+                                {{ form.non_field_errors|join:"<br>" }}
+                            </div>
+                        {% endif %}
+
+                        <!-- Basic Info Section -->
+                        <div class="mb-4">
+                            <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">معلومات العمل</h5>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.title.id_for_label }}" class="form-label">عنوان العمل <span class="text-danger">*</span></label>
+                                {{ form.title }}
+                                {% if form.title.errors %}
+                                    <div class="text-danger small mt-1">{{ form.title.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">وصف العمل</label>
+                                {{ form.description }}
+                                <div class="form-text">اكتب وصفاً مختصراً يوضح طبيعة العمل والتقنيات المستخدمة.</div>
+                                {% if form.description.errors %}
+                                    <div class="text-danger small mt-1">{{ form.description.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.tags.id_for_label }}" class="form-label">الوسوم (Tags)</label>
+                                    {{ form.tags }}
+                                    <div class="form-text">افصل بين الوسوم بفاصلة (مثال: تصميم, شعار, هوية).</div>
+                                    {% if form.tags.errors %}
+                                        <div class="text-danger small mt-1">{{ form.tags.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.link.id_for_label }}" class="form-label">رابط خارجي</label>
+                                    {{ form.link }}
+                                    <div class="form-text">رابط للمشروع المباشر أو معرض خارجي (اختياري).</div>
+                                    {% if form.link.errors %}
+                                        <div class="text-danger small mt-1">{{ form.link.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Media Section -->
+                        <div class="mb-4">
+                            <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">الوسائط والملفات</h5>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.image.id_for_label }}" class="form-label">صورة العرض</label>
+                                <div class="file-upload-wrapper">
+                                    {{ form.image }}
+                                </div>
+                                <div class="form-text">يفضل استخدام صورة بنسبة أبعاد 16:9 وبجودة عالية.</div>
+                                {% if form.image.errors %}
+                                    <div class="text-danger small mt-1">{{ form.image.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.attachment.id_for_label }}" class="form-label">ملف مرفق</label>
+                                {{ form.attachment }}
+                                <div class="form-text">يمكنك إرفاق ملف PDF أو ملف مضغوط (اختياري).</div>
+                                {% if form.attachment.errors %}
+                                    <div class="text-danger small mt-1">{{ form.attachment.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Settings Section -->
+                        <div class="mb-4 bg-light p-3 rounded-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-6 mb-2 mb-md-0">
+                                    <div class="form-check form-switch">
+                                        {{ form.is_public }}
+                                        <label class="form-check-label fw-bold" for="{{ form.is_public.id_for_label }}">
+                                            عرض للعامة
+                                        </label>
+                                    </div>
+                                    <div class="form-text ms-4 mt-0">عند التفعيل، سيظهر العمل في ملفك الشخصي للجميع.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.sort_order.id_for_label }}" class="form-label mb-1">الترتيب</label>
+                                    {{ form.sort_order }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-3 pt-3 border-top">
+                            <a href="{% url 'profiles:portfolio_list' %}" class="btn btn-light px-4">إلغاء</a>
+                            <button type="submit" class="btn btn-primary btn-submit px-5">
+                                {% if object %}حفظ التعديلات{% else %}نشر العمل{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

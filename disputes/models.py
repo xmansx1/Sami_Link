@@ -101,6 +101,44 @@ class Dispute(models.Model):
         """النزاع فعّال إذا كان مفتوحًا أو قيد المراجعة."""
         return self.status in {self.Status.OPEN, self.Status.IN_REVIEW}
 
+
+class DisputeMessage(models.Model):
+    """
+    رسائل المحادثة داخل النزاع (بين العميل، الموظف، والإدارة).
+    """
+    dispute = models.ForeignKey(
+        Dispute,
+        on_delete=models.CASCADE,
+        related_name="messages",
+        verbose_name="النزاع"
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="dispute_messages",
+        verbose_name="المرسل"
+    )
+    content = models.TextField(verbose_name="نص الرسالة")
+    attachment = models.FileField(
+        upload_to="disputes/attachments/%Y/%m/",
+        null=True,
+        blank=True,
+        verbose_name="مرفق"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="وقت الإرسال")
+    is_internal = models.BooleanField(
+        default=False,
+        verbose_name="ملاحظة داخلية (للإدارة فقط)"
+    )
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "رسالة نزاع"
+        verbose_name_plural = "رسائل النزاع"
+
+    def __str__(self):
+        return f"Msg #{self.pk} by {self.sender} on Dispute #{self.dispute_id}"
+
     # ---------- إجراءات حالة عالية المستوى ----------
     def mark_in_review(self, by_user=None, note: str = "") -> None:
         """تحويل النزاع إلى قيد المراجعة."""

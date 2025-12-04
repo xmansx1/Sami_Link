@@ -1,32 +1,37 @@
 {% extends "dashboard/base_admin.html" %}
 {% load humanize %}
 
-{% block title %}لوحة تحكم المدير{% endblock %}
+{% block title %}لوحة القيادة | سامي لينك{% endblock %}
 
 {% block page_header %}
-<div class="profile-section admin-dashboard" style="background: linear-gradient(135deg, var(--primary-50) 0%, var(--white) 100%); border: none;">
-  <div class="admin-header-content" style="display: flex; flex-direction: column; gap: 1.5rem;">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem;">
-      <div style="flex: 1;">
-        <div class="section-badge" style="margin-bottom: 1rem;">
-          🛠️ لوحة المدير العام
-        </div>
-        <h1 class="section-title" style="margin-bottom: 0.5rem;">
-          مرحبًا بك في لوحة التحكم
-        </h1>
-        <p class="section-description">
-          متابعة أداء المنصّة والطلبات والفواتير والاتفاقيات والنزاعات في نظرة واحدة.
-        </p>
+<div class="dashboard-header">
+  <div class="header-content">
+    <div class="welcome-section">
+      <div class="badge-pill">
+        <span class="pulse-dot"></span>
+        لوحة المدير العام
       </div>
+      <h1 class="welcome-title">
+        مرحبًا، {{ request.user.first_name|default:"المدير" }} 👋
+      </h1>
+      <p class="welcome-subtitle">
+        نظرة شاملة على أداء المنصة، الطلبات، والعمليات المالية.
+      </p>
+    </div>
 
-      <div class="admin-meta" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; min-width: 220px;">
-        <div class="profile-section text-center" style="padding: 1rem;">
-          <div class="meta-label" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">📅 تاريخ اليوم</div>
-          <div class="meta-value" style="font-size: 1.25rem; font-weight: 800; color: var(--dark-800);">{{ today|date:"Y-m-d" }}</div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <span class="stat-icon">📅</span>
+        <div class="stat-info">
+          <span class="stat-label">تاريخ اليوم</span>
+          <span class="stat-value">{{ today|date:"d F Y" }}</span>
         </div>
-        <div class="profile-section text-center" style="padding: 1rem;">
-          <div class="meta-label" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">👥 إجمالي المستخدمين</div>
-          <div class="meta-value" style="font-size: 1.25rem; font-weight: 800; color: var(--dark-800);">{{ users_total|default:0|intcomma }}</div>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-icon">👥</span>
+        <div class="stat-info">
+          <span class="stat-label">المستخدمين</span>
+          <span class="stat-value">{{ users_total|default:0|intcomma }}</span>
         </div>
       </div>
     </div>
@@ -35,7 +40,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="admin-dashboard">
+<div class="dashboard-container">
 
   {% url 'dashboard:all_requests' as all_requests_url %}
   {% url 'marketplace:request_list' as req_list_url %}
@@ -43,394 +48,323 @@
   {% url 'disputes:list' as disputes_list_url %}
   {% url 'agreements:list' as agreements_list_url %}
   {% url 'accounts:user_list' as users_list_url %}
-  {% url 'marketplace:offers_list' as offers_list_url %}
 
-  <div style="margin-bottom: 1.5rem; text-align: left;">
-    <a href="{{ all_requests_url }}" class="btn btn-primary" style="font-size: 1.05rem;">
-      <span style="font-size:1.3em;vertical-align:middle;">📋</span>
-      <span style="vertical-align:middle;">جميع الطلبات</span>
-    </a>
+  {# --- تنبيهات النظام (Operational Alerts) --- #}
+  {% if ops_alerts or delayed_requests %}
+  <div class="alerts-section fade-in-up">
+    {% if delayed_requests %}
+    <div class="alert-card danger-alert">
+      <div class="alert-icon-box">
+        <span class="alert-icon">🚨</span>
+      </div>
+      <div class="alert-content">
+        <h3 class="alert-title">تنبيه: مشاريع متأخرة عن التسليم</h3>
+        <p class="alert-desc">يوجد <strong>{{ delayed_requests|length }}</strong> مشاريع تجاوزت الموعد المحدد للتسليم. يرجى المتابعة فوراً.</p>
+      </div>
+      <div class="alert-action">
+        <a href="#delayed-projects-table" class="btn-alert">عرض التفاصيل</a>
+      </div>
+    </div>
+    {% endif %}
+
+    {% for a in ops_alerts %}
+      {% if "فاتورة متأخرة" in a %}
+      <div class="alert-card warning-alert">
+        <div class="alert-icon-box">
+          <span class="alert-icon">⚠️</span>
+        </div>
+        <div class="alert-content">
+          <h3 class="alert-title">تنبيهات الفواتير</h3>
+          <p class="alert-desc">{{ a }}</p>
+        </div>
+        <div class="alert-action">
+          <a href="{{ inv_list_url }}?status=overdue" class="btn-alert warning">متابعة</a>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# --- بطاقات المؤشرات (KPI Cards) --- #}
+  <div class="kpi-grid fade-in-up" style="animation-delay: 0.1s;">
+    
+    <!-- إجمالي الطلبات -->
+    <div class="kpi-card primary-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-wrapper">
+          📋
+        </div>
+        <div class="kpi-trend positive">
+          <span>نشط</span>
+          ↗
+        </div>
+      </div>
+      <div class="kpi-body">
+        <h3 class="kpi-value">{{ req_total|default:0|intcomma }}</h3>
+        <p class="kpi-label">إجمالي الطلبات</p>
+      </div>
+      <a href="{{ all_requests_url }}" class="kpi-link">عرض الكل ←</a>
+    </div>
+
+    <!-- إجمالي الفواتير -->
+    <div class="kpi-card secondary-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-wrapper">
+          💳
+        </div>
+        <div class="kpi-trend neutral">
+          <span>المالية</span>
+        </div>
+      </div>
+      <div class="kpi-body">
+        <h3 class="kpi-value">{{ inv_totals.total|default:0|floatformat:0|intcomma }} <small>ر.س</small></h3>
+        <p class="kpi-label">إجمالي الفواتير</p>
+      </div>
+      <a href="{{ inv_list_url }}" class="kpi-link">التفاصيل ←</a>
+    </div>
+
+    <!-- المستخدمين -->
+    <div class="kpi-card purple-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-wrapper">
+          👥
+        </div>
+        <div class="kpi-trend">
+          <span>{{ users_staff|default:0 }} موظف</span>
+        </div>
+      </div>
+      <div class="kpi-body">
+        <h3 class="kpi-value">{{ users_total|default:0|intcomma }}</h3>
+        <p class="kpi-label">إجمالي المستخدمين</p>
+      </div>
+      <a href="{{ users_list_url }}" class="kpi-link">إدارة ←</a>
+    </div>
+
+    <!-- النزاعات -->
+    <div class="kpi-card danger-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-wrapper">
+          ⚖️
+        </div>
+        {% if disputes_recent %}
+        <div class="kpi-trend negative">
+          <span>{{ disputes_recent|length }} جديد</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="kpi-body">
+        <h3 class="kpi-value">{{ disputes_recent|length|default:0 }}</h3>
+        <p class="kpi-label">نزاعات نشطة</p>
+      </div>
+      <a href="{{ disputes_list_url }}" class="kpi-link">فض النزاعات ←</a>
+    </div>
   </div>
 
-  {% if ops_alerts %}
-  <div class="profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200); margin-bottom: 2rem;">
-    <div class="card-section-title">⚠️ تنبيهات تشغيلية</div>
-    <p class="card-section-note" style="margin-bottom: 1rem;">تحتاج متابعة</p>
-    <div class="alerts-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
-      {% for a in ops_alerts %}
-        <div class="alert-item" style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--secondary-200);">
-          <span class="alert-dot" style="width: 6px; height: 6px; background: var(--secondary-500); border-radius: 50%; margin-top: 0.5rem; flex-shrink: 0;"></span>
-          <span class="alert-text" style="color: var(--secondary-700); font-size: 0.9rem; line-height: 1.4;">{{ a }}</span>
+  {# --- إدارة المحتوى (Content Management) --- #}
+  {% if site_setting_id %}
+  <div class="section-container fade-in-up" style="animation-delay: 0.15s;">
+    <div class="section-header-row">
+      <h2 class="section-heading">⚙️ إدارة محتوى الموقع</h2>
+      <span class="section-subtitle">تعديل بيانات التواصل والصفحة الرئيسية</span>
+    </div>
+    
+    <div class="kpi-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin-top: 1rem;">
+        <div class="kpi-card" style="border-top: 4px solid #2563eb;">
+            <div class="kpi-top">
+                <div class="kpi-icon-wrapper" style="background: #eff6ff; color: #2563eb;">
+                    📝
+                </div>
+                <div class="kpi-trend">
+                    <span>بيانات التواصل</span>
+                </div>
+            </div>
+            <div class="kpi-body">
+                <h3 class="kpi-value" style="font-size: 1.2rem;">إعدادات الصفحة الرئيسية</h3>
+                <p class="kpi-label">تعديل أرقام التواصل، العناوين، وبطاقات الشراكة</p>
+            </div>
+            <a href="{% url 'admin:website_sitesetting_change' site_setting_id %}" class="kpi-link" target="_blank">
+                تعديل البيانات <i class="fas fa-external-link-alt"></i>
+            </a>
         </div>
-      {% endfor %}
     </div>
   </div>
   {% endif %}
 
-  <div class="section-header" style="margin-bottom: 1.5rem;">
-    <h2 class="section-title">📊 المؤشرات الرئيسية</h2>
-    <p class="section-description">نظرة سريعة على المنصّة</p>
-  </div>
-
-  <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+  {# --- الملخص المالي (Financial Overview) --- #}
+  <div class="section-container fade-in-up" style="animation-delay: 0.2s;">
+    <div class="section-header-row">
+      <h2 class="section-heading">💰 الملخص المالي</h2>
+      <span class="section-subtitle">نظرة سريعة على التدفقات المالية</span>
+    </div>
     
-    <div class="profile-section kpi-card">
-      <div class="kpi-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-        <div class="kpi-icon" style="width: 3rem; height: 3rem; background: var(--primary-100); color: var(--primary-600); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-          📋
-        </div>
-        <div>
-          <h3 class="card-section-title">إجمالي الطلبات</h3>
-          <p class="card-section-note">كل الحالات</p>
-        </div>
+    <div class="finance-summary-card">
+      <div class="finance-item">
+        <span class="fin-label">المدفوعات المستلمة</span>
+        <span class="fin-value text-success">{{ inv_totals.paid|default:0|floatformat:2|intcomma }} <small>ر.س</small></span>
+        <div class="progress-bar"><div class="progress-fill success" style="width: 70%"></div></div>
       </div>
-      <div class="kpi-value" style="font-size: 2.5rem; font-weight: 800; color: var(--primary-600); margin-bottom: 1rem;">
-        {{ req_total|default:0|intcomma }}
+      <div class="finance-item">
+        <span class="fin-label">بانتظار السداد</span>
+        <span class="fin-value text-warning">{{ inv_totals.unpaid|default:0|floatformat:2|intcomma }} <small>ر.س</small></span>
+        <div class="progress-bar"><div class="progress-fill warning" style="width: 40%"></div></div>
       </div>
-      <div class="kpi-actions">
-        {% if urls.requests or req_list_url %}
-          <a href="{{ all_requests_url }}" class="btn btn-outline btn-sm">
-            عرض جميع الطلبات
-          </a>
-        {% else %}
-          <span class="btn btn-outline btn-sm" style="opacity: 0.6;">—</span>
-        {% endif %}
+      <div class="finance-item">
+        <span class="fin-label">أرباح المنصة</span>
+        <span class="fin-value text-primary">{{ inv_totals.platform_fee_total|default:0|floatformat:2|intcomma }} <small>ر.س</small></span>
+        <div class="progress-bar"><div class="progress-fill primary" style="width: 100%"></div></div>
       </div>
-    </div>
-
-    <div class="profile-section kpi-card">
-      <div class="kpi-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-        <div class="kpi-icon" style="width: 3rem; height: 3rem; background: #f3e8ff; color: #7c3aed; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-          👥
-        </div>
-        <div>
-          <h3 class="card-section-title">المستخدمون</h3>
-          <p class="card-section-note">موظفون: {{ users_staff|default:0|intcomma }}</p>
-        </div>
-      </div>
-      <div class="kpi-value" style="font-size: 2.5rem; font-weight: 800; color: #7c3aed; margin-bottom: 1rem;">
-        {{ users_total|default:0|intcomma }}
-      </div>
-      <div class="kpi-actions">
-        {% if urls.users or users_list_url %}
-          <a href="{{ urls.users|default:users_list_url }}" class="btn btn-outline btn-sm">
-            إدارة المستخدمين
-          </a>
-        {% else %}
-          <span class="btn btn-outline btn-sm" style="opacity: 0.6;">—</span>
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="profile-section kpi-card">
-      <div class="kpi-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-        <div class="kpi-icon" style="width: 3rem; height: 3rem; background: var(--secondary-100); color: var(--secondary-600); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-          💳
-        </div>
-        <div>
-          <h3 class="card-section-title">إجمالي الفواتير</h3>
-          <p class="card-section-note">مدفوعة + غير مدفوعة</p>
-        </div>
-      </div>
-      <div class="kpi-value" style="font-size: 2rem; font-weight: 800; color: var(--secondary-600); margin-bottom: 1rem;">
-        {{ inv_totals.total|default:0|floatformat:2|intcomma }} ر.س
-      </div>
-      <div class="kpi-actions">
-        {% if urls.invoices or inv_list_url %}
-          <a href="{{ urls.invoices|default:inv_list_url }}" class="btn btn-outline btn-sm">
-            تفاصيل الفواتير
-          </a>
-        {% else %}
-          <span class="btn btn-outline btn-sm" style="opacity: 0.6;">—</span>
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="profile-section kpi-card">
-      <div class="kpi-header" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-        <div class="kpi-icon" style="width: 3rem; height: 3rem; background: #fef2f2; color: #ef4444; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-          ⏳
-        </div>
-        <div>
-          <h3 class="card-section-title">فواتير متأخرة</h3>
-          <p class="card-section-note">أقدم من 3 أيام</p>
-        </div>
-      </div>
-      <div class="kpi-value" style="font-size: 2.5rem; font-weight: 800; color: #ef4444; margin-bottom: 1rem;">
-        {{ overdue_count|default:0|intcomma }}
-      </div>
-      <div class="kpi-actions">
-        <a href="{% url 'finance:invoice_list' %}?status=overdue" class="btn btn-outline btn-sm" style="background: #fef2f2; color: #ef4444; border-color: #fecaca;">
-          متابعة
-        </a>
+      <div class="finance-item">
+        <span class="fin-label">مبالغ مجمّدة (نزاع)</span>
+        <span class="fin-value text-danger">{{ inv_totals.disputed_total|default:0|floatformat:2|intcomma }} <small>ر.س</small></span>
+        <div class="progress-bar"><div class="progress-fill danger" style="width: 20%"></div></div>
       </div>
     </div>
   </div>
 
-  <div class="section-header" style="margin-bottom: 1rem;">
-    <h3 class="section-title">💰 التفاصيل المالية</h3>
-    <p class="section-description">تفصيل المبالغ والعمولات</p>
+  {# --- جدول المشاريع المتأخرة (Delayed Projects) --- #}
+  {% if delayed_requests %}
+  <div id="delayed-projects-table" class="section-container fade-in-up" style="animation-delay: 0.3s;">
+    <div class="section-header-row danger-theme">
+      <h2 class="section-heading text-danger">🚨 مشاريع متأخرة</h2>
+      <span class="badge badge-danger">{{ delayed_requests|length }} مشروع</span>
+    </div>
+    <div class="table-responsive card-shadow">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>المشروع</th>
+            <th>الموظف المسؤول</th>
+            <th>العميل</th>
+            <th>مدة التأخير</th>
+            <th>الإجراء</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in delayed_requests %}
+          <tr>
+            <td>
+              <div class="table-main-text">{{ r.title }}</div>
+              <div class="table-sub-text">#{{ r.id }}</div>
+            </td>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar sm">{{ r.assigned_employee.name|first|default:"?" }}</div>
+                <span>{{ r.assigned_employee.name|default:r.assigned_employee }}</span>
+              </div>
+            </td>
+            <td>{{ r.client.name|default:r.client }}</td>
+            <td>
+              <span class="status-pill danger">
+                {{ r.overdue_days }} يوم
+              </span>
+            </td>
+            <td>
+              <a href="{% url 'marketplace:request_detail' r.id %}" class="btn-sm btn-outline-danger">متابعة</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
+  {% endif %}
 
-  <div class="finance-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-    <div class="profile-section text-center">
-      <div class="finance-label" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">مدفوع</div>
-      <div class="finance-value" style="font-size: 1.5rem; font-weight: 700; color: var(--primary-600);">
-        {{ inv_totals.paid|default:0|floatformat:2|intcomma }} ر.س
-      </div>
-    </div>
+  {# --- الجداول الرئيسية (Main Tables Grid) --- #}
+  <div class="tables-grid-layout fade-in-up" style="animation-delay: 0.4s;">
     
-    <div class="profile-section text-center">
-      <div class="finance-label" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">غير مدفوع</div>
-      <div class="finance-value" style="font-size: 1.5rem; font-weight: 700; color: var(--secondary-600);">
-        {{ inv_totals.unpaid|default:0|floatformat:2|intcomma }} ر.س
+    <!-- آخر الطلبات -->
+    <div class="grid-column">
+      <div class="section-header-row">
+        <h3 class="section-heading">🧾 أحدث الطلبات</h3>
+        <a href="{{ all_requests_url }}" class="link-subtle">عرض الكل</a>
       </div>
-    </div>
-    
-    <div class="profile-section text-center">
-      <div class="finance-label" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">مجمّد (نزاعات)</div>
-      <div class="finance-value" style="font-size: 1.5rem; font-weight: 700; color: #ef4444;">
-        {{ inv_totals.disputed_total|default:0|floatformat:2|intcomma }} ر.س
-      </div>
-    </div>
-    
-    <div class="profile-section text-center">
-      <div class="finance-label" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">الضريبة (VAT)</div>
-      <div class="finance-value" style="font-size: 1.5rem; font-weight: 700; color: var(--dark-700);">
-        {{ inv_totals.vat_total|default:0|floatformat:2|intcomma }} ر.س
-      </div>
-    </div>
-    
-    <div class="profile-section text-center">
-      <div class="finance-label" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">عمولة المنصّة</div>
-      <div class="finance-value" style="font-size: 1.5rem; font-weight: 700; color: var(--primary-600);">
-        {{ inv_totals.platform_fee_total|default:0|floatformat:2|intcomma }} ر.س
-      </div>
-    </div>
-  </div>
-
-  <div class="tables-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
-    
-    <div class="profile-section">
-      <div class="data-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 class="card-section-title">🧾 آخر الطلبات</h3>
-        <a href="{% url 'dashboard:all_requests' %}" class="btn btn-outline btn-sm">
-          جميع الطلبات
-        </a>
-      </div>
-      
-      <div class="table-wrapper">
-        <table class="table table-clean">
+      <div class="card-shadow table-card">
+        <table class="modern-table compact">
           <thead>
             <tr>
-              <th>#</th>
-              <th>العنوان</th>
-              <th>العميل</th>
+              <th>الطلب</th>
               <th>الحالة</th>
               <th>التاريخ</th>
             </tr>
           </thead>
           <tbody>
-            {% for r in req_recent|slice:":5" %}
-              <tr>
-                <td class="text-muted">#{{ r.id }}</td>
-                <td>{{ r.title|default:"—" }}</td>
-                <td>
-                  {% if r.client %}
-                    {% if r.client.name %}
-                      {{ r.client.name }}
-                    {% elif r.client.phone %}
-                      {{ r.client.phone }}
-                    {% elif r.client.email %}
-                      {{ r.client.email }}
-                    {% else %}
-                      {{ r.client }}
-                    {% endif %}
-                  {% else %}
-                    —
-                  {% endif %}
-                </td>
-                <td>
-                  {% if r.status %}
-                    <span class="badge 
-                      {% if r.status == 'completed' %}badge-verified
-                      {% elif r.status == 'new' %}badge-default
-                      {% elif r.status == 'in_progress' %}badge-pending
-                      {% elif r.status == 'disputed' %}badge-rejected
-                      {% elif r.status == 'cancelled' %}badge-rejected
-                      {% else %}badge-default{% endif %}">
-                      {{ r.status }}
-                    </span>
-                  {% elif r.state %}
-                    <span class="badge badge-default">{{ r.state }}</span>
-                  {% else %}
-                    <span class="badge badge-default">غير محدد</span>
-                  {% endif %}
-                </td>
-                <td class="text-muted">
-                  {% if r.created_at %}
-                    {{ r.created_at|date:"Y-m-d H:i" }}
-                  {% else %}
-                    {{ r.id }}
-                  {% endif %}
-                </td>
-              </tr>
+            {% for r in req_recent|slice:":6" %}
+            <tr>
+              <td>
+                <a href="{% url 'marketplace:request_detail' r.id %}" class="table-link">
+                  {{ r.title|truncatechars:30 }}
+                </a>
+                <div class="table-sub-text">#{{ r.id }} • {{ r.client.name|default:r.client }}</div>
+              </td>
+              <td>
+                <span class="status-dot 
+                  {% if r.status == 'completed' %}success
+                  {% elif r.status == 'in_progress' %}primary
+                  {% elif r.status == 'new' %}neutral
+                  {% elif r.status == 'cancelled' %}danger
+                  {% else %}warning{% endif %}">
+                </span>
+                <span class="status-text">{{ r.get_status_display }}</span>
+              </td>
+              <td class="text-muted text-sm">{{ r.created_at|date:"d/m" }}</td>
+            </tr>
             {% empty %}
-              <tr>
-                <td colspan="5" class="text-center text-muted" style="padding: 2rem;">
-                  لا توجد طلبات حديثة
-                </td>
-              </tr>
+            <tr><td colspan="3" class="text-center py-4 text-muted">لا توجد طلبات حديثة</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
 
-    <div class="profile-section">
-      <div class="data-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 class="card-section-title">⚖️ آخر النزاعات</h3>
-        {% if urls.disputes or disputes_list_url %}
-          <a href="{{ urls.disputes|default:disputes_list_url }}" class="btn btn-outline btn-sm">
-            كل النزاعات
-          </a>
-        {% endif %}
+    <!-- آخر الفواتير -->
+    <div class="grid-column">
+      <div class="section-header-row">
+        <h3 class="section-heading">💳 أحدث الفواتير</h3>
+        <a href="{{ inv_list_url }}" class="link-subtle">عرض الكل</a>
       </div>
-      
-      <div class="disputes-list" style="display: flex; flex-direction: column; gap: 1rem;">
-        {% for d in disputes_recent|slice:":3" %}
-          <div class="profile-section" style="border: 2px dashed var(--dark-200); padding: 1rem;">
-            <div class="dispute-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <div class="dispute-title" style="font-weight: 600; color: var(--dark-800);">
-                {% if d.request %}
-                  نزاع على طلب #{{ d.request.id }}
-                {% else %}
-                  نزاع #{{ d.id }}
-                {% endif %}
-              </div>
-              <span class="badge badge-rejected">
-                {% if d.status %}{{ d.status }}{% elif d.state %}{{ d.state }}{% else %}غير محدد{% endif %}
-              </span>
-            </div>
-            
-            {% if d.reason %}
-              <div class="dispute-reason" style="color: var(--dark-600); font-size: 0.875rem; line-height: 1.4; margin-bottom: 0.5rem;">
-                {{ d.reason|truncatewords:20 }}
-              </div>
-            {% elif d.note %}
-              <div class="dispute-reason" style="color: var(--dark-600); font-size: 0.875rem; line-height: 1.4; margin-bottom: 0.5rem;">
-                {{ d.note|truncatewords:20 }}
-              </div>
-            {% endif %}
-            
-            <div class="dispute-date" style="color: var(--dark-500); font-size: 0.75rem;">
-              {% if d.created_at %}
-                {{ d.created_at|date:"Y-m-d H:i" }}
-              {% else %}
-                —
-              {% endif %}
-            </div>
-          </div>
-        {% empty %}
-          <div class="text-center text-muted" style="padding: 2rem;">
-            لا توجد نزاعات حديثة
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-
-  <div class="profile-section" style="margin-bottom: 2rem;">
-    <div class="data-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h3 class="card-section-title">💳 آخر الفواتير</h3>
-      {% if urls.invoices or inv_list_url %}
-        <a href="{{ urls.invoices|default:inv_list_url }}" class="btn btn-outline btn-sm">
-          جميع الفواتير
-        </a>
-      {% endif %}
-    </div>
-    
-    <div class="table-wrapper">
-      <table class="table table-clean">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>الطلب/الاتفاقية</th>
-            <th>المبلغ</th>
-            <th>الحالة</th>
-            <th>التاريخ</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for inv in inv_recent|slice:":5" %}
+      <div class="card-shadow table-card">
+        <table class="modern-table compact">
+          <thead>
             <tr>
-              <td class="text-muted">#{{ inv.id }}</td>
-              <td>
-                {% if inv.agreement and inv.agreement.request %}
-                  طلب #{{ inv.agreement.request.id }}
-                {% elif inv.agreement %}
-                  اتفاقية #{{ inv.agreement.id }}
-                {% else %}
-                  —
-                {% endif %}
-              </td>
-              <td style="font-weight: 700; color: var(--primary-600);">
-                {% if inv.client_total %}
-                  {{ inv.client_total|floatformat:2|intcomma }}
-                {% elif inv.total_amount %}
-                  {{ inv.total_amount|floatformat:2|intcomma }}
-                {% elif inv.gross_amount %}
-                  {{ inv.gross_amount|floatformat:2|intcomma }}
-                {% elif inv.amount %}
-                  {{ inv.amount|floatformat:2|intcomma }}
-                {% else %}
-                  0.00
-                {% endif %}
-                ر.س
+              <th>المبلغ</th>
+              <th>الحالة</th>
+              <th>التاريخ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inv in inv_recent|slice:":6" %}
+            <tr>
+              <td class="font-weight-bold">
+                {{ inv.amount|default:inv.total_amount|floatformat:0 }} <small>ر.س</small>
               </td>
               <td>
-                {% if inv.status %}
-                  <span class="badge 
-                    {% if inv.status == 'paid' or inv.is_paid %}badge-verified
-                    {% else %}badge-pending{% endif %}">
-                    {{ inv.status }}
-                  </span>
+                {% if inv.status == 'paid' or inv.is_paid %}
+                  <span class="status-pill success-light">مدفوعة</span>
                 {% else %}
-                  <span class="badge badge-default">غير محدد</span>
+                  <span class="status-pill warning-light">غير مدفوعة</span>
                 {% endif %}
               </td>
-              <td class="text-muted">
-                {% if inv.issued_at %}
-                  {{ inv.issued_at|date:"Y-m-d" }}
-                {% elif inv.created_at %}
-                  {{ inv.created_at|date:"Y-m-d" }}
-                {% else %}
-                  —
-                {% endif %}
-              </td>
+              <td class="text-muted text-sm">{{ inv.issued_at|date:"d/m" }}</td>
             </tr>
-          {% empty %}
-            <tr>
-              <td colspan="5" class="text-center text-muted" style="padding: 2rem;">
-                لا توجد فواتير حديثة
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+            {% empty %}
+            <tr><td colspan="3" class="text-center py-4 text-muted">لا توجد فواتير حديثة</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
+
   </div>
 
-  <div class="section-header" style="margin-bottom: 1rem;">
-    <h3 class="section-title">⚡ إجراءات سريعة</h3>
-    <p class="section-description">اختصارات الإدارة</p>
-  </div>
-
-  <div class="quick-links-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-    {% for ql in quick %}
-      {% if ql.url %}
-        <a href="{{ ql.url }}" class="quick-link profile-section text-center">
-          <div class="quick-icon" style="font-size: 2rem; margin-bottom: 0.75rem;">
+  {# --- روابط سريعة (Quick Actions) --- #}
+  <div class="quick-actions-section fade-in-up" style="animation-delay: 0.5s;">
+    <h3 class="section-heading mb-3">⚡ وصول سريع</h3>
+    <div class="quick-grid">
+      {% for ql in quick %}
+        {% if ql.url %}
+        <a href="{{ ql.url }}" class="quick-tile">
+          <div class="tile-icon">
             {% if ql.icon == 'fa-receipt' %}🧾
             {% elif ql.icon == 'fa-list' %}📋
             {% elif ql.icon == 'fa-file-signature' %}📝
@@ -438,194 +372,431 @@
             {% elif ql.icon == 'fa-users' %}👥
             {% else %}⚡{% endif %}
           </div>
-          <div class="quick-text" style="font-weight: 600; color: var(--dark-700); font-size: 0.9rem;">
-            {{ ql.label }}
-          </div>
+          <span class="tile-label">{{ ql.label }}</span>
         </a>
-      {% endif %}
-    {% endfor %}
+        {% endif %}
+      {% endfor %}
+    </div>
   </div>
 
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-  {{ block.super }}
-  <script>
-  (function () {
-    document.querySelectorAll('.kpi-card, .quick-link').forEach(function (card) {
-      card.addEventListener('mouseenter', function () {
-        this.style.transform = 'translateY(-5px)';
-        this.style.boxShadow = 'var(--shadow-lg)';
-      });
-      card.addEventListener('mouseleave', function () {
-        this.style.transform = 'translateY(0)';
-        this.style.boxShadow = '';
-      });
-    });
-
-    document.querySelectorAll('.btn').forEach(function (button) {
-      button.addEventListener('click', function () {
-        if (typeof animateButtonClick === 'function') {
-          animateButtonClick(this);
-        }
-      });
-    });
-
-    document.querySelectorAll('.table-clean tbody tr').forEach(function (row) {
-      row.addEventListener('mouseenter', function () {
-        this.style.background = 'var(--primary-50)';
-      });
-      
-      row.addEventListener('mouseleave', function () {
-        this.style.background = '';
-      });
-    });
-
-    // تحديث تلقائي للوحة كل 30 ثانية
-    setInterval(function() {
-      fetch(window.location.href)
-        .then(response => response.text())
-        .then(html => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, 'text/html');
-          const newContent = doc.querySelector('.admin-dashboard');
-          if (newContent) {
-            document.querySelector('.admin-dashboard').innerHTML = newContent.innerHTML;
-          }
-        })
-        .catch(error => console.log('Auto-refresh failed:', error));
-    }, 30000);
-  })();
-  </script>
-
-  <style>
-  .admin-dashboard .admin-header-content {
-    padding: 2rem;
+<style>
+  /* --- Dashboard Variables --- */
+  :root {
+    --dash-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --primary-soft: #f0fdf4;
+    --primary-strong: #16a34a;
+    --danger-soft: #fef2f2;
+    --danger-strong: #dc2626;
+    --warning-soft: #fffbeb;
+    --warning-strong: #d97706;
+    --text-main: #1e293b;
+    --text-sub: #64748b;
+    --border-light: #e2e8f0;
+    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+    --radius-card: 16px;
   }
 
-  .admin-dashboard .kpi-card {
-    transition: all 0.3s ease;
-    min-height: 200px;
+  /* --- Layout & Typography --- */
+  .dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    font-family: 'Tajawal', sans-serif;
+    color: var(--text-main);
+  }
+
+  .section-heading {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0;
+  }
+
+  .section-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-sub);
+    margin-right: 0.5rem;
+  }
+
+  .section-header-row {
+    display: flex;
+    align-items: baseline;
+    margin-bottom: 1rem;
+    gap: 0.5rem;
+  }
+
+  .link-subtle {
+    margin-right: auto;
+    font-size: 0.85rem;
+    color: var(--primary-strong);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  /* --- Header --- */
+  .dashboard-header {
+    background: linear-gradient(120deg, #ffffff 0%, #f0fdf4 100%);
+    padding: 2rem 1.5rem;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 2rem;
+  }
+
+  .header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(22, 163, 74, 0.1);
+    color: var(--primary-strong);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--primary-strong);
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
+    animation: pulse-green 2s infinite;
+  }
+
+  .welcome-title {
+    font-size: 1.8rem;
+    font-weight: 900;
+    margin: 0 0 0.25rem 0;
+    color: var(--dark-900);
+  }
+
+  .welcome-subtitle {
+    color: var(--text-sub);
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .stat-pill {
+    background: #fff;
+    padding: 0.75rem 1.25rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid var(--border-light);
+  }
+
+  .stat-icon { font-size: 1.5rem; }
+  
+  .stat-info {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    line-height: 1.2;
   }
 
-  .admin-dashboard .quick-link {
-    transition: all 0.3s ease;
-    text-decoration: none;
-    padding: 1.5rem 1rem;
-    border-radius: var(--radius-xl);
+  .stat-label { font-size: 0.75rem; color: var(--text-sub); }
+  .stat-value { font-weight: 800; color: var(--text-main); font-size: 1rem; }
+
+  /* --- Alerts --- */
+  .alerts-section { margin-bottom: 2rem; display: flex; flex-direction: column; gap: 1rem; }
+  
+  .alert-card {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 12px;
+    gap: 1rem;
+    border: 1px solid transparent;
   }
 
-  .admin-dashboard .quick-link:hover {
-    text-decoration: none;
-    background: var(--primary-50);
+  .danger-alert { background: #fef2f2; border-color: #fecaca; }
+  .warning-alert { background: #fffbeb; border-color: #fde68a; }
+
+  .alert-icon-box {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.5);
+    border-radius: 50%;
+    font-size: 1.25rem;
   }
 
-  .admin-dashboard .table-wrapper {
-    overflow-x: auto;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--dark-200);
-  }
-
-  .admin-dashboard .table-clean {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .admin-dashboard .table-clean th {
-    background: var(--dark-50);
-    color: var(--dark-700);
+  .alert-content { flex: 1; }
+  .alert-title { font-size: 1rem; font-weight: 700; margin: 0 0 0.25rem 0; }
+  .alert-desc { font-size: 0.9rem; margin: 0; opacity: 0.9; }
+  
+  .btn-alert {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
     font-weight: 600;
-    padding: 1rem;
-    text-align: right;
-    border-bottom: 1px solid var(--dark-200);
+    text-decoration: none;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+  }
+  
+  .danger-alert .alert-title { color: #991b1b; }
+  .danger-alert .alert-desc { color: #b91c1c; }
+  .danger-alert .btn-alert { color: #991b1b; border: 1px solid #fecaca; }
+  
+  .warning-alert .alert-title { color: #92400e; }
+  .warning-alert .alert-desc { color: #b45309; }
+  .warning-alert .btn-alert { color: #92400e; border: 1px solid #fde68a; }
+
+  /* --- KPI Cards --- */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
   }
 
-  .admin-dashboard .table-clean td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--dark-100);
-    vertical-align: top;
+  .kpi-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-card);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-light);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
-  .admin-dashboard .table-clean tr:last-child td {
-    border-bottom: none;
+  .kpi-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
   }
 
-  .admin-dashboard .text-muted {
-    color: var(--dark-500);
+  .kpi-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
   }
 
-  .admin-dashboard .text-center {
-    text-align: center;
-  }
-
-  .admin-dashboard .finance-grid .profile-section {
-    padding: 1.5rem 1rem;
-  }
-
-  .admin-dashboard .finance-value {
+  .kpi-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 1.5rem;
+  }
+
+  .primary-card .kpi-icon-wrapper { background: var(--primary-soft); color: var(--primary-strong); }
+  .secondary-card .kpi-icon-wrapper { background: var(--warning-soft); color: var(--warning-strong); }
+  .purple-card .kpi-icon-wrapper { background: #f3e8ff; color: #7c3aed; }
+  .danger-card .kpi-icon-wrapper { background: var(--danger-soft); color: var(--danger-strong); }
+
+  .kpi-trend {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+  }
+  .kpi-trend.positive { background: #dcfce7; color: #166534; }
+  .kpi-trend.negative { background: #fee2e2; color: #991b1b; }
+  .kpi-trend.neutral { background: #f1f5f9; color: #475569; }
+
+  .kpi-value { font-size: 2rem; font-weight: 800; margin: 0; line-height: 1; color: var(--dark-900); }
+  .kpi-value small { font-size: 1rem; font-weight: 600; color: var(--text-sub); }
+  .kpi-label { color: var(--text-sub); margin: 0.5rem 0 0 0; font-size: 0.9rem; }
+  
+  .kpi-link {
+    margin-top: 1.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-sub);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.2s;
+  }
+  .kpi-link:hover { color: var(--primary-strong); }
+
+  /* --- Finance Summary --- */
+  .finance-summary-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-card);
+    padding: 2rem;
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-light);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .finance-item { display: flex; flex-direction: column; gap: 0.5rem; }
+  .fin-label { font-size: 0.85rem; color: var(--text-sub); font-weight: 600; }
+  .fin-value { font-size: 1.25rem; font-weight: 800; }
+  
+  .text-success { color: var(--primary-strong); }
+  .text-warning { color: var(--warning-strong); }
+  .text-danger { color: var(--danger-strong); }
+  .text-primary { color: #2563eb; }
+
+  .progress-bar {
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 0.25rem;
+  }
+  .progress-fill { height: 100%; border-radius: 3px; }
+  .progress-fill.success { background: var(--primary-strong); }
+  .progress-fill.warning { background: var(--warning-strong); }
+  .progress-fill.danger { background: var(--danger-strong); }
+  .progress-fill.primary { background: #2563eb; }
+
+  /* --- Tables --- */
+  .tables-grid-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .card-shadow {
+    background: var(--card-bg);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+  }
+
+  .modern-table { width: 100%; border-collapse: collapse; }
+  .modern-table th {
+    background: #f8fafc;
+    padding: 1rem 1.5rem;
+    text-align: right;
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .modern-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: middle;
+  }
+  .modern-table tr:last-child td { border-bottom: none; }
+  .modern-table tr:hover { background: #fcfcfc; }
+
+  .table-main-text { font-weight: 700; color: var(--dark-900); font-size: 0.95rem; }
+  .table-sub-text { font-size: 0.8rem; color: var(--text-sub); margin-top: 0.2rem; }
+  .table-link { text-decoration: none; color: inherit; transition: color 0.2s; font-weight: 700; }
+  .table-link:hover { color: var(--primary-strong); }
+
+  .user-cell { display: flex; align-items: center; gap: 0.75rem; }
+  .user-avatar.sm {
+    width: 32px; height: 32px;
+    background: #e2e8f0; color: #64748b;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 700;
+  }
+
+  .status-pill {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
     font-weight: 700;
   }
+  .status-pill.danger { background: #fef2f2; color: #dc2626; }
+  .status-pill.success-light { background: #f0fdf4; color: #16a34a; }
+  .status-pill.warning-light { background: #fffbeb; color: #d97706; }
 
-  @media (max-width: 1024px) {
-    .admin-dashboard .tables-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .admin-dashboard .kpi-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
+  .status-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 0.4rem;
+  }
+  .status-dot.success { background: #22c55e; }
+  .status-dot.primary { background: #3b82f6; }
+  .status-dot.warning { background: #f59e0b; }
+  .status-dot.danger { background: #ef4444; }
+  .status-dot.neutral { background: #94a3b8; }
+  .status-text { font-size: 0.85rem; font-weight: 600; }
+
+  /* --- Quick Actions --- */
+  .quick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
+  }
+  .quick-tile {
+    background: var(--card-bg);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text-main);
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .quick-tile:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary-200);
+    background: var(--primary-soft);
+  }
+  .tile-icon { font-size: 1.75rem; }
+  .tile-label { font-size: 0.9rem; font-weight: 600; }
+
+  /* --- Animations --- */
+  @keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
   }
 
+  .fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  @keyframes fadeInUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* --- Responsive --- */
   @media (max-width: 768px) {
-    .admin-dashboard .admin-meta {
-      width: 100%;
-    }
-    
-    .admin-dashboard .kpi-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .admin-dashboard .finance-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .admin-dashboard .quick-links-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
+    .header-content { flex-direction: column; align-items: flex-start; }
+    .header-stats { width: 100%; }
+    .stat-pill { flex: 1; }
+    .tables-grid-layout { grid-template-columns: 1fr; }
   }
-
-  @media (max-width: 480px) {
-    .admin-dashboard .finance-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .admin-dashboard .quick-links-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .admin-dashboard .table-wrapper {
-      font-size: 0.875rem;
-    }
-  }
-
-  .admin-dashboard .kpi-value {
-    animation: countUp 0.8s ease-out;
-  }
-
-  @keyframes countUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  </style>
+</style>
 {% endblock %}

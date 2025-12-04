@@ -3,126 +3,308 @@
 
 {% block title %}التقنيون الموثوقون - سامي لينك{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Header Section */
+    .page-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+        border-radius: 24px;
+        padding: 3rem 2rem;
+        margin-bottom: 3rem;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+    }
+    
+    /* Search Box */
+    .search-box {
+        background: #fff;
+        border-radius: 16px;
+        padding: 0.5rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e2e8f0;
+        max-width: 600px;
+        margin: 2rem auto 0;
+        display: flex;
+        gap: 0.5rem;
+    }
+    .search-input {
+        border: none;
+        padding: 0.75rem 1.5rem;
+        flex-grow: 1;
+        outline: none;
+        font-size: 1rem;
+        color: #1e293b;
+        background: transparent;
+    }
+    .search-btn {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .search-btn:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+    }
+
+    /* Employee Card */
+    .employee-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+    .employee-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        border-color: #cbd5e1;
+    }
+    
+    .card-header-bg {
+        height: 80px;
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    }
+    
+    .card-body {
+        padding: 0 1.5rem 1.5rem;
+        margin-top: -40px;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .avatar-container {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 4px solid #fff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        background: #fff;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    .avatar-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .verified-badge {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background: #fff;
+        border-radius: 50%;
+        padding: 2px;
+        color: #22c55e;
+        font-size: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .emp-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.25rem;
+    }
+    .emp-title {
+        font-size: 0.9rem;
+        color: #64748b;
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+    
+    .stats-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-top: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+        margin-bottom: 1rem;
+    }
+    .stat-item {
+        text-align: center;
+        flex: 1;
+    }
+    .stat-val {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 0.95rem;
+    }
+    .stat-lbl {
+        font-size: 0.75rem;
+        color: #94a3b8;
+    }
+    
+    .skills-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-grow: 1;
+    }
+    .skill-pill {
+        background: #f8fafc;
+        color: #475569;
+        padding: 0.25rem 0.75rem;
+        border-radius: 99px;
+        font-size: 0.75rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .btn-profile {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 12px;
+        background: #fff;
+        color: #3b82f6;
+        border: 1px solid #3b82f6;
+        font-weight: 600;
+        transition: all 0.2s;
+        text-align: center;
+        text-decoration: none;
+        display: block;
+    }
+    .btn-profile:hover {
+        background: #3b82f6;
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container">
-  <div class="section-header">
-    <div class="section-badge">فريق موثوق</div>
-    <h2 class="section-title">التقنيون الموثوقون في سامي لينك</h2>
-    <p class="section-description">
-      نخبة من التقنيين السعوديين تم التحقق من هوياتهم وخبراتهم قبل قبولهم في المنصة
-    </p>
-  </div>
+<div class="container py-5">
+    
+    <!-- Header & Search -->
+    <div class="page-header">
+        <h1 class="h2 fw-bold text-dark mb-3">نخبة التقنيين الموثوقين</h1>
+        <p class="text-muted fs-5 mb-0">اكتشف أفضل الكفاءات التقنية لإنجاز مشاريعك باحترافية</p>
+        
+        <form class="search-box" method="get">
+            <input type="text" name="q" class="search-input" placeholder="ابحث بالاسم، التخصص، أو المهارة..." value="{{ q }}">
+            <button type="submit" class="search-btn">
+                <i class="fas fa-search me-2"></i>بحث
+            </button>
+        </form>
+    </div>
 
-  <!-- شبكة التقنيين -->
-  <div class="employees-grid">
-    {% for employee in employees %}
-    <div class="employee-card scroll-reveal">
-      
-      <!-- رأس البطاقة - الصورة والمعلومات الأساسية -->
-      <div class="employee-card-header">
-        <div class="employee-avatar">
-          <img
-            src="{% if employee.photo %}{{ employee.photo.url }}{% else %}{% static 'img/avatar-placeholder.png' %}{% endif %}"
-            alt="{{ employee.user.get_full_name|default:employee.user.email }}"
-            loading="lazy"
-          />
-          <div class="avatar-status {% if forloop.counter|divisibleby:2 %}status-online{% else %}status-offline{% endif %}"></div>
-        </div>
+    <!-- Employees Grid -->
+    <div class="row g-4">
+        {% for employee in employees %}
+        <div class="col-md-6 col-lg-4 col-xl-3">
+            <div class="employee-card">
+                <div class="card-header-bg"></div>
+                
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="avatar-container">
+                            <img src="{% if employee.photo %}{{ employee.photo.url }}{% else %}{% static 'img/avatar-placeholder.png' %}{% endif %}" 
+                                 alt="{{ employee.user.name }}">
+                            {% if employee.kyc_status == 'verified' %}
+                            <div class="verified-badge" title="هوية موثقة">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mt-2 text-end">
+                            <div class="text-warning small fw-bold">
+                                <i class="fas fa-star"></i> {{ employee.rating|floatformat:1 }}
+                            </div>
+                            <div class="text-muted" style="font-size: 0.7rem;">({{ employee.reviews_count }})</div>
+                        </div>
+                    </div>
 
-        <div class="employee-basic-info">
-          <h3 class="employee-name">{{ employee.user.get_full_name|default:employee.user.email }}</h3>
-          <div class="employee-title">{{ employee.specialty|default:"تقني معتمد" }}</div>
-          
-          {% if employee.city %}
-          <div class="employee-location">
-            <span>📍</span>
-            <span>{{ employee.city }}</span>
-          </div>
-          {% endif %}
+                    <h3 class="emp-name text-truncate">{{ employee.user.name|default:"تقني" }}</h3>
+                    <p class="emp-title text-truncate">{{ employee.title|default:employee.specialty|default:"تقني عام" }}</p>
+                    
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-val">{{ employee.real_completed_jobs_count }}</div>
+                            <div class="stat-lbl">مشروع</div>
+                        </div>
 
-          <div class="employee-rating">
-            <div class="rating-stars">
-              {% with stars=employee.rating|default:4|floatformat:0 %}
-                {% for i in "12345" %}
-                  <span class="rating-star {% if forloop.counter <= stars %}filled{% endif %}">★</span>
-                {% endfor %}
-              {% endwith %}
+
+                    </div>
+
+                    <div class="skills-wrapper">
+                        {% for skill in employee.skills_list|slice:":3" %}
+                            <span class="skill-pill">{{ skill }}</span>
+                        {% empty %}
+                            <span class="text-muted small fst-italic">لا توجد مهارات مضافة</span>
+                        {% endfor %}
+                        {% if employee.skills_list|length > 3 %}
+                            <span class="skill-pill">+{{ employee.skills_list|length|add:"-3" }}</span>
+                        {% endif %}
+                    </div>
+
+                    <a href="{% url 'profiles:employee_detail' employee.pk %}" class="btn-profile mt-auto">
+                        عرض البروفايل
+                    </a>
+                </div>
             </div>
-            <span class="rating-value">{{ employee.rating|default:4.0|floatformat:1 }}</span>
-            <span class="rating-count">({{ employee.reviews_count|default:12 }})</span>
-          </div>
         </div>
-      </div>
-
-      <!-- شارات الحالة -->
-      <div class="employee-badges">
-        {% if employee.kyc_status == 'verified' or forloop.counter <= 2 %}
-        <span class="badge-sm badge-verified-sm">✅ موثّق</span>
-        {% endif %}
-        {% if employee.completed_jobs|default:0 > 10 or forloop.counter <= 3 %}
-        <span class="badge-sm badge-featured-sm">⭐ متميز</span>
-        {% endif %}
-      </div>
-
-      <!-- الإحصائيات -->
-      <div class="employee-stats">
-        <div class="employee-stat">
-          <span class="stat-number">{{ employee.completed_jobs|default:15 }}</span>
-          <span class="stat-label">مشروع</span>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5 bg-white rounded-4 border border-dashed">
+                <div class="text-muted mb-3"><i class="fas fa-users-slash fa-4x opacity-25"></i></div>
+                <h3 class="h5 text-dark fw-bold">لا توجد نتائج مطابقة</h3>
+                <p class="text-muted">جرب البحث بكلمات مختلفة أو تصفح جميع التقنيين</p>
+                {% if q %}
+                <a href="{% url 'profiles:employees_list' %}" class="btn btn-outline-primary rounded-pill px-4">
+                    عرض الجميع
+                </a>
+                {% endif %}
+            </div>
         </div>
-        <div class="employee-stat">
-          <span class="stat-number">{{ employee.client_satisfaction|default:95|floatformat:0 }}%</span>
-          <span class="stat-label">رضا</span>
-        </div>
-        <div class="employee-stat">
-          <span class="stat-number">{{ employee.avg_response_minutes|default:30 }}</span>
-          <span class="stat-label">دقيقة</span>
-        </div>
-      </div>
-
-      <!-- المهارات -->
-      <div class="employee-skills">
-        <div class="skills-title">أبرز المهارات</div>
-        <div class="skills-tags">
-          {% for skill in employee.skills_list|slice:":4" %}
-          <span class="skill-tag-small">{{ skill }}</span>
-          {% empty %}
-          <span class="skill-tag-small">برمجة وتطوير</span>
-          <span class="skill-tag-small">حلول تقنية</span>
-          <span class="skill-tag-small">دعم فني</span>
-          <span class="skill-tag-small">استشارات</span>
-          {% endfor %}
-        </div>
-      </div>
-
-
-      <!-- أزرار الإجراءات -->
-      <div class="employee-actions">
-        {% if employee.pk %}
-        <a href="{% url 'profiles:employee_detail' employee.pk %}" class="btn-view-profile">
-          <span>عرض البروفايل</span>
-          <span>→</span>
-        </a>
-        {% else %}
-        <span class="btn-view-profile" style="opacity: 0.6; cursor: not-allowed;">
-          <span>عرض البروفايل</span>
-        </span>
-        {% endif %}
-
-      </div>
-
+        {% endfor %}
     </div>
-    {% empty %}
-    <div class="employee-card employee-card-empty">
-      <div>
-        <div style="font-size: 3rem; margin-bottom: 1rem">👥</div>
-        <p>لا يوجد تقنيون متاحون حالياً</p>
-        <p style="font-size: 0.875rem; margin-top: 0.5rem">
-          سيتم إضافة التقنيين قريباً
-        </p>
-      </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="d-flex justify-content-center mt-5">
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link rounded-start-pill" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">السابق</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item disabled">
+                    <span class="page-link bg-light text-dark border-0">
+                        صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link rounded-end-pill" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}">التالي</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
     </div>
-    {% endfor %}
-  </div>
+    {% endif %}
 </div>
 {% endblock %}

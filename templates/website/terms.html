@@ -1,62 +1,385 @@
 {% extends "base.html" %}
 {% block title %}شروط الاستخدام{% endblock %}
+
 {% block content %}
-<section class="py-10 max-w-4xl mx-auto">
-  <h1 class="text-3xl font-extrabold mb-4">شروط الاستخدام</h1>
-  <p class="text-slate-600 mb-6">باستخدامك لمنصّة SamiLink فإنك توافق على الشروط التالية:</p>
+<style>
+  /* Hero Section */
+  .terms-hero {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    padding: 4rem 0;
+    text-align: center;
+    border-bottom: 1px solid #cbd5e1;
+    margin-bottom: 3rem;
+  }
+  .terms-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 1rem;
+  }
+  .terms-intro {
+    color: #64748b;
+    font-size: 1.1rem;
+    max-width: 800px;
+    margin: 0 auto;
+    line-height: 1.8;
+  }
+  .terms-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #dcfce7;
+    color: #166534;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    border: 1px solid #bbf7d0;
+  }
 
-  <div class="space-y-6 leading-8">
-    <section>
-      <h2 class="text-xl font-bold mb-2">1) الحسابات والأدوار</h2>
-      <p class="text-slate-700">
-        الحسابات تشمل: عميل، موظف، مالية، مدير عام. يلتزم المستخدم بالحفاظ على سرية بيانات الدخول وعدم إساءة استخدام الصلاحيات.
-      </p>
-    </section>
+  /* Navigation */
+  .terms-nav {
+    position: sticky;
+    top: 80px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  }
+  .terms-nav-title {
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .terms-nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .terms-nav-item {
+    margin-bottom: 0.5rem;
+  }
+  .terms-nav-link {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    color: #64748b;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+  }
+  .terms-nav-link:hover {
+    background: #f8fafc;
+    color: #2563eb;
+    padding-right: 1rem;
+  }
 
-    <section>
-      <h2 class="text-xl font-bold mb-2">2) دورة العمل</h2>
-      <p class="text-slate-700">
-        الطلبات والعروض والاتفاقيات والمراحل والفواتير والنزاعات تُدار وفق السياسات الزمنية (SLAs) المعتمدة. أي تجاوز للمهل قد ينتج عنه تذكيرات أو إجراءات آلية بحسب الوثيقة.
-      </p>
-    </section>
+  /* Content */
+  .terms-content-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1.5rem;
+    padding: 3rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+  }
+  .term-section {
+    margin-bottom: 3rem;
+    scroll-margin-top: 100px;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 2rem;
+  }
+  .term-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  .term-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .term-number {
+    width: 40px;
+    height: 40px;
+    background: #eff6ff;
+    color: #2563eb;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  .term-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+  }
+  .term-body {
+    color: #475569;
+    line-height: 1.8;
+    font-size: 1rem;
+    padding-right: 3.5rem;
+  }
+  .term-body ul {
+    list-style-type: disc;
+    padding-right: 1.5rem;
+    margin-top: 1rem;
+  }
+  .term-body li {
+    margin-bottom: 0.75rem;
+  }
+  
+  /* Summary Box */
+  .summary-box {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 3rem;
+  }
+  .summary-title {
+    color: #0369a1;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
 
-    <section>
-      <h2 class="text-xl font-bold mb-2">3) المدفوعات والصرف</h2>
-      <ul class="list-disc pr-6 text-slate-700">
-        <li>إصدار الفواتير والتحصيل يتم عبر القنوات المعتمدة.</li>
-        <li>الصرف للموظف يتم بعد نافذة أمان 3 أيام من الدفع المؤكد، ما لم يوجد نزاع مفتوح.</li>
-      </ul>
-    </section>
+  @media (max-width: 991px) {
+    .terms-nav {
+      display: none; /* Hide sidebar on mobile */
+    }
+    .term-body {
+      padding-right: 0;
+    }
+    .terms-content-card {
+      padding: 1.5rem;
+    }
+  }
+</style>
 
-    <section>
-      <h2 class="text-xl font-bold mb-2">4) النزاعات</h2>
-      <p class="text-slate-700">
-        فتح النزاع يجمّد الدفعات تلقائيًا حتى قرار المدير العام. القرارات ملزمة ضمن سياسات المنصّة.
-      </p>
-    </section>
-
-    <section>
-      <h2 class="text-xl font-bold mb-2">5) المحتوى والمرفقات</h2>
-      <p class="text-slate-700">
-        يتحمّل المستخدم مسؤولية قانونية عن المحتوى والمرفقات المقدّمة. يمنع رفع مواد مخالِفة للقانون أو حقوق الملكية الفكرية.
-      </p>
-    </section>
-
-    <section>
-      <h2 class="text-xl font-bold mb-2">6) حدود المسؤولية</h2>
-      <p class="text-slate-700">
-        تُقدَّم الخدمة كما هي في الحدود التي يسمح بها القانون. لا تتحمّل المنصّة مسؤولية خسائر غير مباشرة ناتجة عن إساءة استخدام الخدمة.
-      </p>
-    </section>
-
-    <section>
-      <h2 class="text-xl font-bold mb-2">7) تعديلات الشروط</h2>
-      <p class="text-slate-700">
-        قد نحدّث هذه الشروط عند الحاجة، وستكون النسخة المنشورة على هذه الصفحة هي السارية.
-      </p>
-    </section>
-
-    <p class="text-sm text-slate-500">تاريخ النفاذ: {{ now|date:"Y-m-d" }}</p>
+<div class="terms-hero">
+  <div class="container">
+    <div class="terms-badge">
+      <i class="fa-solid fa-scale-balanced"></i>
+      وثيقة تنظيمية رسمية
+    </div>
+    <h1 class="terms-title">شروط الاستخدام</h1>
+    <p class="terms-intro">
+      أهلاً بك في {{ SITE_NAME|default:"SamiLink" }}. تحدد هذه الشروط القواعد والضوابط لاستخدام منصتنا، لضمان بيئة عمل احترافية وآمنة للجميع.
+    </p>
   </div>
-</section>
+</div>
+
+<div class="container pb-5">
+  <div class="row">
+    
+    <!-- Sidebar Navigation -->
+    <div class="col-lg-3">
+      <nav class="terms-nav">
+        <div class="terms-nav-title">
+          <i class="fa-solid fa-list-ul text-primary"></i>
+          فهرس المحتويات
+        </div>
+        <ul class="terms-nav-list">
+          <li class="terms-nav-item"><a href="#def" class="terms-nav-link">1. التعريفات</a></li>
+          <li class="terms-nav-item"><a href="#account" class="terms-nav-link">2. الحسابات والاستخدام</a></li>
+          <li class="terms-nav-item"><a href="#roles" class="terms-nav-link">3. الأدوار والصلاحيات</a></li>
+          <li class="terms-nav-item"><a href="#workflow" class="terms-nav-link">4. دورة العمل</a></li>
+          <li class="terms-nav-item"><a href="#payments" class="terms-nav-link">5. المدفوعات والصرف</a></li>
+          <li class="terms-nav-item"><a href="#disputes" class="terms-nav-link">6. النزاعات</a></li>
+          <li class="terms-nav-item"><a href="#content" class="terms-nav-link">7. المحتوى والمرفقات</a></li>
+          <li class="terms-nav-item"><a href="#ip" class="terms-nav-link">8. الملكية الفكرية</a></li>
+          <li class="terms-nav-item"><a href="#privacy" class="terms-nav-link">9. الخصوصية</a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-lg-9">
+      
+      <!-- Summary -->
+      <div class="summary-box">
+        <h3 class="summary-title">
+          <i class="fa-solid fa-circle-info"></i>
+          ملخص سريع
+        </h3>
+        <ul class="mb-0 text-slate-700" style="list-style: disc; padding-right: 1.5rem;">
+          <li class="mb-2">المنصّة وسيط منظم بين العميل والموظف التقني، وجميع التعاملات يجب أن تتم داخل المنصّة.</li>
+          <li class="mb-2">مستحقات الموظف تُصرَف بعد تأكيد الدفع ومرور نافذة أمان (3 أيام) وعدم وجود نزاع مفتوح.</li>
+          <li class="mb-2">فتح نزاع يجمّد الدفعات حتى يتم البت فيه من إدارة المنصّة.</li>
+          <li class="mb-0">المستخدم مسؤول عن صحة بياناته ومحتواه والمرفقات التي يرفعها عبر المنصّة.</li>
+        </ul>
+      </div>
+
+      <div class="terms-content-card">
+        
+        <!-- 1. Definitions -->
+        <section id="def" class="term-section">
+          <div class="term-header">
+            <div class="term-number">1</div>
+            <h2 class="term-title">التعريفات</h2>
+          </div>
+          <div class="term-body">
+            <p>في هذه الوثيقة يقصد بالمصطلحات التالية المعاني الموضّحة بجانب كل منها:</p>
+            <ul>
+              <li><strong>المنصّة:</strong> منصّة {{ SITE_NAME|default:"SamiLink" }} والخدمات والمواقع والواجهات المرتبطة بها.</li>
+              <li><strong>المستخدم:</strong> كل شخص يقوم بتصفح المنصّة أو إنشاء حساب أو استخدام أي من خدماتها.</li>
+              <li><strong>العميل:</strong> المستخدم الذي يطلب خدمات تقنية عبر المنصّة.</li>
+              <li><strong>الموظف/المختص التقني:</strong> المستخدم الذي يقدّم الخدمات التقنية عبر المنصّة.</li>
+              <li><strong>المدير العام:</strong> الحساب ذو الصلاحية الأعلى لإدارة المنصّة والإشراف على النزاعات والسياسات.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 2. Accounts -->
+        <section id="account" class="term-section">
+          <div class="term-header">
+            <div class="term-number">2</div>
+            <h2 class="term-title">إنشاء الحساب واستخدامه</h2>
+          </div>
+          <div class="term-body">
+            <ul>
+              <li>يشترط في المستخدم الأهلية النظامية للتعامل والقدرة على التعاقد وفق الأنظمة المعمول بها في المملكة العربية السعودية.</li>
+              <li>يلتزم المستخدم بتقديم بيانات صحيحة ومحدّثة عند التسجيل، وبإكمال أي توثيق يُطلب منه عند الحاجة.</li>
+              <li>يتحمّل المستخدم مسؤولية سرية بيانات الدخول الخاصة به، وأي استخدام يتم عبر حسابه يعد استخدامًا صادرًا عنه.</li>
+              <li>يحق للمنصّة تعليق أو إيقاف الحساب مؤقتًا أو دائمًا عند مخالفة الشروط، أو الاشتباه في نشاط غير نظامي.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 3. Roles -->
+        <section id="roles" class="term-section">
+          <div class="term-header">
+            <div class="term-number">3</div>
+            <h2 class="term-title">الأدوار والصلاحيات</h2>
+          </div>
+          <div class="term-body">
+            <p>تتنوّع الأدوار داخل المنصّة بين عميل، موظف، مالية، مدير عام، مع إمكان وجود أدوار إدارية أخرى حسب ما تقرره المنصّة.</p>
+            <ul>
+              <li>تُمنح الصلاحيات لكل دور وفق سياسة داخلية منظّمة تهدف لحماية المستخدمين وضمان جودة الخدمة.</li>
+              <li>يلتزم المستخدم بعدم محاولة تجاوز صلاحياته أو الوصول إلى بيانات أو وظائف غير مصرح له بها.</li>
+              <li>يُحظر استخدام أي وسائل تقنية لاختراق الأنظمة أو تعطيل الخدمة أو الوصول غير المصرّح به لبيانات الغير.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 4. Workflow -->
+        <section id="workflow" class="term-section">
+          <div class="term-header">
+            <div class="term-number">4</div>
+            <h2 class="term-title">دورة العمل عبر المنصّة</h2>
+          </div>
+          <div class="term-body">
+            <p>تتم إدارة الطلبات والعروض والاتفاقيات والمراحل والفواتير والنزاعات وفق سياسات تشغيلية وزمنية معتمدة داخل المنصّة.</p>
+            <ul>
+              <li>تُطبّق مهل زمنية محددة لكل خطوة مثل: اختيار العرض، إرسال الاتفاقية، مراجعة التسليم، وغيرها.</li>
+              <li>قد يترتب على تجاوز المهل تذكيرات آلية، إيقاف مؤقت للطلب، أو إلغاء تلقائي في بعض الحالات.</li>
+              <li>يلتزم جميع الأطراف بإتمام التعاملات المالية والتواصل المتعلق بالطلب داخل المنصّة، وعدم تجاوزها لقنوات خارجية.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 5. Payments -->
+        <section id="payments" class="term-section">
+          <div class="term-header">
+            <div class="term-number">5</div>
+            <h2 class="term-title">المدفوعات والصرف</h2>
+          </div>
+          <div class="term-body">
+            <ul>
+              <li>تُدار عمليات إصدار الفواتير والتحصيل عبر القنوات المعتمدة من المنصّة.</li>
+              <li>يتحمّل العميل مسؤولية سداد قيمة الفواتير ورسوم الخدمات والضرائب النظامية.</li>
+              <li>تتم عملية صرف مستحقات الموظف بعد توثيق الدفع، وانقضاء نافذة الأمان (3 أيام)، وعدم وجود نزاع مفتوح.</li>
+              <li>تحتفظ المنصّة بحق حجز أو تأجيل المدفوعات في حال وجود شبهة احتيال أو نزاع أو طلب نظامي.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 6. Disputes -->
+        <section id="disputes" class="term-section">
+          <div class="term-header">
+            <div class="term-number">6</div>
+            <h2 class="term-title">النزاعات</h2>
+          </div>
+          <div class="term-body">
+            <ul>
+              <li>يحق للأطراف فتح نزاع على طلب أو مرحلة وفق الآلية المتاحة داخل المنصّة.</li>
+              <li>فتح النزاع يجمّد الدفعات المرتبطة به تلقائيًا إلى حين صدور قرار من إدارة المنصّة.</li>
+              <li>تقوم إدارة المنصّة بدراسة النزاع بالاستناد إلى المستندات، سجلات التواصل، والسياسات الداخلية.</li>
+              <li>القرارات الصادرة عن إدارة المنصّة في النزاع مُلزِمة ضمن نطاق المنصّة.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 7. Content -->
+        <section id="content" class="term-section">
+          <div class="term-header">
+            <div class="term-number">7</div>
+            <h2 class="term-title">المحتوى والمرفقات</h2>
+          </div>
+          <div class="term-body">
+            <ul>
+              <li>يتحمّل المستخدم المسؤولية القانونية الكاملة عن المحتوى والبيانات والملفات التي يرفعها.</li>
+              <li>يُمنع رفع أي محتوى يخالف الأنظمة واللوائح المعمول بها في المملكة العربية السعودية، أو حقوق الملكية الفكرية.</li>
+              <li>يحق للمنصّة حذف أو حجب أي محتوى مخالف، وتعليق أو إغلاق الحسابات المرتبطة به عند الضرورة.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 8. IP -->
+        <section id="ip" class="term-section">
+          <div class="term-header">
+            <div class="term-number">8</div>
+            <h2 class="term-title">الملكية الفكرية</h2>
+          </div>
+          <div class="term-body">
+            <ul>
+              <li>جميع حقوق الملكية الفكرية المتعلقة بالمنصّة مملوكة لـ {{ SITE_NAME|default:"SamiLink" }}.</li>
+              <li>لا يجوز استخدام أي جزء من علاماتها أو تصميمها أو محتواها لأغراض تجارية دون إذن مكتوب.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 9. Privacy -->
+        <section id="privacy" class="term-section">
+          <div class="term-header">
+            <div class="term-number">9</div>
+            <h2 class="term-title">الخصوصية وحماية البيانات</h2>
+          </div>
+          <div class="term-body">
+            <ul>
+              <li>تحرص المنصّة على حماية بيانات المستخدمين وفق أفضل الممارسات المعقولة والمتاحة.</li>
+              <li>توضَّح طريقة جمع البيانات واستخدامها في سياسة الخصوصية المنشورة على المنصّة.</li>
+              <li>يقرّ المستخدم بأن المنصّة قد تتواصل معه لأغراض تشغيلية أو توعوية أو تسويقية مسموح بها نظامًا.</li>
+            </ul>
+          </div>
+        </section>
+
+        <div class="mt-5 pt-4 border-top text-muted text-sm d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span>
+            <i class="fa-regular fa-calendar me-1"></i>
+            تاريخ آخر تحديث: {{ now|date:"d/m/Y" }}
+          </span>
+          <span>
+            <i class="fa-solid fa-gavel me-1"></i>
+            تخضع هذه الشروط للأنظمة المعمول بها في المملكة العربية السعودية.
+          </span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

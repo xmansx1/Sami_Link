@@ -50,6 +50,7 @@ urlpatterns = [
 
     # ملاحظات على الطلب
     path("r/<int:pk>/notes/add/", views.request_add_note, name="request_add_note"),
+    path("r/<int:pk>/comment/add/", views.add_comment, name="add_comment"),
 
     # تغيير حالة الطلب/إلغاء
     path("r/<int:pk>/status/change/", views.request_change_state, name="request_change_status"),

@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
 from django.db.models import Q
 from django.urls import reverse
@@ -483,6 +484,14 @@ class Offer(models.Model):
     modified_duration_days = models.PositiveIntegerField("المدة بعد التعديل بالأيام", blank=True, null=True)
     note = models.TextField("ملاحظات إضافية (اختياري)", blank=True, null=True)
 
+    @property
+    def breakdown(self):
+        from finance.services.pricing import breakdown_for_offer
+        return breakdown_for_offer(self)
+
+    @property
+    def client_total_amount(self):
+        return self.breakdown.client_total
 
     def can_cancel(self, user) -> bool:
         """
@@ -553,4 +562,40 @@ class ServiceRequest(Request):
             return False
         limit = self.created_at + timedelta(days=days)
         return timezone.now() < limit and self.status == Request.Status.NEW
+
+
+class Comment(models.Model):
+    request = models.ForeignKey(Request, on_delete=models.CASCADE, related_name="comments", verbose_name="الطلب")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="الكاتب")
+    content = models.TextField("المحتوى")
+    file = models.FileField(upload_to="comments_files/", blank=True, null=True, verbose_name="ملف مرفق")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "تعليق"
+        verbose_name_plural = "تعليقات"
+
+    def __str__(self):
+        return f"Comment by {self.author} on {self.request}"
+
+
+class Review(models.Model):
+    request = models.OneToOneField(Request, on_delete=models.CASCADE, related_name="review", verbose_name="الطلب")
+    reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reviews_given", verbose_name="المقيم")
+    reviewee = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reviews_received", verbose_name="المقيم عليه")
+    rating = models.PositiveSmallIntegerField(
+        "التقييم",
+        validators=[MinValueValidator(0), MaxValueValidator(5)],
+        help_text="من 0 إلى 5"
+    )
+    comment = models.TextField("التعليق", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "تقييم"
+        verbose_name_plural = "التقييمات"
+
+    def __str__(self):
+        return f"Review {self.rating}/5 for {self.reviewee} by {self.reviewer}"
 

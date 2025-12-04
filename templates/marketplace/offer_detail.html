@@ -1,40 +1,255 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% load static %}
 
+{% block title %}تفاصيل العرض #{{ off.pk }}{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h2>تفاصيل العرض</h2>
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5 class="card-title">العرض رقم: {{ off.pk }}</h5>
-            <p><strong>الحالة:</strong> {{ off.status }}</p>
-            <p><strong>السعر المقترح:</strong> {{ off.proposed_price }} ريال</p>
-            <p><strong>المدة المقترحة:</strong> {{ off.proposed_duration_days }} يوم</p>
-            {% if off.modified_price or off.modified_duration_days or off.modification_reason %}
-                <hr>
-                <h6>تعديلات العرض</h6>
-                {% if off.modified_price %}
-                    <p><strong>السعر بعد التعديل:</strong> {{ off.modified_price }} ريال</p>
+<div class="offer-detail-page" dir="rtl">
+    <div class="container">
+        
+        {# --- Header --- #}
+        <div class="page-header">
+            <div class="header-content">
+                <h1 class="page-title">تفاصيل العرض <span class="badge">#{{ off.pk }}</span></h1>
+                <div class="status-badge {{ off.status }}">{{ off.get_status_display }}</div>
+            </div>
+            <a href="{{ off.request.get_absolute_url }}" class="back-link">
+                <i class="fas fa-arrow-right"></i> العودة للطلب
+            </a>
+        </div>
+
+        <div class="content-grid">
+            
+            {# --- Main Info --- #}
+            <div class="card main-card">
+                <div class="card-header">
+                    <h3>بيانات العرض</h3>
+                    <div class="meta-info">
+                        <span><i class="far fa-clock"></i> {{ off.created_at|date:"d F Y - H:i" }}</span>
+                    </div>
+                </div>
+                
+                <div class="offer-stats">
+                    <div class="stat-item">
+                        <label>السعر المقترح</label>
+                        <div class="value price">{{ off.proposed_price|intcomma }} <small>ر.س</small></div>
+                    </div>
+                    <div class="stat-item">
+                        <label>مدة التنفيذ</label>
+                        <div class="value">{{ off.proposed_duration_days }} <small>يوم</small></div>
+                    </div>
+                    <div class="stat-item">
+                        <label>صافي الربح المتوقع</label>
+                        <div class="value text-muted">{{ off.proposed_price|intcomma }} <small>ر.س</small></div>
+                    </div>
+                </div>
+
+                <div class="offer-note">
+                    <label>ملاحظات العرض</label>
+                    <div class="note-content">
+                        {{ off.note|linebreaks|default:"لا توجد ملاحظات إضافية." }}
+                    </div>
+                </div>
+
+                {# --- Modifications Section --- #}
+                {% if off.modified_price or off.modified_duration_days or off.modification_reason %}
+                <div class="modifications-box">
+                    <h4><i class="fas fa-pen-alt"></i> تعديلات على العرض</h4>
+                    <div class="mod-grid">
+                        {% if off.modified_price %}
+                        <div class="mod-item">
+                            <label>السعر الجديد</label>
+                            <span>{{ off.modified_price|intcomma }} ر.س</span>
+                        </div>
+                        {% endif %}
+                        {% if off.modified_duration_days %}
+                        <div class="mod-item">
+                            <label>المدة الجديدة</label>
+                            <span>{{ off.modified_duration_days }} يوم</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if off.modification_reason %}
+                    <div class="mod-reason">
+                        <label>سبب التعديل:</label>
+                        <p>{{ off.modification_reason }}</p>
+                    </div>
+                    {% endif %}
+                </div>
                 {% endif %}
-                {% if off.modified_duration_days %}
-                    <p><strong>المدة بعد التعديل:</strong> {{ off.modified_duration_days }} يوم</p>
+            </div>
+
+            {# --- Sidebar Actions --- #}
+            <div class="sidebar">
+                
+                {# --- Employee Actions --- #}
+                {% if request.user == off.employee %}
+                <div class="card actions-card">
+                    <h3>إجراءات الموظف</h3>
+                    <p class="hint">يمكنك تعديل العرض أو إلغاؤه ما لم يتم توقيع الاتفاقية النهائية.</p>
+                    
+                    <div class="actions-list">
+                        <a href="{% url 'marketplace:offer_edit' off.pk %}" class="action-btn primary">
+                            <i class="fas fa-edit"></i> تعديل العرض
+                        </a>
+                        <a href="{% url 'marketplace:offer_cancel' off.pk %}" class="action-btn danger">
+                            <i class="fas fa-times-circle"></i> إلغاء العرض
+                        </a>
+                    </div>
+                </div>
                 {% endif %}
-                {% if off.modification_reason %}
-                    <p><strong>سبب التعديل:</strong> {{ off.modification_reason }}</p>
+
+                {# --- Client Actions (For Modified Offers) --- #}
+                {% if request.user == off.request.client and off.status == 'waiting_client_approval' %}
+                <div class="card actions-card">
+                    <h3>إجراءات العميل</h3>
+                    <p class="hint">قام الموظف بتعديل العرض، يرجى اتخاذ إجراء.</p>
+                    
+                    <div class="actions-list">
+                        <form method="post" action="{% url 'marketplace:offer_select' off.pk %}">
+                            {% csrf_token %}
+                            <button class="action-btn success block">
+                                <i class="fas fa-check"></i> قبول التعديل
+                            </button>
+                        </form>
+                        <form method="post" action="{% url 'marketplace:offer_reject' off.pk %}">
+                            {% csrf_token %}
+                            <button class="action-btn danger block">
+                                <i class="fas fa-times"></i> رفض
+                            </button>
+                        </form>
+                    </div>
+                </div>
                 {% endif %}
-            {% endif %}
-            {% if off.status == 'waiting_client_approval' or off.status == 'MODIFIED' %}
-                <form method="post" action="{% url 'marketplace:offer_accept' off.pk %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success">قبول العرض المعدل</button>
-                </form>
-                <form method="post" action="{% url 'marketplace:offer_reject' off.pk %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">رفض العرض المعدل</button>
-                </form>
-            {% endif %}
+
+                {# --- User Info --- #}
+                <div class="card user-card">
+                    {% if request.user == off.employee %}
+                        <h3>صاحب المشروع</h3>
+                        <div class="user-info">
+                            <div class="avatar">{{ off.request.client.first_name|first }}</div>
+                            <div>
+                                <h4>{{ off.request.client.get_full_name }}</h4>
+                                <span>العميل</span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <h3>مقدم العرض</h3>
+                        <div class="user-info">
+                            <div class="avatar">{{ off.employee.first_name|first }}</div>
+                            <div>
+                                <h4>{{ off.employee.get_full_name }}</h4>
+                                <span>موظف مختص</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
         </div>
     </div>
-    <a href="{{ req.get_absolute_url }}" class="btn btn-secondary">العودة إلى تفاصيل الطلب</a>
 </div>
+
+<style>
+    :root {
+        --bg-color: #f8fafc;
+        --card-bg: #ffffff;
+        --primary: #16a34a;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+    }
+
+    .offer-detail-page {
+        background: var(--bg-color);
+        min-height: 100vh;
+        padding: 2rem 0;
+        font-family: 'Tajawal', sans-serif;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    .page-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 2rem;
+    }
+    .page-title { font-size: 1.5rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
+    .badge { background: #e2e8f0; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.9rem; }
+    .back-link { color: var(--text-muted); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    
+    .status-badge {
+        display: inline-block; padding: 0.25rem 0.75rem; border-radius: 6px;
+        font-size: 0.85rem; font-weight: 700; margin-top: 0.5rem;
+    }
+    .status-badge.new { background: #fef3c7; color: #92400e; }
+    .status-badge.selected { background: #dcfce7; color: #166534; }
+    .status-badge.rejected { background: #fee2e2; color: #991b1b; }
+
+    .content-grid {
+        display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem;
+    }
+
+    .card {
+        background: var(--card-bg); border-radius: 12px; padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border);
+        margin-bottom: 1.5rem;
+    }
+
+    .card-header {
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem;
+    }
+    .card-header h3 { margin: 0; font-size: 1.1rem; }
+    .meta-info { color: var(--text-muted); font-size: 0.9rem; }
+
+    .offer-stats {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+        background: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;
+    }
+    .stat-item label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .stat-item .value { font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
+    .stat-item .value.price { color: var(--primary); }
+
+    .offer-note label { display: block; font-weight: 700; margin-bottom: 0.5rem; }
+    .note-content { line-height: 1.6; color: #334155; }
+
+    .modifications-box {
+        margin-top: 2rem; background: #fff7ed; border: 1px solid #ffedd5;
+        padding: 1.5rem; border-radius: 8px;
+    }
+    .modifications-box h4 { color: #9a3412; margin: 0 0 1rem; font-size: 1rem; }
+    .mod-grid { display: flex; gap: 2rem; margin-bottom: 1rem; }
+    .mod-item label { display: block; font-size: 0.8rem; color: #9a3412; }
+    .mod-item span { font-weight: 700; color: #7c2d12; }
+
+    .actions-card h3 { font-size: 1rem; margin: 0 0 0.5rem; }
+    .hint { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; }
+    .actions-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    
+    .action-btn {
+        display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        padding: 0.75rem; border-radius: 8px; text-decoration: none; font-weight: 600;
+        transition: all 0.2s; border: none; cursor: pointer; font-family: inherit;
+    }
+    .action-btn.primary { background: var(--primary); color: white; }
+    .action-btn.primary:hover { background: #15803d; }
+    .action-btn.danger { background: #fee2e2; color: #dc2626; }
+    .action-btn.danger:hover { background: #fecaca; }
+    .action-btn.success { background: #dcfce7; color: #166534; }
+    .action-btn.block { width: 100%; }
+
+    .user-info { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
+    .avatar {
+        width: 48px; height: 48px; background: #f1f5f9; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; font-weight: 700; color: #64748b;
+    }
+    .user-info h4 { margin: 0; font-size: 1rem; }
+    .user-info span { font-size: 0.85rem; color: var(--text-muted); }
+
+    @media (max-width: 900px) {
+        .content-grid { grid-template-columns: 1fr; }
+        .offer-stats { grid-template-columns: 1fr; }
+    }
+</style>
 {% endblock %}

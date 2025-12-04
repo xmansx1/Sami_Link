@@ -1,709 +1,885 @@
 {# templates/base.html #}
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}منصة سامي لينك{% endblock %}</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <title>{% block title %}منصة سامي لينك التقنية{% endblock %}</title>
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{% static 'css/app-new.css' %}">
 
-  {# الخط الأساسي #}
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #475569;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
 
-  {# ملف التنسيق الرئيسي #}
-  <link rel="stylesheet" href="{% static 'css/app-new.css' %}">
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+        }
 
-  <style>
-    .page-main {
-      padding: 2.5rem 0 4rem;
-      background: #f8fafc;
-    }
-    .page-content-container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 1rem;
-    }
+        /* --- Header --- */
+        .main-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 0.75rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
 
-    /* ==========================
-       رسائل النظام بمنتصف الشاشة
-    ===========================*/
-    .alerts-overlay{
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 9998;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-    }
-    .alerts-stack{
-      width: min(720px, 94vw);
-      display: grid;
-      gap: .75rem;
-    }
-    .alert-card{
-      pointer-events: auto;
-      display: flex;
-      align-items: flex-start;
-      gap: .9rem;
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 18px;
-      padding: 1rem 1.1rem;
-      box-shadow: 0 18px 60px rgba(15,23,42,.18);
-      transform: translateY(6px);
-      opacity: 0;
-      animation: alert-in .35s ease forwards;
-    }
-    @keyframes alert-in{
-      to{ transform: translateY(0); opacity: 1; }
-    }
-    .alert-icon{
-      width: 42px; height: 42px;
-      border-radius: 12px;
-      display:flex; align-items:center; justify-content:center;
-      font-size: 1.2rem;
-      background:#f8fafc;
-      flex: 0 0 auto;
-    }
-    .alert-body{ flex: 1 1 auto; }
-    .alert-title{
-      font-weight: 800;
-      color:#0f172a;
-      margin-bottom: .25rem;
-      font-size: 1.05rem;
-    }
-    .alert-text{
-      color:#334155;
-      line-height: 1.8;
-      font-size: 1rem;
-      white-space: pre-line;
-    }
-    .alert-close{
-      background: transparent;
-      border: 0;
-      font-size: 1.15rem;
-      cursor: pointer;
-      color:#94a3b8;
-      transition: color .2s ease, transform .2s ease;
-    }
-    .alert-close:hover{ color:#0f172a; transform: scale(1.08); }
+        .brand-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+        
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+        
+        .brand-info h1 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--dark);
+            margin: 0;
+            line-height: 1.1;
+        }
+        
+        .brand-info span {
+            font-size: 0.75rem;
+            color: var(--secondary);
+            font-weight: 500;
+        }
 
-    /* ألوان حسب النوع */
-    .alert-card.success{ border-color:#bbf7d0; }
-    .alert-card.success .alert-icon{ background:#ecfdf5; }
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
 
-    .alert-card.error{ border-color:#fecaca; }
-    .alert-card.error .alert-icon{ background:#fef2f2; }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
 
-    .alert-card.warning{ border-color:#fde68a; }
-    .alert-card.warning .alert-icon{ background:#fffbeb; }
+        .nav-link {
+            color: var(--secondary);
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.2s;
+            font-size: 0.95rem;
+            position: relative;
+        }
 
-    .alert-card.info{ border-color:#bfdbfe; }
-    .alert-card.info .alert-icon{ background:#eff6ff; }
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary);
+        }
 
-    @media (max-width: 640px){
-      .alert-title{ font-size: 1rem; }
-      .alert-text{ font-size: .95rem; }
-    }
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            right: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
 
-    /* ===== هيدر احترافي ===== */
-    .main-header {
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      background: rgba(255,255,255,.9);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .main-header .header-content{
-      display:flex; align-items:center; justify-content:space-between; gap:1rem;
-      padding: .9rem 0;
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
 
-      /* مهم: صف واحد على الديسكتوب */
-      flex-wrap: nowrap;
-    }
-    .brand{
-      display:flex; align-items:center; gap:.75rem; text-decoration:none;
-      flex: 0 0 auto;
-    }
-    .brand-logo{
-      width:44px; height:44px; border-radius:12px; overflow:hidden;
-      background:#fff; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center;
-      box-shadow: 0 6px 18px rgba(15,23,42,.06);
-    }
-    .brand-logo img{ width:100%; height:100%; object-fit:contain; }
-    .brand-text .brand-name{ font-weight:800; font-size:1.15rem; color:#0f172a; }
-    .brand-text .brand-tagline{ font-size:.85rem; color:#64748b; margin-top:2px; }
+        /* --- Buttons --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
 
-    .main-nav{ display:flex; align-items:center; gap:1rem; flex: 1 1 auto; }
-    .nav-links{
-      list-style:none; display:flex; align-items:center; gap:.25rem; margin:0; padding:0;
-      flex: 0 0 auto;
-    }
-    .nav-link{
-      display:inline-flex; align-items:center; padding:.55rem .85rem; border-radius:12px;
-      font-weight:600; font-size:.95rem; color:#0f172a; text-decoration:none;
-      transition: background .2s ease, color .2s ease, transform .2s ease;
-      white-space: nowrap;
-    }
-    .nav-link:hover{ background:#f1f5f9; transform: translateY(-1px); }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
 
-    .auth-buttons{
-      display:flex; align-items:center; gap:.5rem;
-      flex: 0 0 auto;
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+        }
 
-      /* مهم: بدون لف على الديسكتوب */
-      flex-wrap: nowrap;
-      white-space: nowrap;
-    }
+        .btn-outline {
+            background: transparent;
+            border-color: var(--border);
+            color: var(--dark);
+        }
 
-    /* CTA */
-    .cta-request-btn{
-      box-shadow: 0 8px 24px rgba(37,99,235,.18);
-      border-radius: 12px;
-      font-weight:800;
-    }
+        .btn-outline:hover {
+            border-color: var(--secondary);
+            background: #f1f5f9;
+        }
 
-    /* ===== إشعارات: جرس + Dropdown ===== */
-    .notif-wrap{ position: relative; margin: 0 .25rem; flex: 0 0 auto; }
-    .notif-bell-link{
-      position: relative;
-      display:inline-flex; align-items:center; justify-content:center;
-      width:42px; height:42px; border-radius:12px;
-      background:#f8fafc; border:1px solid #e2e8f0;
-      color:#0f172a; text-decoration:none;
-      transition: background .2s ease, transform .2s ease, box-shadow .2s ease;
-    }
-    .notif-bell-link:hover{
-      background:#eef2ff; transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(15,23,42,.08);
-    }
-    .notif-bell-badge{
-      position:absolute; top:-6px; left:-6px;
-      background:#ef4444; color:#fff; font-weight:800;
-      border-radius:999px; font-size:.72rem; min-width:1.25rem; height:1.25rem;
-      display:flex; align-items:center; justify-content:center;
-      padding:0 .25rem; border:2px solid #fff;
-      box-shadow:0 4px 10px rgba(239,68,68,.45);
-    }
-    .notif-dropdown{
-      position:absolute; top:48px; left:0;
-      width:320px; max-width:92vw;
-      background:#fff; border:1px solid #e2e8f0; border-radius:16px;
-      box-shadow:0 14px 40px rgba(15,23,42,.12);
-      opacity:0; transform: translateY(-6px); pointer-events:none;
-      transition: opacity .2s ease, transform .2s ease;
-      overflow:hidden;
-    }
-    .notif-wrap.open .notif-dropdown{ opacity:1; transform: translateY(0); pointer-events:auto; }
-    .notif-dropdown-header{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:.9rem 1rem; background:#f8fafc; border-bottom:1px solid #e2e8f0;
-      font-weight:800; color:#0f172a;
-    }
-    .notif-list{ max-height:360px; overflow:auto; }
-    .notif-item{
-      display:flex; gap:.7rem; padding:.8rem 1rem; text-decoration:none; color:#0f172a;
-      border-bottom:1px dashed #eef2f7; transition: background .15s ease;
-    }
-    .notif-item:hover{ background:#f9fafb; }
-    .notif-dot{ width:9px; height:9px; border-radius:999px; margin-top:.35rem; flex:0 0 auto; background:#cbd5e1; }
-    .notif-dot.unread{ background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.12); }
-    .notif-item-title{ font-weight:700; font-size:.95rem; line-height:1.5; }
-    .notif-item-time{ font-size:.8rem; color:#64748b; margin-top:.15rem; }
-    .notif-empty{ padding:1.25rem 1rem; text-align:center; color:#64748b; font-size:.95rem; }
-    .notif-footer{
-      padding:.8rem 1rem; background:#fff; display:flex; justify-content:space-between; gap:.5rem;
-      border-top:1px solid #eef2f7;
-    }
-    .notif-footer a{ font-size:.9rem; font-weight:700; text-decoration:none; color:#2563eb; }
+        /* --- Notifications --- */
+        .notif-wrapper {
+            position: relative;
+        }
 
-    /* ===== بروفايل ===== */
-    .profile-trigger{
-      display:flex; align-items:center; gap:.6rem;
-      background:#fff; border:1px solid #e2e8f0; padding:.35rem .6rem;
-      border-radius:14px; cursor:pointer;
-      transition: box-shadow .2s ease, transform .2s ease, background .2s ease;
-      white-space: nowrap;
-      flex: 0 0 auto;
-    }
-    .profile-trigger:hover{
-      background:#f8fafc; transform: translateY(-1px);
-      box-shadow:0 8px 22px rgba(15,23,42,.08);
-    }
+        .notif-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary);
+            background: transparent;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
 
-    /* ===== كرت تنبيه عدم التعامل خارج المنصة ===== */
-    .platform-warning-card{
-      display:flex; gap: .9rem; align-items:flex-start;
-      background: linear-gradient(180deg,#0f172a,#111827);
-      color:#fff;
-      border-radius: 18px;
-      padding: 1.05rem 1.15rem;
-      box-shadow: 0 14px 40px rgba(15,23,42,.18);
-      border:1px solid rgba(255,255,255,.08);
-      margin: 0.5rem 0 1rem;
-    }
-    .platform-warning-card .pw-icon{
-      width:46px;height:46px;border-radius:12px;
-      background: rgba(255,255,255,.1);
-      display:flex;align-items:center;justify-content:center;
-      font-size:1.35rem; flex:0 0 auto;
-    }
-    .platform-warning-card .pw-title{
-      font-weight:900; font-size:1.05rem; margin-bottom:.25rem;
-    }
-    .platform-warning-card .pw-text{
-      color: rgba(255,255,255,.9);
-      line-height:1.8; font-size:.98rem;
-    }
+        .notif-btn:hover {
+            background: #f1f5f9;
+            color: var(--primary);
+        }
 
-    /* ===== للجوال ===== */
-    @media (max-width: 900px){
-      .main-header .header-content{ flex-wrap: wrap; }
-      .main-nav{
-        position: fixed; top:64px; right:0; left:0; background:#fff; border-bottom:1px solid #e2e8f0;
-        padding:1rem; display:none; flex-direction:column; align-items:flex-start; gap:1rem;
-      }
-      .main-nav.open{ display:flex; }
-      .nav-links{ flex-direction:column; align-items:flex-start; width:100%; }
-      .nav-link{ width:100%; justify-content:flex-start; }
-      .auth-buttons{ flex-wrap: wrap; white-space: normal; }
-    }
-  </style>
+        .notif-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: var(--danger);
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
 
-  {% block extra_head %}{% endblock %}
+        .notif-dropdown {
+            position: absolute;
+            top: 120%;
+            left: -140px;
+            width: 320px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.2s;
+            z-index: 100;
+        }
+
+        .notif-wrapper.active .notif-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .notif-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+        }
+
+        .notif-body {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .notif-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--dark);
+            transition: background 0.2s;
+        }
+
+        .notif-item:hover {
+            background: #f8fafc;
+        }
+
+        .notif-item.unread {
+            background: #f0f9ff;
+        }
+
+        .notif-icon {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        .notif-content h4 {
+            font-size: 0.9rem;
+            margin: 0 0 0.25rem;
+            font-weight: 600;
+        }
+
+        .notif-content p {
+            font-size: 0.8rem;
+            color: var(--secondary);
+            margin: 0;
+        }
+
+        .notif-footer {
+            padding: 0.75rem;
+            text-align: center;
+            border-top: 1px solid var(--border);
+        }
+
+        .notif-footer a {
+            font-size: 0.85rem;
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        /* --- User Menu --- */
+        .user-menu-wrapper {
+            position: relative;
+        }
+
+        .user-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: white;
+            border: 1px solid var(--border);
+            padding: 0.35rem 0.5rem 0.35rem 1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .user-btn:hover {
+            border-color: var(--secondary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: #e2e8f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            overflow: hidden;
+        }
+
+        .user-info {
+            text-align: right;
+            line-height: 1.2;
+        }
+
+        .user-name {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .user-role {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--secondary);
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: 120%;
+            left: 0;
+            width: 220px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.2s;
+            z-index: 100;
+            padding: 0.5rem;
+        }
+
+        .user-menu-wrapper.active .user-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 1rem;
+            color: var(--secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: #f1f5f9;
+            color: var(--dark);
+        }
+
+        .dropdown-item.danger {
+            color: var(--danger);
+        }
+
+        .dropdown-item.danger:hover {
+            background: #fef2f2;
+        }
+
+        /* --- Main Content --- */
+        .main-content {
+            flex: 1;
+            padding: 2rem 0;
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+        }
+
+        /* --- Footer --- */
+        .main-footer {
+            background: var(--dark);
+            color: #94a3b8;
+            padding: 4rem 0 2rem;
+            margin-top: auto;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 3rem;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .footer-brand h3 {
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .footer-brand p {
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-link {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .social-link:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .footer-col h4 {
+            color: white;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .footer-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            max-width: 1280px;
+            margin: 3rem auto 0;
+            padding: 2rem 1.5rem 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        /* --- Toast Notifications --- */
+        .toast-container {
+            position: fixed;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            pointer-events: none; /* Allow clicking through container */
+        }
+
+        .toast {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            width: auto;
+            min-width: 320px;
+            max-width: 90%;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: toastSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            border-right: 4px solid var(--primary);
+            pointer-events: auto; /* Re-enable clicks on toasts */
+        }
+
+        @keyframes toastSlideIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .toast.success { border-right-color: var(--success); }
+        .toast.error { border-right-color: var(--danger); }
+        .toast.warning { border-right-color: var(--warning); }
+
+        .toast-icon {
+            font-size: 1.5rem;
+        }
+        .toast.success .toast-icon { color: var(--success); }
+        .toast.error .toast-icon { color: var(--danger); }
+        .toast.warning .toast-icon { color: var(--warning); }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: var(--dark);
+        }
+
+        .toast-message {
+            font-size: 0.9rem;
+            color: var(--secondary);
+            line-height: 1.5;
+        }
+
+        .toast-close {
+            background: transparent;
+            border: none;
+            color: #cbd5e1;
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+        
+        .toast-close:hover { color: var(--dark); }
+
+        /* Mobile Menu */
+        .mobile-menu-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--dark);
+            cursor: pointer;
+        }
+
+        @media (max-width: 992px) {
+            .nav-menu { display: none; }
+            .mobile-menu-btn { display: block; }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 640px) {
+            .footer-grid { grid-template-columns: 1fr; }
+            .header-actions .btn { display: none; }
+            .toast-container { left: 1rem; right: 1rem; bottom: 1rem; }
+            .toast { min-width: auto; width: 100%; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
 </head>
+<body>
 
-<body class="page-wrapper {% block body_class %}{% endblock %}">
-
-  {# ===== رسائل منتصف الشاشة ===== #}
-  <div id="alerts-overlay" class="alerts-overlay" aria-live="polite" aria-atomic="true">
-    {% if messages %}
-      <div class="alerts-stack" role="status">
-        {% for message in messages %}
-          <div class="alert-card {% if message.tags %}{{ message.tags }}{% else %}info{% endif %}">
-            <div class="alert-icon">
-              {% if message.tags == "success" %}✅{% endif %}
-              {% if message.tags == "error" %}⚠️{% endif %}
-              {% if message.tags == "warning" %}🚧{% endif %}
-              {% if message.tags == "info" %}ℹ️{% endif %}
-              {% if not message.tags %}ℹ️{% endif %}
-            </div>
-            <div class="alert-body">
-              <div class="alert-title">
-                {% if message.tags == "success" %}تم بنجاح{% endif %}
-                {% if message.tags == "error" %}حدث خطأ{% endif %}
-                {% if message.tags == "warning" %}تنبيه{% endif %}
-                {% if message.tags == "info" %}معلومة{% endif %}
-                {% if not message.tags %}معلومة{% endif %}
-              </div>
-              <div class="alert-text">{{ message }}</div>
-            </div>
-            <button class="alert-close" type="button" aria-label="إغلاق">✕</button>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  </div>
-
-  {# الهيدر الرئيسي #}
-  <header class="main-header">
-    <div class="container">
-      <div class="header-content">
-
-        {# الشعار #}
-        <a href="{% url 'website:home' %}" class="brand">
-          <div class="brand-logo">
-            <img src="{% static 'img/logo.png' %}" alt="شعار سامي لينك">
-          </div>
-          <div class="brand-text">
-            <div class="brand-name">سامي لينك</div>
-            <div class="brand-tagline">وسيط سعودي منظم</div>
-          </div>
-        </a>
-
-        {# القائمة الرئيسية #}
-        <nav class="main-nav" id="mainNav">
-          <ul class="nav-links">
-            <li>
-              <a href="{% url 'website:home' %}#hero"
-                 class="nav-link {% block nav_home_active %}{% endblock %}">
-                الرئيسية
-              </a>
-            </li>
-            <li>
-              <a href="{% url 'website:home' %}#how-it-works"
-                 class="nav-link {% block nav_how_active %}{% endblock %}">
-                كيف تعمل
-              </a>
-            </li>
-            <li>
-              <a href="{% url 'profiles:employees_list' %}"
-                 class="nav-link {% block nav_employees_active %}{% endblock %}">
-                التقنيون
-              </a>
-            </li>
-            <li>
-              <a href="{% url 'website:home' %}#contact"
-                 class="nav-link {% block nav_contact_active %}{% endblock %}">
-                اتصل بنا
-              </a>
-            </li>
-          </ul>
-
-          {# ===== منطقة المستخدم / المصادقة ===== #}
-          <div class="auth-buttons">
-            {% if user.is_authenticated %}
-
-              {# تجميع روابط آمنة #}
-              {% url 'marketplace:request_create' as request_create_url %}
-              {% url 'marketplace:new_requests' as new_requests_url %}
-              {% url 'marketplace:my_tasks' as my_tasks_url %}
-              {% url 'finance:client_payments' as client_payments_url %}
-              {% url 'finance:employee_dues' as employee_dues_url %}
-              {% url 'finance:finance_home' as finance_home_url %}
-              {% url 'dashboard:admin_dashboard' as admin_dashboard_url %}
-
-              {# زر اطلب خدمة للجميع #}
-              {% if request_create_url %}
-                <a href="{{ request_create_url }}"
-                   class="btn btn-primary btn-sm cta-request-btn">
-                  اطلب خدمة
-                </a>
-              {% endif %}
-
-              {# العميل: مدفوعاتي #}
-              {% if user.role == "client" %}
-                {% if client_payments_url %}
-                  <a href="{{ client_payments_url }}"
-                     class="btn btn-outline btn-sm">
-                    💳 مدفوعاتي
-                  </a>
-                {% endif %}
-                {% url 'marketplace:my_requests' as my_requests_url %}
-                {% if my_requests_url %}
-                  <a href="{{ my_requests_url }}"
-                     class="btn btn-outline btn-sm">
-                    📋 طلباتي
-                  </a>
-                {% endif %}
-              {% endif %}
-
-              {# الموظف/التقني: الطلبات الجديدة + مهامي + مستحقاتي #}
-              {% if user.role == "employee" or user.role == "tech" %}
-
-                {% if new_requests_url %}
-                  <a href="{{ new_requests_url }}"
-                     class="btn btn-outline btn-sm">
-                    📥 الطلبات الجديدة
-                  </a>
-                {% endif %}
-
-                {% if my_tasks_url %}
-                  <a href="{{ my_tasks_url }}"
-                     class="btn btn-outline btn-sm">
-                    ✅ مهامي
-                  </a>
-                {% endif %}
-
-                {% if employee_dues_url %}
-                  <a href="{{ employee_dues_url }}"
-                     class="btn btn-outline btn-sm">
-                    🧾 مستحقاتي
-                  </a>
-                {% endif %}
-
-              {% endif %}
-
-              {# المالية: لوحة المالية #}
-              {% if user.role == "finance" %}
-                {% if finance_home_url %}
-                  <a href="{{ finance_home_url }}"
-                     class="btn btn-outline btn-sm">
-                    💰 لوحة المالية
-                  </a>
-                {% endif %}
-              {% endif %}
-
-              {# المدير فقط: لوحة التحكم #}
-              {% if user.role == "admin" %}
-                {% if admin_dashboard_url %}
-                  <a href="{{ admin_dashboard_url }}"
-                     class="btn btn-outline btn-sm">
-                    🛠️ لوحة التحكم
-                  </a>
-                {% endif %}
-              {% endif %}
-
-              {# ===== إشعارات احترافية ===== #}
-              <div class="notif-wrap" id="notifWrap">
-                <a href="{% url 'notifications:list' %}" class="notif-bell-link" id="notifBell" title="الإشعارات">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                  {% if notifications_unread_count %}
-                    <span class="notif-bell-badge">{{ notifications_unread_count }}</span>
-                  {% endif %}
-                </a>
-
-                <div class="notif-dropdown" id="notifDropdown">
-                  <div class="notif-dropdown-header">
-                    <span>آخر الإشعارات</span>
-                    <span style="font-size:.85rem;color:#64748b;">
-                      {% if notifications_unread_count %}غير مقروء: {{ notifications_unread_count }}{% else %}لا يوجد جديد{% endif %}
-                    </span>
-                  </div>
-
-                  <div class="notif-list">
-                    {% if notifications_latest %}
-                      {% for n in notifications_latest %}
-                        <a href="{{ n.get_absolute_url|default:notifications_url }}" class="notif-item">
-                          <span class="notif-dot {% if not n.is_read %}unread{% endif %}"></span>
-                          <div>
-                            <div class="notif-item-title">{{ n.title|default:"إشعار" }}</div>
-                            <div class="notif-item-time">
-                              {{ n.created_at|date:"Y-m-d H:i" }}
-                            </div>
-                          </div>
-                        </a>
-                      {% endfor %}
-                    {% else %}
-                      <div class="notif-empty">لا توجد إشعارات حالياً.</div>
-                    {% endif %}
-                  </div>
-
-                  <div class="notif-footer">
-                    <a href="{% url 'notifications:list' %}">عرض الكل</a>
-                    {% if notifications_unread_count %}
-                      <a href="{% url 'notifications:mark_all_read' %}">تعيين الكل كمقروء</a>
-                    {% endif %}
-                  </div>
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="toast {{ message.tags|default:'info' }}">
+                <div class="toast-icon">
+                    {% if message.tags == 'success' %}<i class="fas fa-check-circle"></i>{% endif %}
+                    {% if message.tags == 'error' %}<i class="fas fa-times-circle"></i>{% endif %}
+                    {% if message.tags == 'warning' %}<i class="fas fa-exclamation-triangle"></i>{% endif %}
+                    {% if message.tags == 'info' %}<i class="fas fa-info-circle"></i>{% endif %}
                 </div>
-              </div>
-
-              {# قائمة البروفايل المنسدلة #}
-              <div class="profile-menu">
-                <button type="button"
-                        class="profile-trigger"
-                        id="profileMenuButton"
-                        aria-haspopup="true"
-                        aria-expanded="false">
-                  <div class="profile-avatar">
-                    <span>👤</span>
-                  </div>
-                  <div class="profile-text">
-                    <span class="profile-name">
-                      {{ user.get_full_name|default:user.email }}
-                    </span>
-                    <span class="profile-role">
-                      {% if user.role == "admin" %}مدير عام{% endif %}
-                      {% if user.role == "finance" %}مالي{% endif %}
-                      {% if user.role == "employee" or user.role == "tech" %}تقني{% endif %}
-                      {% if user.role == "client" %}عميل{% endif %}
-                    </span>
-                  </div>
-                  <span class="profile-caret">▾</span>
+                <div class="toast-content">
+                    <div class="toast-title">
+                        {% if message.tags == 'success' %}تم بنجاح{% endif %}
+                        {% if message.tags == 'error' %}خطأ{% endif %}
+                        {% if message.tags == 'warning' %}تنبيه{% endif %}
+                        {% if message.tags == 'info' %}معلومة{% endif %}
+                    </div>
+                    <div class="toast-message">{{ message }}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
                 </button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
 
-                <div class="profile-dropdown" id="profileMenuDropdown">
-                  <a href="{% url 'accounts:profile' %}" class="dropdown-item">
-                    ملفي الشخصي
-                  </a>
-
-                  <a href="{% url 'notifications:list' %}" class="dropdown-item">
-                    الإشعارات
-                    {% if notifications_unread_count %}
-                      <span class="dropdown-badge">
-                        {{ notifications_unread_count }}
-                      </span>
-                    {% endif %}
-                  </a>
-
-                  <div class="dropdown-divider"></div>
-
-                  <a href="{% url 'accounts:logout' %}"
-                     class="dropdown-item dropdown-danger">
-                    تسجيل الخروج
-                  </a>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-container">
+            <a href="{% url 'website:home' %}" class="brand-link">
+                <img src="{% static 'img/logo.png' %}" alt="Logo" class="brand-logo">
+                <div class="brand-info">
+                    <h1>سامي لينك</h1>
+                    <span>وسيط سعودي منظم</span>
                 </div>
-              </div>
+            </a>
 
-            {% else %}
+            <nav class="nav-menu">
+                <ul class="nav-links">
+                    <li><a href="{% url 'website:home' %}" class="nav-link {% block nav_home_active %}{% endblock %}">الرئيسية</a></li>
+                    <li><a href="{% url 'profiles:employees_list' %}" class="nav-link {% block nav_employees_active %}{% endblock %}">التقنيون</a></li>
+                    <li><a href="{% url 'website:home' %}#how-it-works" class="nav-link {% block nav_how_active %}{% endblock %}">كيف تعمل</a></li>
+                    <li><a href="{% url 'website:home' %}#contact" class="nav-link {% block nav_contact_active %}{% endblock %}">اتصل بنا</a></li>
+                </ul>
+            </nav>
 
-              {# للزائر #}
-              <a href="{% url 'marketplace:request_create' %}"
-                 class="btn btn-primary btn-sm cta-request-btn">
-                اطلب خدمة
-              </a>
-              <a href="{% url 'accounts:login' %}"
-                 class="btn btn-outline btn-sm">
-                تسجيل الدخول
-              </a>
-              <a href="{% url 'accounts:register' %}"
-                 class="btn btn-outline btn-sm">
-                إنشاء حساب
-              </a>
+            <div class="header-actions">
+                {% if user.is_authenticated %}
+                    <!-- Notifications -->
+                    <div class="notif-wrapper" id="notifWrapper">
+                        <button class="notif-btn" id="notifBtn">
+                            <i class="far fa-bell"></i>
+                            {% if notifications_unread_count %}
+                            <span class="notif-badge">{{ notifications_unread_count }}</span>
+                            {% endif %}
+                        </button>
+                        <div class="notif-dropdown">
+                            <div class="notif-header">
+                                <span>الإشعارات</span>
+                                <a href="{% url 'notifications:mark_all_read' %}" style="font-size:0.8rem; color:var(--primary);">قراءة الكل</a>
+                            </div>
+                            <div class="notif-body">
+                                {% if notifications_latest %}
+                                    {% for n in notifications_latest %}
+                                    <a href="{{ n.get_absolute_url }}" class="notif-item {% if not n.is_read %}unread{% endif %}">
+                                        <div class="notif-icon"></div>
+                                        <div class="notif-content">
+                                            <h4>{{ n.title }}</h4>
+                                            <p>{{ n.created_at|timesince }}</p>
+                                        </div>
+                                    </a>
+                                    {% endfor %}
+                                {% else %}
+                                    <div style="padding:2rem; text-align:center; color:var(--secondary);">لا توجد إشعارات جديدة</div>
+                                {% endif %}
+                            </div>
+                            <div class="notif-footer">
+                                <a href="{% url 'notifications:list' %}">عرض كل الإشعارات</a>
+                            </div>
+                        </div>
+                    </div>
 
-            {% endif %}
-          </div>
-        </nav>
+                    <!-- User Menu -->
+                    <div class="user-menu-wrapper" id="userMenuWrapper">
+                        <button class="user-btn" id="userBtn">
+                            <div class="user-avatar">
+                                {% if user.employee_profile.photo %}
+                                    <img src="{{ user.employee_profile.photo.url }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+                                {% else %}
+                                    {{ user.name|first|default:user.email|first|upper }}
+                                {% endif %}
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name">{{ user.name|default:"المستخدم" }}</span>
+                                <span class="user-role">
+                                    {% if user.role == 'client' %}عميل{% elif user.role == 'employee' %}تقني{% elif user.role == 'admin' %}مدير{% else %}زائر{% endif %}
+                                </span>
+                            </div>
+                            <i class="fas fa-chevron-down" style="font-size:0.8rem; color:var(--secondary);"></i>
+                        </button>
+                        <div class="user-dropdown">
+                            <a href="{% url 'accounts:profile' %}" class="dropdown-item">
+                                <i class="far fa-user"></i> ملفي الشخصي
+                            </a>
+                            {% if user.role == 'employee' %}
+                            <a href="{% url 'marketplace:new_requests' %}" class="dropdown-item">
+                                <i class="fas fa-search-dollar"></i> طلبات جديدة
+                            </a>
+                            <a href="{% url 'marketplace:my_tasks' %}" class="dropdown-item">
+                                <i class="fas fa-tasks"></i> مهامي
+                            </a>
+                            <a href="{% url 'profiles:portfolio_list' %}" class="dropdown-item">
+                                <i class="fas fa-briefcase"></i> معرض أعمالي
+                            </a>
+                            <a href="{% url 'finance:employee_dues' %}" class="dropdown-item">
+                                <i class="fas fa-coins"></i> مستحقاتي
+                            </a>
+                            {% endif %}
+                            {% if user.role == 'client' %}
+                            <a href="{% url 'marketplace:my_requests' %}" class="dropdown-item">
+                                <i class="fas fa-list"></i> طلباتي
+                            </a>
+                            <a href="{% url 'finance:client_payments' %}" class="dropdown-item">
+                                <i class="fas fa-wallet"></i> مدفوعاتي
+                            </a>
+                            {% endif %}
+                            {% if user.role == 'admin' or user.is_superuser %}
+                            <a href="{% url 'dashboard:admin_dashboard' %}" class="dropdown-item">
+                                <i class="fas fa-tachometer-alt"></i> لوحة التحكم
+                            </a>
+                            {% endif %}
+                            {% if user.role == 'finance' %}
+                            <a href="{% url 'finance:finance_home' %}" class="dropdown-item">
+                                <i class="fas fa-chart-line"></i> لوحة المالية
+                            </a>
+                            {% endif %}
+                            <div style="border-top:1px solid var(--border); margin:0.5rem 0;"></div>
+                            <a href="{% url 'accounts:logout' %}" class="dropdown-item danger">
+                                <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- CTA Buttons -->
+                    {% if user.role == 'client' %}
+                    <a href="{% url 'marketplace:request_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i> اطلب خدمة
+                    </a>
+                    {% endif %}
 
-        {# زر القائمة للجوال #}
-        <button class="menu-toggle"
-                id="menuToggle"
-                type="button"
-                aria-label="فتح أو إغلاق القائمة">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
+                    {% if user.role == 'employee' %}
+                    <a href="{% url 'marketplace:new_requests' %}" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i> تصفح الطلبات
+                    </a>
+                    {% endif %}
+                    
+                    {% if user.role == 'admin' or user.is_superuser %}
+                    <a href="{% url 'dashboard:admin_dashboard' %}" class="btn btn-primary" style="background-color: var(--dark); border-color: var(--dark);">
+                        <i class="fas fa-tachometer-alt me-2"></i> لوحة التحكم
+                    </a>
+                    {% endif %}
 
-      </div>
-    </div>
-  </header>
+                    {% if user.role == 'finance' %}
+                    <a href="{% url 'finance:finance_home' %}" class="btn btn-primary" style="background-color: var(--success); border-color: var(--success);">
+                        <i class="fas fa-chart-line me-2"></i> المالية
+                    </a>
+                    {% endif %}
 
-  {# ===== مساحة تنبيه عدم التعامل خارج المنصة (تحطه فقط في home و request_detail) ===== #}
-  {% block platform_notice %}{% endblock %}
+                {% else %}
+                    <a href="{% url 'accounts:login' %}" class="btn btn-outline">دخول</a>
+                    <a href="{% url 'accounts:register' %}" class="btn btn-primary">حساب جديد</a>
+                {% endif %}
+                
+                <button class="mobile-menu-btn"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+    </header>
 
-  {# المحتوى الرئيسي #}
-  <main class="page-main">
+    <!-- Platform Notice -->
+    {% block platform_notice %}{% endblock %}
+
+    <!-- Hero Section -->
     {% block page_hero %}{% endblock %}
-    <div class="page-content-container">
-      {% block content %}{% endblock %}
-    </div>
-  </main>
 
-  {# الفوتر #}
-  <footer class="main-footer">
-    <div class="container">
-      <div class="footer-content">
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
 
-        <div class="footer-brand">
-          <div class="footer-logo">
-            <img src="{% static 'img/logo.png' %}" alt="شعار سامي لينك">
-          </div>
-          <div class="footer-brand-name">سامي لينك</div>
-          <p class="footer-description">
-            وسيط سعودي منظم لإدارة الطلبات والاتفاقيات والفواتير بين العملاء والتقنيين.
-          </p>
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="footer-grid">
+            <div class="footer-col footer-brand">
+                <h3>سامي لينك</h3>
+                <p>المنصة السعودية الأولى للوساطة التقنية الموثوقة. نضمن حقوقك وننظم تعاملاتك مع نخبة من التقنيين المحترفين.</p>
+                <div class="social-links">
+                    <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+            
+            <div class="footer-col">
+                <h4>روابط هامة</h4>
+                <div class="footer-links">
+                    <a href="{% url 'website:home' %}">الرئيسية</a>
+                    <a href="{% url 'profiles:employees_list' %}">ابحث عن تقني</a>
+                    <a href="{% url 'website:services' %}">خدماتنا</a>
+                    <a href="{% url 'website:contact' %}">اتصل بنا</a>
+                </div>
+            </div>
+
+            <div class="footer-col">
+                <h4>عن المنصة</h4>
+                <div class="footer-links">
+                    <a href="{% url 'website:about' %}">من نحن</a>
+                    <a href="{% url 'website:terms' %}">شروط الاستخدام</a>
+                    <a href="{% url 'website:privacy' %}">سياسة الخصوصية</a>
+                    <a href="{% url 'website:home' %}#how-it-works">كيف تعمل المنصة</a>
+                </div>
+            </div>
+
+            <div class="footer-col">
+                <h4>تواصل معنا</h4>
+                <div class="footer-links">
+                    <a href="mailto:{{ site_settings.email|default:'support@samilink.sa' }}"><i class="far fa-envelope me-2"></i> {{ site_settings.email|default:'support@samilink.sa' }}</a>
+                    <a href="https://wa.me/{{ site_settings.whatsapp|default:'966500000000'|cut:' ' }}"><i class="fab fa-whatsapp me-2"></i> واتساب خدمة العملاء</a>
+                    <span style="color:#94a3b8"><i class="fas fa-map-marker-alt me-2"></i> الرياض، المملكة العربية السعودية</span>
+                </div>
+            </div>
         </div>
-
-        <div class="footer-links">
-          <div class="footer-title">روابط سريعة</div>
-          <a href="{% url 'website:home' %}#hero" class="footer-link">الرئيسية</a>
-          <a href="{% url 'website:home' %}#how-it-works" class="footer-link">كيف تعمل</a>
-          <a href="{% url 'profiles:employees_list' %}" class="footer-link">التقنيون</a>
-          <a href="{% url 'website:home' %}#contact" class="footer-link">اتصل بنا</a>
+        <div class="footer-bottom">
+            <p>جميع الحقوق محفوظة © {% now "Y" %} منصة سامي لينك - وسيط سعودي منظم</p>
         </div>
+    </footer>
 
-        <div class="footer-links">
-          <div class="footer-title">الحساب</div>
-          {% if user.is_authenticated %}
-            <a href="{% url 'accounts:profile' %}" class="footer-link">ملفي</a>
-
-            {% if user.role == "client" %}
-              <a href="{% url 'finance:client_payments' %}" class="footer-link">مدفوعاتي</a>
-            {% endif %}
-
-            {% if user.role == "employee" or user.role == "tech" %}
-              <a href="{% url 'marketplace:new_requests' %}" class="footer-link">الطلبات الجديدة</a>
-              <a href="{% url 'marketplace:my_tasks' %}" class="footer-link">مهامي</a>
-              <a href="{% url 'finance:employee_dues' %}" class="footer-link">مستحقاتي</a>
-            {% endif %}
-
-            {% if user.role == "finance" %}
-              <a href="{% url 'finance:finance_home' %}" class="footer-link">لوحة المالية</a>
-            {% endif %}
-
-            {% if user.role == "admin" %}
-              <a href="{% url 'dashboard:admin_dashboard' %}" class="footer-link">لوحة التحكم</a>
-            {% endif %}
-
-            <a href="{% url 'accounts:logout' %}" class="footer-link">تسجيل الخروج</a>
-          {% else %}
-            <a href="{% url 'accounts:login' %}" class="footer-link">تسجيل الدخول</a>
-            <a href="{% url 'accounts:register' %}" class="footer-link">إنشاء حساب</a>
-          {% endif %}
-        </div>
-
-        <div class="footer-links">
-          <div class="footer-title">الدعم</div>
-          <a href="mailto:support@samilink.sa" class="footer-link">support@samilink.sa</a>
-          <a href="https://wa.me/966500000000" class="footer-link">واتساب الدعم</a>
-          <a href="#" class="footer-link">الأسئلة الشائعة</a>
-          <a href="#" class="footer-link">الشروط والأحكام</a>
-        </div>
-      </div>
-
-      <div class="footer-bottom">
-        <p>جميع الحقوق محفوظة © {% now "Y" %} - منصة سامي لينك التقنية</p>
-      </div>
-    </div>
-  </footer>
-
-  <script src="{% static 'js/app-new.js' %}"></script>
-
-  <script>
-    (function () {
-
-      // --- قائمة الجوال ---
-      var toggle = document.getElementById("menuToggle");
-      var nav = document.getElementById("mainNav");
-      if (toggle && nav) {
-        toggle.addEventListener("click", function () {
-          nav.classList.toggle("open");
-        });
-      }
-
-      // --- إشعارات dropdown ---
-      var notifWrap = document.getElementById("notifWrap");
-      var notifBell = document.getElementById("notifBell");
-      if (notifWrap && notifBell) {
-        notifBell.addEventListener("click", function (e) {
-          var dd = document.getElementById("notifDropdown");
-          if (dd) {
-            e.preventDefault();
-            notifWrap.classList.toggle("open");
-          }
-        });
-
-        document.addEventListener("click", function (e) {
-          if (!notifWrap.contains(e.target)) {
-            notifWrap.classList.remove("open");
-          }
-        });
-      }
-
-      // --- Auto hide center alerts ---
-      var alertCards = document.querySelectorAll(".alert-card");
-      if (alertCards.length) {
-        alertCards.forEach(function(card){
-          var timer = setTimeout(function(){
-            card.style.opacity = "0";
-            card.style.transform = "translateY(10px)";
-            setTimeout(function(){ card.remove(); }, 260);
-          }, 4500);
-
-          // وقف الإخفاء لو المستخدم مرر الماوس
-          card.addEventListener("mouseenter", function(){ clearTimeout(timer); });
-
-          var close = card.querySelector(".alert-close");
-          if (close) {
-            close.addEventListener("click", function(){
-              clearTimeout(timer);
-              card.style.opacity = "0";
-              card.style.transform = "translateY(10px)";
-              setTimeout(function(){ card.remove(); }, 200);
+    <script src="{% static 'js/app-new.js' %}"></script>
+    <script>
+        // Toggle Notifications
+        const notifBtn = document.getElementById('notifBtn');
+        const notifWrapper = document.getElementById('notifWrapper');
+        if(notifBtn){
+            notifBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                notifWrapper.classList.toggle('active');
+                if(document.getElementById('userMenuWrapper')) 
+                    document.getElementById('userMenuWrapper').classList.remove('active');
             });
-          }
+        }
+
+        // Toggle User Menu
+        const userBtn = document.getElementById('userBtn');
+        const userMenuWrapper = document.getElementById('userMenuWrapper');
+        if(userBtn){
+            userBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                userMenuWrapper.classList.toggle('active');
+                if(document.getElementById('notifWrapper')) 
+                    document.getElementById('notifWrapper').classList.remove('active');
+            });
+        }
+
+        // Close dropdowns on click outside
+        document.addEventListener('click', () => {
+            if(notifWrapper) notifWrapper.classList.remove('active');
+            if(userMenuWrapper) userMenuWrapper.classList.remove('active');
         });
-      }
 
-    })();
-  </script>
-
-  {% block extra_scripts %}{% endblock %}
+        // Auto dismiss toasts
+        const toasts = document.querySelectorAll('.toast');
+        toasts.forEach(toast => {
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>

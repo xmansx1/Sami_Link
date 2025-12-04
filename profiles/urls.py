@@ -23,4 +23,10 @@ urlpatterns = [
     
     # تحويل واتساب الآمن
     path("w/emp/<int:user_id>/", whatsapp_redirect, name="whatsapp_redirect"),
+
+    # إدارة معرض الأعمال
+    path('portfolio/', views.PortfolioListView.as_view(), name='portfolio_list'),
+    path('portfolio/add/', views.PortfolioCreateView.as_view(), name='portfolio_add'),
+    path('portfolio/<int:pk>/edit/', views.PortfolioUpdateView.as_view(), name='portfolio_edit'),
+    path('portfolio/<int:pk>/delete/', views.PortfolioDeleteView.as_view(), name='portfolio_delete'),
 ]

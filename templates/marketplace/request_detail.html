@@ -1,1323 +1,1089 @@
 {% extends "base.html" %}
-<pre style="background:#f3f4f6;padding:1rem;border-radius:8px;margin-bottom:1rem;">
-  حالة الطلب: {{ req.status }}
-  تاريخ البداية: {{ req.agreement.started_at }}
-  مدة الاتفاقية: {{ req.agreement.duration_days }}
-  الأيام المتبقية: {{ req.agreement.days_remaining }}
-</pre>
-{# marketplace/templates/marketplace/request_detail.html #}
+{% load humanize %}
+{% load static %}
 
-  {# عداد الأيام المتبقية لتسليم المشروع + رسالة تشخيصية #}
-  {% if req.status == 'in_progress' and req.agreement %}
-    <div style="background:#f3f4f6;padding:.7rem 1rem;border-radius:8px;margin-bottom:.7rem;font-size:.98rem;color:#334155;">
-      <b>تشخيص القيم:</b>
-      <div>حالة الطلب: <span style="color:#0ea5e9">{{ req.status }}</span></div>
-      <div>حالة الاتفاقية: <span style="color:#0ea5e9">{{ req.agreement.status }}</span></div>
-      <div>تاريخ البداية: <span style="color:#0ea5e9">{{ req.agreement.started_at }}</span></div>
-      <div>مدة الاتفاقية: <span style="color:#0ea5e9">{{ req.agreement.duration_days }}</span> يوم</div>
-      <div>الأيام المتبقية: <span style="color:#0ea5e9">{{ req.agreement.days_remaining }}</span> يوم</div>
-    </div>
-    <div class="alert alert-info" style="background:#e0f2fe;border:1.5px solid #38bdf8;color:#0369a1;padding:.7rem 1rem;border-radius:10px;margin-bottom:1rem;display:flex;align-items:center;gap:.8rem;">
-      <span style="font-size:1.7rem;">⏰</span>
-      <div>
-        <b>الوقت المتبقي لتسليم المشروع:</b>
-        <span style="font-weight:700;color:#0ea5e9;">{{ req.agreement.days_remaining }}</span>
-        <span>يوم</span>
-      </div>
-    </div>
-  {% endif %}
-
-{% block title %}طلب #{{ req.pk }}{% endblock %}
-
-{# تحسين عرض النصوص متعددة الأسطر + كروت التفاصيل #}
-{% block extra_head %}
-  {{ block.super }}
-  <style>
-    /* نصوص متعددة الأسطر بشكل احترافي */
-    .details-prose{
-      white-space: pre-wrap; /* يحافظ على أسطر المستخدم */
-      word-break: break-word;
-      line-height: 1.9;
-      font-size: 1rem;
-    }
-    .details-prose p{ margin: 0 0 .6rem 0; }
-    .details-prose ul,
-    .details-prose ol{
-      padding-inline-start: 1.25rem;
-      margin: .5rem 0;
-    }
-    .details-prose li{ margin: .25rem 0; }
-
-    /* صندوق موحّد لعرض التفاصيل (طلب/روابط/ملاحظات/عروض) */
-    .details-block{
-      background: var(--dark-50);
-      border-radius: var(--radius-lg);
-      padding: 1rem 1.25rem;
-      border: 1px solid var(--dark-100);
-    }
-    .details-block-header{
-      display:flex;
-      align-items:center;
-      gap:.5rem;
-      margin-bottom:.75rem;
-      font-weight:700;
-      color: var(--dark-800);
-      font-size: .98rem;
-    }
-    .details-block-header .icon{
-      font-size:1.1rem;
-    }
-
-    /* كرت تفاصيل العرض المختار */
-    .selected-offer-details{
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
-      border-radius: var(--radius-lg);
-      padding: 1rem 1.1rem;
-      margin-top: .9rem;
-    }
-    .selected-offer-details .so-title{
-      font-weight: 800;
-      color: #9a3412;
-      margin-bottom: .5rem;
-      display:flex; align-items:center; gap:.5rem;
-    }
-  </style>
-{% endblock %}
-
-{# تنبيه المنصّة (يختفي بعد ثواني) #}
-{% block platform_notice %}
-  <div id="platformNoticeCard" class="platform-warning-card" role="status" aria-live="polite">
-    <div class="pw-icon">🛡️</div>
-    <div class="pw-body">
-      <div class="pw-title">تنبيه مهم قبل إتمام التعامل</div>
-      <div class="pw-text">
-        المنصّة غير مسؤولة عن أي تعاملات أو دفعات خارج سامي لينك.
-        حفاظًا على حقوقك، أكمل الاتفاق والدفع داخل المنصّة فقط.
-      </div>
-    </div>
-    <button type="button"
-            class="alert-close"
-            id="platformNoticeClose"
-            aria-label="إغلاق التنبيه"
-            style="color:#fff;opacity:.9;margin-inline-start:auto;">
-      ✕
-    </button>
-  </div>
-{% endblock %}
+{% block title %}{{ req.title }} | #{{ req.pk }}{% endblock %}
 
 {% block content %}
-  {# تنبيه طلب تمديد المهلة للعميل #}
-  {% if req.agreement and req.agreement.extension_requested_days and req.agreement.extension_requested_days > 0 and request.user.is_authenticated and request.user.id == req.client_id %}
-  <div class="alert alert-warning" style="background:#fffbe6;border:1.5px solid #facc15;color:#b45309;padding:1.5rem 1.2rem;border-radius:14px;margin-bottom:1.5rem;box-shadow:0 2px 8px #facc1533;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;">
-    <div style="display:flex;align-items:center;gap:.9rem;">
-      <span style="font-size:2.1rem;">⏳</span>
-      <div>
-        <div style="font-weight:800;font-size:1.1rem;">طلب تمديد مهلة التنفيذ</div>
-        <div style="font-size:.98rem;margin-top:.2rem;">الموظف طلب تمديد مدة الاتفاقية بمقدار <b>{{ req.agreement.extension_requested_days }}</b> يوم. يمكنك الموافقة أو الرفض.</div>
-      </div>
+<div class="project-workspace" dir="rtl">
+    
+    {# --- Header Section --- #}
+    <div class="workspace-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="project-identity">
+                    <div class="id-badge">#{{ req.pk }}</div>
+                    <h1 class="project-title">{{ req.title }}</h1>
+                    <div class="project-meta">
+                        <span class="meta-item"><i class="fas fa-folder"></i> {{ req.category|default:"عام" }}</span>
+                        <span class="meta-item"><i class="far fa-clock"></i> {{ req.created_at|date:"d F Y" }}</span>
+                    </div>
+                </div>
+                <div class="project-status-box">
+                    <div class="status-label">حالة المشروع</div>
+                    <div class="status-badge {{ req.status }}">
+                        {{ req.get_status_display }}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div style="display:flex;gap:.7rem;">
-      <form method="post" action="{% url 'agreements:approve_extension' req.agreement.pk %}" style="display:inline;">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-success" style="font-weight:700;min-width:110px;">✔️ موافقة</button>
-      </form>
-      <form method="post" action="{% url 'agreements:reject_extension' req.agreement.pk %}" style="display:inline;">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger" style="font-weight:700;min-width:110px;">❌ رفض</button>
-      </form>
-    </div>
-  </div>
-  {% endif %}
 
-<section class="page-section request-detail-page">
-  <div class="container">
-    <div class="request-detail-card profile-section">
-
-      {# ===== الهيدر ===== #}
-      <div class="card-header request-header-section">
-        <div class="request-header">
-          <div class="request-header-main">
-            <div class="request-title-row">
-              <h1 class="request-title profile-name">
-                {{ req.title }}
-              </h1>
-              <div class="request-badges">
-                <span class="badge badge-default">#{{ req.pk }}</span>
-                <span class="badge
-                  {% if req.status == 'completed' %}badge-verified
-                  {% elif req.status == 'in_progress' %}badge-pending
-                  {% elif req.status == 'cancelled' %}badge-rejected
-                  {% else %}badge-default{% endif %}">
-                  {{ req.get_status_display|default:req.status }}
-                </span>
-                {% if req.agreement_overdue %}
-                  <span class="badge badge-rejected">
-                    ⚠️ تجاوزت مهلة إرسال الاتفاقية
-                  </span>
-                {% endif %}
-              </div>
+    <div class="container main-layout">
+        
+        {# --- Main Content Column --- #}
+        <div class="content-column">
+            
+            {# --- Progress Stepper --- #}
+            <div class="card stepper-card">
+                <div class="stepper">
+                    <div class="step {% if req.status != 'cancelled' %}active{% endif %}">
+                        <div class="step-icon"><i class="fas fa-file-alt"></i></div>
+                        <div class="step-label">الطلب</div>
+                    </div>
+                    <div class="step {% if req.status == 'offer_pending' or req.status == 'agreement_pending' or req.status == 'in_progress' or req.status == 'completed' %}active{% endif %}">
+                        <div class="step-icon"><i class="fas fa-handshake"></i></div>
+                        <div class="step-label">العروض</div>
+                    </div>
+                    <div class="step {% if req.status == 'in_progress' or req.status == 'completed' %}active{% endif %}">
+                        <div class="step-icon"><i class="fas fa-cogs"></i></div>
+                        <div class="step-label">التنفيذ</div>
+                    </div>
+                    <div class="step {% if req.status == 'completed' %}active{% endif %}">
+                        <div class="step-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="step-label">التسليم</div>
+                    </div>
+                </div>
             </div>
-            <div class="request-meta">
-              <div class="employee-location">
-                <span>👤 العميل: <strong>{{ req.client }}</strong></span>
-                {% if req.assigned_employee %}
-                  <span> — 🛠️ الموظف: <strong>{{ req.assigned_employee }}</strong></span>
-                {% endif %}
-              </div>
+
+            {# --- Alerts & Notifications Area --- #}
+            {% if req.agreement and req.agreement.extension_requested_days and req.agreement.extension_requested_days > 0 and request.user.id == req.client_id %}
+            <div class="alert-box warning fade-in-up">
+                <div class="alert-icon">⏳</div>
+                <div class="alert-content">
+                    <h3>طلب تمديد مهلة</h3>
+                    <p>طلب الموظف تمديد مدة المشروع <strong>{{ req.agreement.extension_requested_days }} يوم</strong>.</p>
+                </div>
+                <div class="alert-actions">
+                    <form method="post" action="{% url 'agreements:approve_extension' req.agreement.pk %}">{% csrf_token %}<button class="btn-sm success">موافقة</button></form>
+                    <form method="post" action="{% url 'agreements:reject_extension' req.agreement.pk %}">{% csrf_token %}<button class="btn-sm danger">رفض</button></form>
+                </div>
             </div>
-          </div>
-          <div class="request-updated-at">
-            <span class="text-muted">آخر تحديث: {{ req.updated_at|date:"Y-m-d H:i" }}</span>
-          </div>
-        </div>
-
-        {# ===== شريط تقدّم الحالة ===== #}
-        <div class="request-steps employee-stats" style="margin-top: 1.25rem;">
-          <div class="employee-stat">
-            <span class="badge {% if current_step >= 0 %}badge-verified{% else %}badge-muted{% endif %}">
-              ١. طلب
-            </span>
-          </div>
-          <div class="step-separator"></div>
-          <div class="employee-stat">
-            <span class="badge {% if current_step >= 1 %}badge-verified{% else %}badge-muted{% endif %}">
-              ٢. عرض مختار
-            </span>
-          </div>
-          <div class="step-separator"></div>
-          <div class="employee-stat">
-            <span class="badge {% if current_step >= 2 %}badge-verified{% else %}badge-muted{% endif %}">
-              ٣. اتفاقية
-            </span>
-          </div>
-          <div class="step-separator"></div>
-          <div class="employee-stat">
-            <span class="badge {% if current_step >= 3 %}badge-pending{% else %}badge-muted{% endif %}">
-              ٤. تنفيذ/تسليم
-            </span>
-          </div>
-          <div class="step-separator"></div>
-          <div class="employee-stat">
-            <span class="badge {% if current_step >= 4 %}badge-verified{% else %}badge-muted{% endif %}">
-              ٥. إكمال
-            </span>
-          </div>
-        </div>
-
-        {# ===== شريط الإجراءات العام ===== #}
-        {% if request.user.is_authenticated %}
-          <div class="request-header-actions employee-actions">
-            {% if request.user.id == req.client_id or request.user.id == req.assigned_employee_id or request.user.is_staff or request.user.role == 'admin' %}
-              <a href="{% url 'disputes:open_by_request' req.pk %}"
-                 class="btn btn-danger btn-sm"
-                 rel="nofollow">
-                ⚡ فتح نزاع
-              </a>
             {% endif %}
 
-            {% if request.user.is_staff or request.user.role == 'admin' %}
-              <div class="request-status-panel">
-                <span class="status-panel-label">تغيير الحالة:</span>
-
-                <form method="post"
-                      action="{% url 'marketplace:request_change_status' req.pk %}"
-                      class="inline-form"
-                      onsubmit="return confirm('سيتم تعليم الطلب «قيد التنفيذ». متابعة؟');">
-                  {% csrf_token %}
-                  <input type="hidden" name="state" value="in_progress">
-                  <button class="btn btn-secondary btn-sm" aria-label="تعيين قيد التنفيذ">
-                    🚀 قيد التنفيذ
-                  </button>
-                </form>
-
-                <form method="post"
-                      action="{% url 'marketplace:request_change_status' req.pk %}"
-                      class="inline-form"
-                      onsubmit="return confirm('تعليم الطلب «مكتمل» يدويًا؟ يُفضَّل اكتماله تلقائيًا بعد السداد.');">
-                  {% csrf_token %}
-                  <input type="hidden" name="state" value="completed">
-                  <button class="btn btn-success btn-sm" aria-label="تعيين مكتمل">
-                    ✅ مكتمل
-                  </button>
-                </form>
-
-                <form method="post"
-                      action="{% url 'marketplace:request_cancel' req.pk %}"
-                      class="inline-form request-cancel-form"
-                      onsubmit="return !!this.querySelector('[name=reason]').value || (alert('فضلاً أدخل سبب الإلغاء.'), false)">
-                  {% csrf_token %}
-                  <div class="input-group">
-                    <input type="text"
-                           name="reason"
-                           class="input input-sm"
-                           placeholder="سبب الإلغاء"
-                           required>
-                    <button class="btn btn-danger btn-sm">
-                      🗑️ إلغاء
-                    </button>
-                  </div>
-                </form>
-              </div>
-            {% elif request.user.id == req.assigned_employee_id %}
-            {% endif %}
-          </div>
-        {% endif %}
-      </div>
-
-      <div class="card-body request-detail-body">
-
-        {# ===== لوحة تحكم المدير العام ===== #}
-        {% if request.user.is_authenticated %}
-          {% if request.user.role == 'admin' or request.user.is_staff %}
-            <div class="admin-panel profile-section" style="background: var(--secondary-50); border-color: var(--secondary-200);">
-              <div class="admin-panel-header">
-                <div class="admin-panel-title card-section-title">👑 لوحة تحكم المدير العام</div>
-              </div>
-              <div class="admin-panel-actions employee-actions">
-                <form method="post"
-                      action="{% url 'marketplace:request_reset_to_new' req.pk %}"
-                      onsubmit="return confirm('سيُعاد الطلب كجديد: سيتم إزالة الإسناد ورفض العروض الحالية للأرشفة. تأكيد؟');">
-                  {% csrf_token %}
-                  <button class="btn btn-outline btn-sm">
-                    🔄 إرجاع كجديد
-                  </button>
-                </form>
-
-                <a class="btn btn-outline btn-sm"
-                   href="{% url 'marketplace:admin_request_reassign' req.pk %}">
-                  👥 إعادة إسناد لموظف آخر
-                </a>
-
-                <form method="post"
-                      action="{% url 'marketplace:admin_request_delete' req.pk %}"
-                      onsubmit="return confirm('سيتم شطب الطلب نهائيًا ولا يمكن التراجع. تأكيد؟');">
-                  {% csrf_token %}
-                  <button class="btn btn-danger btn-sm">
-                    🗑️ شطب نهائي
-                  </button>
-                </form>
-              </div>
-              <p class="admin-panel-note card-section-note">
-                هذه الإجراءات متاحة للمدير العام فقط.
-              </p>
-            </div>
-          {% endif %}
-        {% endif %}
-
-        {# 🟦 تقديم عرض #}
-        {% if can_offer %}
-          <div class="profile-section" style="background: var(--primary-50); border-color: var(--primary-200);">
-            <div class="card-row" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-              <div class="card-text">
-                يمكنك تقديم <strong>عرض واحد</strong> لهذا الطلب.
-              </div>
-              <a class="btn btn-primary btn-sm"
-                 href="{% url 'marketplace:offer_create_cbv' req.pk %}">
-                📨 تقديم عرض
-              </a>
-            </div>
-          </div>
-        {% elif my_offer %}
-          <div class="profile-section" style="background: var(--dark-50);">
-            <div class="card-row" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-              <div class="card-text-main">
-
-              </div>
-              <span class="badge badge-muted">
-                📋 قدّمت عرضًا بالفعل
-              </span>
-            </div>
-          </div>
-        {% endif %}
-
-        {# بطاقات معلومات سريعة #}
-        <div class="request-summary-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-          {# المدة/المبلغ #}
-          <div class="profile-section">
-            <div class="card-section-title">📊 المدة/المبلغ</div>
-            <div class="summary-grid-inner">
-              <div class="summary-box" style="background: var(--primary-50); padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 1rem;">
-                <div class="summary-box-label">مقدّمة من العميل</div>
-                <div class="summary-box-values">
-                  <div>المدة: <strong>{{ req.estimated_duration_days|default:"—" }}</strong> يوم</div>
-                  <div>المبلغ: <strong>{{ req.estimated_price|default:"—"|floatformat:2 }}</strong>
-                    <span class="summary-unit">ريال</span>
-                  </div>
-                </div>
-              </div>
-
-              {% if req.selected_offer %}
-                <div class="summary-box selected-offer-box"
-                     style="background: #fffbeb; padding: 1.25rem 1.5rem; border-radius: var(--radius-xl); margin-bottom: 1rem; border: 1px solid #facc15; box-shadow: 0 6px 14px rgba(250, 204, 21, 0.12);">
-                  <div class="summary-box-header"
-                       style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <div class="summary-box-label"
-                         style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; color: #92400e;">
-                      <span>🏆</span>
-                      <span>العرض المختار</span>
-                    </div>
-                    <span class="badge badge-muted"
-                          style="background: rgba(250, 204, 21, 0.15); color: #92400e;">
-                      السعر النهائي للعميل
-                    </span>
-                  </div>
-
-                  <div class="summary-box-values">
-                    <div style="margin-bottom: 0.5rem; color: #78350f; font-size: 0.95rem;">
-                      المدة:
-                      <strong>
-                        {{ selected_offer.proposed_duration_days|default:"—" }}
-                      </strong>
-                      يوم
-                    </div>
-
-                    <div style="font-size: 1.25em; font-weight: 800; color: #166534; background: #f0fdf4; padding: 10px 14px; border-radius: 999px; display: inline-flex; align-items: baseline; gap: 0.35rem; margin-top: 0.25rem;">
-                      <span>العرض للعميل:</span>
-                      <span class="sel-total"
-                            data-total="{{ selected_offer.client_total_amount|default_if_none:'' }}">
-                        {{ selected_offer.client_total_amount|default_if_none:"—"|floatformat:2 }}
-                      </span>
-                      <span class="summary-unit">ريال</span>
-                    </div>
-
-                    {% if selected_offer.note %}
-                      <div class="selected-offer-details">
-                        <div class="so-title">📌 تفاصيل العرض المختار</div>
-                        <div class="details-prose">
-                          {{ selected_offer.note|linebreaksbr }}
-                        </div>
-                      </div>
-                    {% endif %}
-                  </div>
-                </div>
-              {% endif %}
-
-              {% if req.agreement %}
-                <div class="summary-box"
-                     style="background: #ecfdf5; padding: 1rem; border-radius: var(--radius-lg); border: 1px solid #bbf7d0;">
-                  <div class="summary-box-label">الاتفاقية</div>
-                  <div class="summary-box-values">
-                    <div>المدة: <strong>{{ req.agreement.duration_days }}</strong> يوم</div>
-                    <div>
-                      الإجمالي للعميل:
-                      <strong>
-                        {% if req.agreement.client_total_amount %}
-                          {{ req.agreement.client_total_amount|floatformat:2 }}
-                        {% elif selected_offer_client_total %}
-                          {{ selected_offer_client_total|floatformat:2 }}
-                        {% elif req.agreement.grand_total %}
-                          {{ req.agreement.grand_total|floatformat:2 }}
-                        {% else %}
-                          {{ req.agreement.total_amount|floatformat:2 }}
-                        {% endif %}
-                      </strong>
-                      <span class="summary-unit">ريال</span>
-                    </div>
-                  </div>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-
-          {# الموظف المسند #}
-          <div class="profile-section" style="background: var(--dark-50);">
-            <div class="card-section-title">👤 الموظف المسند</div>
-            <div class="card-text">
-              {% if req.assigned_employee %}
-                <div class="employee-name">{{ req.assigned_employee }}</div>
-                {% if req.assigned_employee.phone %}
-                  <div class="employee-location">
-                    📞 {{ req.assigned_employee.phone }}
-                  </div>
-                {% endif %}
-              {% elif req.selected_offer %}
-                <div class="employee-name">{{ req.selected_offer.employee }}</div>
-              {% else %}
-                <div class="text-muted">— لا يوجد إسناد بعد —</div>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        {# تفاصيل الطلب #}
-        <div class="profile-section">
-          <div class="card-section-title">📄 التفاصيل</div>
-          <div class="details-block">
-            <div class="details-block-header">
-              <span class="icon">🧾</span>
-              <span>وصف العميل للطلب</span>
-            </div>
-            <div class="card-text prose-text details-prose">
-              {% if req.details %}
-                {{ req.details|linebreaksbr }}
-              {% else %}
-                —
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        {% if req.links %}
-          <div class="profile-section">
-            <div class="card-section-title">🔗 روابط مرتبطة</div>
-            <div class="details-block">
-              <div class="details-block-header">
-                <span class="icon">🌐</span>
-                <span>روابط ومراجع إضافية</span>
-              </div>
-              <div class="card-text prose-text details-prose">
-                {{ req.links|urlize|linebreaksbr }}
-              </div>
-            </div>
-          </div>
-        {% endif %}
-
-        {# ===== بيانات التواصل ===== #}
-        {% if req.status != 'new' %}
-          <div class="profile-section">
-            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <div class="card-section-title">📞 بيانات التواصل</div>
-              <div class="card-section-note">تظهر بعد الإسناد أو اختيار عرض.</div>
-            </div>
-
-            <div class="request-contacts-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-              <div class="profile-section" style="background: var(--dark-50);">
-                <div class="card-subtitle">العميل</div>
-                <div class="card-text">
-                  <div>الاسم: <strong>{{ req.client }}</strong></div>
-
-                  {% if req.client.phone %}
-                    <div class="contact-row" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0;">
-                      <span>📱:</span>
-                      <a class="link" dir="ltr"
-                         href="tel:{{ req.client.phone }}">{{ req.client.phone }}</a>
-                      <a class="btn btn-outline btn-sm" target="_blank"
-                         rel="noopener noreferrer nofollow"
-                         href="https://api.whatsapp.com/send?phone={{ req.client.phone|urlencode }}">
-                        💬 واتساب
-                      </a>
-                    </div>
-                  {% endif %}
-
-                  {% if req.client.email %}
-                    <div>
-                      📧:
-                      <a class="link"
-                         href="mailto:{{ req.client.email|urlencode }}">
-                        {{ req.client.email }}
-                      </a>
-                    </div>
-                  {% endif %}
-                </div>
-              </div>
-
-              {% if req.assigned_employee or req.selected_offer %}
-                <div class="profile-section" style="background: var(--dark-50);">
-                  <div class="card-subtitle">الموظف المسند</div>
-                  <div class="card-text">
-                    <div>
-                      الاسم:
-                      <strong>
-                        {% if req.assigned_employee %}
-                          {{ req.assigned_employee }}
-                        {% else %}
-                          {{ req.selected_offer.employee }}
-                        {% endif %}
-                      </strong>
-                    </div>
-
-                    {% if req.assigned_employee and req.assigned_employee.phone %}
-                      <div class="contact-row" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0%;">
-                        <span>📱:</span>
-                        <a class="link" dir="ltr"
-                           href="tel:{{ req.assigned_employee.phone }}">{{ req.assigned_employee.phone }}</a>
-                        <a class="btn btn-outline btn-sm" target="_blank"
-                           rel="noopener noreferrer nofollow"
-                           href="https://api.whatsapp.com/send?phone={{ req.assigned_employee.phone|urlencode }}">
-                          💬 واتساب
-                        </a>
-                      </div>
-                    {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.phone %}
-                      <div class="contact-row" style="display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0;">
-                        <span>📱:</span>
-                        <a class="link" dir="ltr"
-                           href="tel:{{ req.selected_offer.employee.phone }}">{{ req.selected_offer.employee.phone }}</a>
-                        <a class="btn btn-outline btn-sm" target="_blank"
-                           rel="noopener noreferrer nofollow"
-                           href="https://api.whatsapp.com/send?phone={{ req.selected_offer.employee.phone|urlencode }}">
-                          💬 واتساب
-                        </a>
-                      </div>
-                    {% endif %}
-
-                    {% if req.assigned_employee and req.assigned_employee.email %}
-                      <div>
-                        📧:
-                        <a class="link"
-                           href="mailto:{{ req.assigned_employee.email|urlencode }}">
-                          {{ req.assigned_employee.email }}
-                        </a>
-                      </div>
-                    {% elif req.selected_offer and req.selected_offer.employee and req.selected_offer.employee.email %}
-                      <div>
-                        📧:
-                        <a class="link"
-                           href="mailto:{{ req.selected_offer.employee.email|urlencode }}">
-                          {{ req.selected_offer.employee.email }}
-                        </a>
-                      </div>
-                    {% endif %}
-                  </div>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-        {% endif %}
-
-        {# الملاحظات #}
-        <div class="profile-section">
-          <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <div class="card-section-title">📝 الملاحظات</div>
-          </div>
-
-          <div class="notes-list">
-            {% for n in req.notes.all %}
-              <div class="note-item profile-section" style="margin-bottom: 1rem; padding: 1rem; background: var(--dark-50);">
-                <div class="note-meta" style="font-size: 0.875rem; color: var(--dark-500); margin-bottom: 0.5rem;">
-                  👤 {{ n.author }} — {{ n.created_at|date:"Y-m-d H:i" }}
-                </div>
-                <div class="details-block">
-                  <div class="details-block-header">
-                    <span class="icon">💬</span>
-                    <span>نص الملاحظة</span>
-                  </div>
-                  <div class="note-text details-prose">
-                    {{ n.text|linebreaksbr }}
-                  </div>
-                </div>
-              </div>
-            {% empty %}
-              <div class="card-section-note">لا توجد ملاحظات بعد.</div>
-            {% endfor %}
-          </div>
-
-          <form class="note-form"
-                method="post"
-                action="{% url 'marketplace:request_add_note' req.pk %}"
-                onsubmit="return confirm('سيتم إضافة الملاحظة لهذا الطلب. تأكيد الإرسال؟');">
-            {% csrf_token %}
-            <div class="note-form-row" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-              <textarea name="text"
-                        rows="2"
-                        class="input"
-                        placeholder="أضف ملاحظة..."
-                        style="flex: 1;"></textarea>
-              <button class="btn btn-primary btn-sm">
-                💾 حفظ
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {# العروض #}
-        <div class="profile-section">
-          <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <div class="card-section-title">📨 العروض</div>
-          </div>
-
-          <div class="offers-list">
-            {% for off in req.offers.all %}
-              <div class="offer-item profile-section {% if off.status == 'selected' %}offer-selected{% endif %}"
-                   style="{% if off.status == 'selected' %}border-left: 4px solid var(--primary-500); background: var(--primary-50);{% endif %} margin-bottom: 1rem; padding: 1rem;">
-                <div class="offer-main">
-                  <div class="offer-title" style="font-weight: 600; margin-bottom: 0.5rem;">
-                    👤 {{ off.employee }}
-                  </div>
-                  <div class="offer-meta" style="color: var(--dark-500); margin-bottom: 0.5rem;">
-                    الحالة: {{ off.get_status_display|default:off.status }}
-                  </div>
-
-                  {% if off.note %}
-                    <div class="details-block" style="background: var(--white); margin-bottom: 0.75rem;">
-                      <div class="details-block-header">
-                        <span class="icon">📝</span>
-                        <span>تفاصيل العرض</span>
-                      </div>
-                      <div class="offer-note details-prose">
-                        {{ off.note|urlize|linebreaksbr }}
-                      </div>
-                    </div>
-                  {% endif %}
-
-                  {# تفاصيل العرض المعدل إن وجدت #}
-                  {% if off.modified_price or off.modified_duration_days or off.modification_reason %}
-                    <div class="details-block" style="background: #fff7ed; border: 1px solid #fed7aa; margin-bottom: 0.75rem;">
-                      <div class="details-block-header">
-                        <span class="icon">🛠️</span>
-                        <span>تفاصيل التعديل</span>
-                      </div>
-                      <div class="details-prose">
-                        {% if off.modified_price %}
-                          <div><strong>السعر بعد التعديل:</strong> {{ off.modified_price }} ريال</div>
-                        {% endif %}
-                        {% if off.modified_duration_days %}
-                          <div><strong>المدة بعد التعديل:</strong> {{ off.modified_duration_days }} يوم</div>
-                        {% endif %}
-                        {% if off.modification_reason %}
-                          <div><strong>سبب التعديل:</strong> {{ off.modification_reason }}</div>
-                        {% endif %}
-                      </div>
-                    </div>
-                  {% endif %}
-
-                  <div class="offer-tags" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <span class="badge badge-muted">
-                      ⏱️ المدة:
-                      <strong>{{ off.proposed_duration_days }}</strong> يوم
-                    </span>
-
-                    <span class="badge badge-primary" style="font-size: 1.1em; background: #f0fdf4; color: #166534; display: flex; flex-direction: column; align-items: flex-start;">
-                      <span>
-                        العرض للعميل:
-                        <strong class="off-total"
-                                data-total="{% if off.client_total_amount_cache %}{{ off.client_total_amount_cache }}{% elif off.client_total_amount %}{{ off.client_total_amount }}{% else %}{% endif %}">
-                          {% if off.client_total_amount_cache %}
-                            {{ off.client_total_amount_cache|floatformat:2 }}
-                          {% elif off.client_total_amount %}
-                            {{ off.client_total_amount|floatformat:2 }}
-                          {% else %}
-                            —
-                          {% endif %}
-                        </strong>
-                        ريال
-                      </span>
-                    </span>
-                  </div>
-
-                  <span class="off-net"
-                        data-net="{{ off.proposed_price }}"
-                        style="display:none;"></span>
-                </div>
-
-                <div class="offer-actions" style="margin-top: 1rem;">
-                  {# قبول/رفض العرض المعدل للعميل إذا كان العرض بحاجة موافقة #}
-                  {% if req.client_id == request.user.id and off.status == 'waiting_client_approval' or req.client_id == request.user.id and off.status == 'MODIFIED' %}
-                    <form method="post" action="{% url 'marketplace:offer_select' off.pk %}" style="display:inline;">
-                      {% csrf_token %}
-                      <button type="submit" class="btn btn-success">قبول العرض المعدل</button>
-                    </form>
-                    <form method="post" action="{% url 'marketplace:offer_reject' off.pk %}" style="display:inline;">
-                      {% csrf_token %}
-                      <button type="submit" class="btn btn-danger">رفض العرض المعدل</button>
-                    </form>
-                  {% elif req.client_id == request.user.id and req.status == 'new' and off.status != 'selected' %}
-                    <form method="post"
-                          action="{% url 'marketplace:offer_select' off.pk %}"
-                          onsubmit="return confirm('سيتم اعتماد هذا العرض والانتقال لمرحلة الاتفاقية. تأكيد؟');">
-                      {% csrf_token %}
-                      <button class="btn btn-primary btn-sm">
-                        ✅ اختيار العرض
-                      </button>
-                    </form>
-                  {% elif off.status == 'selected' %}
-                    <span class="badge badge-verified">
-                      🏆 العرض المختار
-                    </span>
-                  {% endif %}
-
-                  {# زر تعديل وإلغاء العرض للموظف صاحب العرض #}
-                  {% if request.user.is_authenticated and request.user.id == off.employee.id and off.status != 'withdrawn' and off.status != 'rejected' and not req.agreement %}
-                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
-                       class="btn btn-warning btn-sm"
-                       style="margin-right: 0.5rem;">
-                      ✏️ تعديل العرض
-                    </a>
-                    <form method="post" action="{% url 'marketplace:offer_cancel' off.pk %}" style="display:inline;">
-                      {% csrf_token %}
-                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('هل أنت متأكد من إلغاء العرض؟ سيتم حذف العرض وإرجاع الطلب لحالة جديد.');">
-                        ❌ إلغاء العرض
-                      </button>
-                    </form>
-                  {% elif request.user.is_authenticated and request.user.id == off.employee.id and off.status != 'withdrawn' and off.status != 'rejected' and req.agreement and req.agreement.status != 'accepted' %}
-                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
-                       class="btn btn-warning btn-sm"
-                       style="margin-right: 0.5rem;">
-                      ✏️ تعديل العرض
-                    </a>
-                    <form method="post" action="{% url 'marketplace:offer_cancel' off.pk %}" style="display:inline;">
-                      {% csrf_token %}
-                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('هل أنت متأكد من إلغاء العرض؟ سيتم حذف العرض وإرجاع الطلب لحالة جديد.');">
-                        ❌ إلغاء العرض
-                      </button>
-                    </form>
-                  {% endif %}
-
-                  {# زر تعديل العرض للإدارة #}
-                  {% if request.user.is_authenticated and request.user.is_staff and req.status == 'new' %}
-                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
-                       class="btn btn-warning btn-sm"
-                       style="margin-right: 0.5rem;">
-                      ✏️ تعديل العرض
-                    </a>
-                  {% elif request.user.is_authenticated and request.user.is_staff and req.status == 'offer_selected' %}
-                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
-                       class="btn btn-warning btn-sm"
-                       style="margin-right: 0.5rem;">
-                      ✏️ تعديل العرض
-                    </a>
-                  {% endif %}
-                  {% if request.user.is_authenticated and request.user.role == 'admin' and req.status == 'new' %}
-                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
-                       class="btn btn-warning btn-sm"
-                       style="margin-right: 0.5rem;">
-                      ✏️ تعديل العرض
-                    </a>
-                  {% elif request.user.is_authenticated and request.user.role == 'admin' and req.status == 'offer_selected' %}
-                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
-                       class="btn btn-warning btn-sm"
-                       style="margin-right: 0.5rem;">
-                      ✏️ تعديل العرض
-                    </a>
-                  {% endif %}
-                </div>
-              </div>
-            {% empty %}
-              <div class="card-section-note">
-                لا توجد عروض بعد.
-              </div>
-            {% endfor %}
-          </div>
-        </div>
-
-        {# ===== الاتفاقية ===== #}
-        {% if req.agreement %}
-          <div class="profile-section">
-            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <div class="card-section-title">📝 الاتفاقية</div>
-              <div class="agreement-meta" style="display: flex; gap: 0.5rem;">
-                <span class="badge badge-muted">
-                  رقم: {{ req.agreement.pk }}
-                </span>
-                {% if req.agreement.status %}
-                  <span class="badge
-                               {% if req.agreement.status == 'accepted' %}badge-verified
-                               {% elif req.agreement.status == 'rejected' %}badge-rejected
-                               {% else %}badge-pending{% endif %}">
-                    {{ req.agreement.get_status_display|default:req.agreement.status }}
-                  </span>
-                {% endif %}
-              </div>
-            </div>
-
-            <div class="agreement-actions employee-actions">
-              <a class="btn btn-secondary btn-sm"
-                 href="{% url 'agreements:open_by_request' req.pk %}">
-                👁️ عرض/تحرير الاتفاقية
-              </a>
-
-              {# 🔔 طلب مهلة من داخل قسم الاتفاقية — للموظف المسند فقط أثناء التنفيذ #}
-              {% if request.user.is_authenticated and request.user.id == req.assigned_employee_id and req.agreement.status == 'accepted' and req.status == 'in_progress' %}
-                <form method="post"
-                      action="{% url 'agreements:request_extension' req.agreement.pk %}"
-                      class="inline-form"
-                      style="margin-inline-start:.5rem;"
-                      onsubmit="return confirm('سيتم إرسال طلب تمديد المهلة للعميل. تأكيد الإرسال؟');">
-                  {% csrf_token %}
-                  <div style="display:flex;align-items:center;gap:.35rem;">
-                    <input type="number"
-                           name="extra_days"
-                           min="1"
-                           class="input input-sm"
-                           placeholder="أيام إضافية"
-                           required
-                           style="width:100px;">
-                    <button class="btn btn-info btn-sm" title="طلب تمديد مدة تنفيذ المشروع">
-                      ⏳ طلب مهلة
-                    </button>
-                  </div>
-                </form>
-              {% endif %}
-
-              {% if request.user.id == req.client_id %}
-                {% if req.status == 'agreement_pending' or req.agreement.status == 'pending' %}
-
-                  <form action="{% url 'agreements:accept_by_request' req.pk %}"
-                        method="post"
-                        class="inline-form"
-                        onsubmit="return confirm('سيتم اعتماد الاتفاقية والانتقال للتنفيذ. تأكيد؟');">
-                    {% csrf_token %}
-                    <button class="btn btn-success btn-sm">
-                      ✅ موافقة
-                    </button>
-                  </form>
-                  <a class="btn btn-danger btn-sm"
-                     href="{% url 'agreements:reject_by_request' req.pk %}"
-                     onclick="return confirm('سيتم رفض الاتفاقية الحالية. هل أنت متأكد؟');">
-                    ❌ رفض
-                  </a>
-                {% endif %}
-              {% endif %}
-
-              {% if req.agreement.status == 'accepted' %}
-                <span class="card-section-note">
-                  ✅ الاتفاقية مقبولة — لا يمكن تعديل بنودها، ويمكن فقط طلب تمديد المهلة عند الحاجة.
-                </span>
-              {% endif %}
-
-              {# عرض سبب رفض الاتفاقية للموظف فقط إذا كانت الاتفاقية مرفوضة #}
-              {% if req.agreement.status == 'rejected' and request.user.is_authenticated and request.user.id == req.assigned_employee_id and req.agreement.rejection_reason %}
-                <div class="agreement-rejection-reason" style="background:#fef2f2;border:1.5px solid #ef4444;color:#b91c1c;padding:1rem 1.2rem;border-radius:10px;margin-top:1rem;">
-                  <b>سبب رفض الاتفاقية من العميل:</b>
-                  <div style="margin-top:.5rem;white-space:pre-line;">{{ req.agreement.rejection_reason }}</div>
-                  <div style="margin-top:.7rem;">
-                    <a class="btn btn-warning btn-sm" href="{% url 'agreements:open_by_request' req.pk %}">✏️ تعديل الاتفاقية وإعادة إرسالها</a>
-                  </div>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-
-          {# ===== المراحل + الفواتير ===== #}
-          {% with ag=req.agreement %}
-            <div class="profile-section" style="background: var(--dark-50);">
-              <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3 class="card-section-title">📋 المـراحــل</h3>
-                <div class="card-section-note">
-                  تُحدّث تلقائيًا بعد اعتماد العميل لكل مرحلة
-                </div>
-              </div>
-
-              <div class="table-wrapper">
-                <table class="table table-clean" style="width: 100%; border-collapse: collapse;">
-                  <thead>
-                    <tr style="border-bottom: 1px solid var(--dark-200);">
-                      <th style="padding: 0.75rem; text-align: right;">#</th>
-                      <th style="padding: 0.75rem; text-align: right;">عنوان المرحلة</th>
-                      <th style="padding: 0.75rem; text-align: right;">تاريخ الاعتماد</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for ms in ag.milestones.all %}
-                      <tr style="border-bottom: 1px solid var(--dark-100);">
-                        <td style="padding: 0.75rem;">{{ forloop.counter }}</td>
-                        <td style="padding: 0.75rem;">{{ ms.title|default:"—" }}</td>
-                        <td style="padding: 0.75rem;">
-                          {% if ms.approved_at %}
-                            {{ ms.approved_at|date:"Y-m-d H:i" }}
-                          {% else %}
-                            <span class="badge badge-pending">
-                              ⏳ غير معتمدة بعد
-                            </span>
-                          {% endif %}
-                        </td>
-                      </tr>
-                    {% empty %}
-                      <tr>
-                        <td colspan="3" style="padding: 1rem; text-align: center; color: var(--dark-500);">
-                          لا توجد مراحل بعد.
-                        </td>
-                      </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {# بطاقات المراحل التفصيلية #}
-            <div class="profile-section">
-              <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <div class="card-section-title">🔍 تفاصيل كل مرحلة</div>
-              </div>
-
-              <div class="milestones-list">
-                {% for ms in ag.milestones.all %}
-                  <div id="ms-{{ ms.id }}" class="milestone-item profile-section" style="margin-bottom: 1.5rem; padding: 1.5rem;">
-
-                    <div class="milestone-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-                      <div class="milestone-main" style="flex: 1;">
-                        <div class="milestone-title-row" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                          <div class="milestone-title" style="font-weight: 600; font-size: 1.1rem;">
-                            {{ ms.title }}
-                          </div>
-                          <span class="badge badge-muted">#{{ ms.id }}</span>
-                        </div>
-                        <div class="milestone-meta" style="color: var(--dark-500); margin-bottom: 0.75rem;">
-                          الترتيب: {{ ms.order }} — المهلة: {{ ms.due_days|default:"—" }} يوم
-                        </div>
-
-                        {% if ms.delivered_note %}
-                          <div class="milestone-note details-prose" style="background: var(--primary-50); padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem;">
-                            <span class="label" style="font-weight: 600;">📝 ملاحظة التسليم:</span>
-                            {{ ms.delivered_note|linebreaksbr }}
-                          </div>
-                        {% endif %}
-                        {% if ms.rejected_reason %}
-                          <div class="milestone-note milestone-note-error details-prose" style="background: #fef2f2; padding: 0.75rem; border-radius: var(--radius); margin-bottom: 0.75rem; border-left: 4px solid #ef4444;">
-                            <span class="label" style="font-weight: 600;">❌ سبب الرفض:</span>
-                            {{ ms.rejected_reason|linebreaksbr }}
-                          </div>
-                        {% endif %}
-
-                        <div class="milestone-invoice-meta" style="display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.875rem; color: var(--dark-600);">
-                          {% if ms.invoice %}
-                            <span>
-                              🧾 الفاتورة:
-                              <a class="link"
-                                 href="{% url 'finance:invoice_detail' ms.invoice.id %}">
-                                #{{ ms.invoice.id }}
-                              </a>
-                            </span>
-                            <span>
-                              ⏰ الاستحقاق:
-                              {% if ms.invoice.due_at %}
-                                {{ ms.invoice.due_at|date:"Y-m-d H:i" }}
-                              {% else %}
-                                —
-
-
-                              {% endif %}
-                            </span>
-                          {% endif %}
-                        </div>
-                      </div>
-
-                      <div class="milestone-status-pill">
-                        {% if ms.invoice and ms.invoice.is_paid %}
-                          <span class="badge badge-verified">💰 مدفوعة</span>
-                        {% elif ms.is_approved %}
-                          <span class="badge badge-verified">✅ معتمدة</span>
-                        {% elif ms.is_rejected %}
-                          <span class="badge badge-rejected">❌ مرفوضة</span>
-                        {% elif ms.is_pending_review %}
-                          <span class="badge badge-pending">👀 بانتظار مراجعة العميل</span>
-                        {% elif ms.is_delivered %}
-                          <span class="badge badge-default">📤 تم التسليم</span>
-                        {% else %}
-                          <span class="badge badge-muted">🆕 جديدة</span>
-                        {% endif %}
-                      </div>
-                    </div>
-
-                    <div class="milestone-actions employee-actions">
-                      {% if request.user.is_authenticated and request.user.id == req.assigned_employee_id %}
-                        {% if not ms.invoice or not ms.invoice.is_paid %}
-                          {% if not ms.is_approved and not ms.is_pending_review %}
-                            <form method="post"
-                                  action="{% url 'agreements:milestone_deliver' ag.id ms.id %}#ms-{{ ms.id }}"
-                                  class="milestone-deliver-form"
-                                  onsubmit="return confirm('سيتم تعليم هذه المرحلة كـ تم التسليم مع حفظ الملاحظة إن وُجدت. تأكيد؟');">
-                              {% csrf_token %}
-                              <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
-                                <textarea name="note"
-                                          rows="2"
-                                          class="input input-sm"
-                                          placeholder="ملاحظة التسليم (اختياري)"
-                                          style="flex: 1;"></textarea>
-                                <button class="btn btn-secondary btn-sm">
-                                  📤 تسليم المرحلة
-                                </button>
-                              </div>
-                            </form>
-                          {% else %}
-                            <button class="btn btn-secondary btn-sm btn-disabled" disabled title="لا يمكن التسليم الآن">
-                              📤 تسليم المرحلة
-                            </button>
-                          {% endif %}
-                        {% else %}
-                          <button class="btn btn-secondary btn-sm btn-disabled" disabled title="الفاتورة مدفوعة">
-                            📤 تسليم المرحلة
-                          </button>
-                        {% endif %}
-                      {% endif %}
-
-                      {% if request.user.is_authenticated and request.user.id == req.client_id %}
-                        {% if ms.is_pending_review %}
-                          <form method="post"
-                                action="{% url 'agreements:milestone_approve' ag.id ms.id %}#ms-{{ ms.id }}"
-                                onsubmit="return confirm('سيتم اعتماد هذه المرحلة والانتقال لإصدار الفاتورة. تأكيد الاعتماد؟');">
-                            {% csrf_token %}
-                            <button class="btn btn-success btn-sm">
-                              ✅ اعتماد
-                            </button>
-                          </form>
-
-                          <button class="btn btn-danger btn-sm" data-reject-modal="#rej-{{ ms.id }}">
-                            ❌ رفض
-                          </button>
-
-                          <div id="rej-{{ ms.id }}"
-                               class="modal-overlay"
-                               aria-hidden="true"
-                               role="dialog"
-                               aria-labelledby="rej-title-{{ ms.id }}"
-                               style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.5);">
-                            <div class="modal-backdrop" data-close-modal style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
-                            <div class="modal-card profile-section" style="position: relative; background: var(--white); border-radius: var(--radius-xl); padding: 1.5rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
-                              <div class="modal-header" style="margin-bottom: 1rem;">
-                                <div id="rej-title-{{ ms.id }}" class="modal-title card-section-title">
-                                  ❌ رفض المرحلة: {{ ms.title }}
-                                </div>
-                              </div>
-                              <form method="post"
-                                    action="{% url 'agreements:milestone_reject' ag.id ms.id %}#ms-{{ ms.id }}"
-                                    onsubmit="return confirm('سيتم رفض هذه المرحلة مع السبب المدخل. تأكيد الرفض؟');">
-                                {% csrf_token %}
-                                <div class="modal-body">
-                                  <label class="form-label" for="rej-text-{{ ms.id }}">
-                                    سبب الرفض
-                                  </label>
-                                  <textarea id="rej-text-{{ ms.id }}"
-                                            name="reason"
-                                            rows="4"
-                                            class="input"
-                                            placeholder="فضلاً اكتب سببًا واضحًا..."
-                                            style="width: 100%; margin-bottom: 0.5rem;"></textarea>
-                                  <p class="field-hint" style="color: var(--dark-500); font-size: 0.875rem;">
-                                    لن يتم قبول الرفض بدون سبب واضح.
-                                  </p>
-                                </div>
-                                <div class="modal-footer employee-actions">
-                                  <button type="button" class="btn btn-outline btn-sm" data-close-modal>
-                                    إلغاء
-                                  </button>
-                                  <button class="btn btn-danger btn-sm">
-                                    تأكيد الرفض
-                                  </button>
-                                </div>
-                              </form>
-                            </div>
-                          </div>
-                        {% else %}
-                          <button class="btn btn-success btn-sm btn-disabled" disabled title="لا يمكن الاعتماد الآن">
-                            ✅ اعتماد
-                          </button>
-                          <button class="btn btn-danger btn-sm btn-disabled" disabled title="لا يمكن الرفض الآن">
-                            ❌ رفض
-                          </button>
-                        {% endif %}
-                      {% endif %}
-
-                      {% if ms.invoice %}
-                        <a href="{% url 'finance:invoice_detail' ms.invoice.id %}" class="btn btn-outline btn-sm">
-                          🧾 عرض الفاتورة
-                        </a>
-                      {% endif %}
-                    </div>
-                  </div>
-                {% empty %}
-                  <div class="card-section-note">
-                    لا توجد دفعات بعد.
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          {% endwith %}
-        {% else %}
-          {% if req.status == 'offer_selected' %}
-            {% if request.user.id == req.assigned_employee_id or request.user.is_staff or request.user.role == 'admin' %}
-              <div class="profile-section">
-                <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                  <div class="card-section-title">📝 الاتفاقية</div>
-                </div>
-                <a class="btn btn-primary btn-sm"
-                   href="{% url 'agreements:open_by_request' req.pk %}">
-                  📝 إنشاء/فتح الاتفاقية
-                </a>
-              </div>
-            {% endif %}
-          {% endif %}
-        {% endif %}
-
-        {# المرفقات #}
-        {% if uploads %}
-          <div class="profile-section">
-            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <div class="card-section-title">📎 المرفقات</div>
-            </div>
-            <ul class="attachments-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
-              {% for up in uploads %}
-                <li id="up-{{ up.id }}" class="attachment-item profile-section" style="padding: 1rem; text-align: center;">
-                  <div class="attachment-main">
-                    <a class="btn btn-outline btn-sm"
-                       href="{{ up.file.url }}"
-                       target="_blank"
-                       rel="noopener noreferrer">
-                      📥 تحميل/عرض
-                    </a>
-                    {% if up.can_delete %}
-                      <form method="post"
-                            action="{% url 'uploads:delete' up.id %}"
-                            onsubmit="return confirm('سيتم حذف هذا المرفق نهائيًا. متابعة؟');"
-                            style="margin-top: 0.5rem;">
+            {# --- Review Section (Client Only) --- #}
+            {% if can_review and review_form %}
+            <div class="alert-box success fade-in-up" style="background: #f0fdf4; border-color: #bbf7d0; padding: 2rem;">
+                <div class="alert-icon" style="background: #dcfce7; color: #16a34a; width: 48px; height: 48px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; border-radius: 50%;">⭐</div>
+                <div class="alert-content" style="width: 100%;">
+                    <h3 style="color: #166534; font-size: 1.25rem; margin-bottom: 0.5rem;">تقييم الموظف</h3>
+                    <p style="color: #15803d; margin-bottom: 1.5rem;">لقد اكتمل المشروع! يرجى تقييم أداء الموظف لإغلاق الملف.</p>
+                    
+                    <form method="post" class="review-form">
                         {% csrf_token %}
-                        <button class="btn btn-danger btn-sm">
-                          🗑️ حذف
+                        <input type="hidden" name="submit_review" value="1">
+                        
+                        <div class="mb-4">
+                            <label class="form-label d-block mb-2" style="font-weight: 600; color: #166534;">التقييم العام</label>
+                            <div class="numeric-rating">
+                                <input type="radio" id="rate0" name="rating" value="0" required />
+                                <label for="rate0">0</label>
+                                
+                                <input type="radio" id="rate1" name="rating" value="1" />
+                                <label for="rate1">1</label>
+                                
+                                <input type="radio" id="rate2" name="rating" value="2" />
+                                <label for="rate2">2</label>
+                                
+                                <input type="radio" id="rate3" name="rating" value="3" />
+                                <label for="rate3">3</label>
+                                
+                                <input type="radio" id="rate4" name="rating" value="4" />
+                                <label for="rate4">4</label>
+                                
+                                <input type="radio" id="rate5" name="rating" value="5" />
+                                <label for="rate5">5</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label" style="font-weight: 600; color: #166534;">تعليقك على التجربة</label>
+                            <textarea name="comment" rows="4" class="form-control" placeholder="اكتب رأيك هنا..." style="border: 1px solid #bbf7d0; border-radius: 8px; padding: 1rem; width: 100%; resize: vertical; background: #fff;"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-primary" style="background: #16a34a; border-color: #16a34a; padding: 0.75rem 2rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-paper-plane"></i> إرسال التقييم
                         </button>
-                      </form>
-                    {% endif %}
-                  </div>
-                  <div class="attachment-meta" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--dark-500);">
-                    {{ up.created_at|date:"Y-m-d H:i" }}
-                  </div>
-                </li>
-              {% endfor %}
-            </ul>
-          </div>
-        {% endif %}
-
-        {# المحادثة #}
-        {% if thread_embed_url %}
-          <div class="profile-section">
-            <div class="card-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <div class="card-section-title">💬 المحادثة</div>
+                    </form>
+                </div>
             </div>
-            <iframe src="{{ thread_embed_url }}"
-                    class="thread-iframe"
-                    loading="lazy"
-                    referrerpolicy="no-referrer"
-                    style="width: 100%; height: 500px; border: 1px solid var(--dark-200); border-radius: var(--radius);"></iframe>
-          </div>
-        {% endif %}
 
-      </div>
+            <style>
+                .numeric-rating {
+                    display: flex;
+                    gap: 0.5rem;
+                    flex-wrap: wrap;
+                }
+                .numeric-rating input {
+                    display: none;
+                }
+                .numeric-rating label {
+                    cursor: pointer;
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: #fff;
+                    border: 2px solid #cbd5e1;
+                    border-radius: 8px;
+                    font-weight: 700;
+                    color: #64748b;
+                    transition: all 0.2s ease;
+                }
+                .numeric-rating label:hover {
+                    border-color: #16a34a;
+                    color: #16a34a;
+                    transform: translateY(-2px);
+                }
+                .numeric-rating input:checked + label {
+                    background: #16a34a;
+                    border-color: #16a34a;
+                    color: #fff;
+                    box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3);
+                }
+            </style>
+            {% endif %}
+
+            {# --- Tabs Navigation --- #}
+            <div class="tabs-nav">
+                <button class="tab-btn active" onclick="switchTab('overview')">نظرة عامة</button>
+                <button class="tab-btn" onclick="switchTab('workspace')">مساحة العمل</button>
+                <button class="tab-btn" onclick="switchTab('financials')">المالية والعقود</button>
+                {% if req.agreement %}
+                <button class="tab-btn" onclick="switchTab('milestones')">المراحل والإنجاز</button>
+                {% endif %}
+                {% if req.offers.exists or req.status == 'new' or req.status == 'offer_pending' %}
+                <button class="tab-btn" onclick="switchTab('offers')">العروض المقدمة</button>
+                {% endif %}
+            </div>
+
+            {# --- Tab: Overview --- #}
+            <div id="tab-overview" class="tab-content active fade-in-up">
+                <div class="card">
+                    <h3 class="card-title">تفاصيل المشروع</h3>
+                    <div class="project-description">
+                        {{ req.details|linebreaks }}
+                    </div>
+
+                    {# --- Client Estimates & Links Section --- #}
+                    <div class="client-estimates" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;">
+                        <h4 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b;">بيانات الطلب</h4>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <div style="color: #64748b; font-size: 0.875rem; margin-bottom: 0.5rem;">المدة التقديرية</div>
+                                <div style="font-weight: 600; color: #0f172a; font-size: 1.1rem;">
+                                    {{ req.estimated_duration_days }} يوم
+                                </div>
+                            </div>
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <div style="color: #64748b; font-size: 0.875rem; margin-bottom: 0.5rem;">الميزانية التقديرية</div>
+                                <div style="font-weight: 600; color: #0f172a; font-size: 1.1rem;">
+                                    {{ req.estimated_price|intcomma }} ريال
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if req.links %}
+                        <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="color: #64748b; font-size: 0.875rem; margin-bottom: 0.5rem;">الروابط والمرفقات</div>
+                            <div style="color: #334155; line-height: 1.6; word-break: break-all;">
+                                {{ req.links|urlize|linebreaks }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if req.files.all %}
+                    <div class="attachments-section">
+                        <h4>الملفات المرفقة مع الطلب</h4>
+                        <div class="files-grid">
+                            {% for f in req.files.all %}
+                            <a href="{{ f.file.url }}" class="file-item" target="_blank">
+                                <span class="file-icon">📎</span>
+                                <span class="file-name">{{ f.filename|default:"ملف مرفق" }}</span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# --- Tab: Workspace (Chat & Files) --- #}
+            <div id="tab-workspace" class="tab-content fade-in-up">
+                <div class="card chat-card">
+                    <div class="chat-header">
+                        <h3>نقاش المشروع</h3>
+                        <span class="badge-pill">مساحة مشتركة</span>
+                    </div>
+                    
+                    <div class="chat-messages" id="chatBox">
+                        {% for comment in req.comments.all %}
+                        <div class="message {% if comment.author == request.user %}outgoing{% else %}incoming{% endif %}">
+                            <div class="msg-avatar">{{ comment.author.first_name|first }}</div>
+                            <div class="msg-bubble">
+                                <div class="msg-author">{{ comment.author.get_full_name|default:comment.author.email }}</div>
+                                <div class="msg-text">{{ comment.content|linebreaksbr }}</div>
+                                {% if comment.file %}
+                                <a href="{{ comment.file.url }}" class="msg-file" target="_blank">
+                                    📎 {{ comment.filename|default:"ملف مرفق" }}
+                                </a>
+                                {% endif %}
+                                <div class="msg-time">{{ comment.created_at|date:"H:i | d/m" }}</div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="empty-chat">
+                            <div class="empty-icon">💬</div>
+                            <p>ابدأ النقاش حول تفاصيل المشروع هنا...</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="chat-input-area">
+                        <form method="post" action="{% url 'marketplace:add_comment' req.pk %}" enctype="multipart/form-data" class="chat-form">
+                            {% csrf_token %}
+                            <div class="input-wrapper">
+                                <textarea name="content" placeholder="اكتب رسالتك هنا..." required></textarea>
+                                <div class="file-upload-wrapper">
+                                    <input type="file" name="file" id="chatFile" class="hidden-input">
+                                    <label for="chatFile" class="file-btn" title="إرفاق ملف">📎</label>
+                                </div>
+                            </div>
+                            <button type="submit" class="send-btn">
+                                <i class="fas fa-paper-plane"></i> إرسال
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {# --- Tab: Financials & Agreement --- #}
+            <div id="tab-financials" class="tab-content fade-in-up">
+                {% if req.agreement %}
+                <div class="card mb-4">
+                    <div class="card-header-row">
+                        <div class="flex-col">
+                            <h3 class="card-title">تفاصيل الاتفاقية</h3>
+                            <span class="status-pill {{ req.agreement.status }}">{{ req.agreement.get_status_display }}</span>
+                        </div>
+                        <a href="{% url 'agreements:detail' req.agreement.pk %}" class="btn-link">عرض العقد الكامل ↗</a>
+                    </div>
+
+                    {% if req.agreement.status == 'rejected' and req.agreement.rejection_reason %}
+                    <div class="alert alert-danger mt-2">
+                        <strong>سبب الرفض:</strong> {{ req.agreement.rejection_reason }}
+                    </div>
+                    {% endif %}
+
+                    <div class="info-grid mt-4">
+                        <div class="info-item">
+                            <label>قيمة الاتفاقية</label>
+                            <span class="value">{{ req.agreement.grand_total|floatformat:2|intcomma }} ر.س</span>
+                            <span style="font-size: 0.75rem; color: #64748b;">(شامل الضريبة)</span>
+                        </div>
+                        <div class="info-item">
+                            <label>مدة التنفيذ</label>
+                            <span class="value">{{ req.agreement.duration_days }} يوم</span>
+                        </div>
+                        <div class="info-item">
+                            <label>تاريخ البدء</label>
+                            {% if req.agreement.started_at %}
+                                <span class="value">{{ req.agreement.started_at|date:"Y-m-d" }}</span>
+                            {% else %}
+                                <span class="value text-muted" style="font-size: 0.9rem;">من تاريخ قبول الاتفاقية</span>
+                            {% endif %}
+                        </div>
+                        <div class="info-item">
+                            {% if req.agreement.started_at %}
+                                <span class="value">{{ req.agreement.end_date|date:"Y-m-d"|default:"-" }}</span>
+                            {% else %}
+                                <span class="value text-muted" style="font-size: 0.9rem;">بعد {{ req.agreement.duration_days }} يوم من البدء</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">الفواتير والدفعات</h3>
+                    <div class="table-responsive">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>الوصف</th>
+                                    <th>المبلغ</th>
+                                    <th>الحالة</th>
+                                    <th>الإجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inv in req.agreement.invoices.all %}
+                                <tr>
+                                    <td>{{ inv.id }}</td>
+                                    <td>{{ inv.title }}</td>
+                                    <td class="font-bold">{{ inv.amount|floatformat:2 }} ر.س</td>
+                                    <td>
+                                        {% if inv.is_paid %}
+                                        <span class="status-pill success">مدفوعة</span>
+                                        {% else %}
+                                        <span class="status-pill warning">بانتظار السداد</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if not inv.is_paid and request.user.id == req.client_id %}
+                                        {# <a href="{% url 'finance:invoice_detail' inv.id %}" class="btn-sm primary">سداد الآن</a> #}
+                                        <button type="button" class="btn-sm primary" disabled style="opacity: 0.5; cursor: not-allowed;">سداد الآن (قريباً)</button>
+                                        {% elif inv.is_paid %}
+                                        <a href="{% url 'finance:invoice_detail' inv.id %}" class="btn-sm outline">الفاتورة</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" class="text-center">لا توجد فواتير مصدرة بعد</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                {% if req.is_offer_selected or req.status == 'offer_selected' %}
+                <div class="empty-state-card">
+                    <div class="icon">📝</div>
+                    <h3>بانتظار إنشاء الاتفاقية</h3>
+                    
+                    {% if can_create_agreement or request.user.id == req.assigned_employee_id %}
+                        <p>لقد تم قبول عرضك! يرجى إنشاء مسودة الاتفاقية لإرسالها للعميل.</p>
+                        <a href="{% url 'agreements:open_by_request' req.pk %}" class="btn primary mt-3">
+                            <i class="fas fa-file-signature"></i> إنشاء الاتفاقية
+                        </a>
+                    {% else %}
+                        <p>بانتظار قيام الموظف بإنشاء الاتفاقية للموافقة عليها.</p>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="empty-state-card">
+                    <div class="icon">📄</div>
+                    <h3>لم يتم إنشاء اتفاقية بعد</h3>
+                    <p>بانتظار اختيار عرض وتوقيع الاتفاقية للبدء في المشروع.</p>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            {# --- Tab: Milestones --- #}
+            {% if req.agreement %}
+            <div id="tab-milestones" class="tab-content fade-in-up">
+                <div class="card">
+                    <div class="card-header-row">
+                        <h3 class="card-title">مراحل المشروع</h3>
+                        <span class="badge-pill info">{{ req.agreement.milestones.count }} مراحل</span>
+                    </div>
+
+                    <div class="milestones-list" style="margin-top: 1.5rem;">
+                        {% for milestone in req.agreement.milestones.all %}
+                        <div class="milestone-item" style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; background: #fff;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a;">
+                                        {{ milestone.order }}. {{ milestone.title }}
+                                    </h4>
+                                    <div style="margin-top: 0.5rem; color: #64748b; font-size: 0.9rem;">
+                                        <span>⏱️ {{ milestone.due_days|default:"-" }} يوم</span>
+                                    </div>
+                                </div>
+                                <div class="status-badge {{ milestone.status }}">
+                                    {{ milestone.get_status_display }}
+                                </div>
+                            </div>
+
+                            {# --- Delivery Note (if delivered) --- #}
+                            {% if milestone.delivered_note %}
+                            <div style="margin-top: 1rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border-right: 3px solid #3b82f6;">
+                                <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">ملاحظات التسليم:</div>
+                                <div style="color: #334155;">{{ milestone.delivered_note|linebreaksbr }}</div>
+                                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
+                                    {{ milestone.delivered_at|date:"Y-m-d H:i" }}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {# --- Rejection Reason (if rejected) --- #}
+                            {% if milestone.rejected_reason %}
+                            <div style="margin-top: 1rem; background: #fef2f2; padding: 1rem; border-radius: 8px; border-right: 3px solid #ef4444;">
+                                <div style="font-size: 0.8rem; color: #991b1b; margin-bottom: 0.25rem;">سبب الرفض:</div>
+                                <div style="color: #7f1d1d;">{{ milestone.rejected_reason|linebreaksbr }}</div>
+                            </div>
+                            {% endif %}
+
+                            {# --- Actions --- #}
+                            <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
+                                {% if request.user.id == req.assigned_employee_id %}
+                                    {# Employee Actions #}
+                                    {% if milestone.status == 'pending' or milestone.status == 'rejected' %}
+                                        <button type="button" class="btn-sm primary" onclick="openDeliverModal('{{ milestone.id }}', '{{ milestone.title|escapejs }}')">
+                                            📤 تسليم المرحلة
+                                        </button>
+                                    {% endif %}
+                                {% elif request.user.id == req.client_id %}
+                                    {# Client Actions #}
+                                    {% if milestone.status == 'delivered' %}
+                                        <form method="post" action="{% url 'agreements:milestone_review' req.agreement.pk milestone.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="approve">
+                                            <button type="submit" class="btn-sm success">✅ اعتماد</button>
+                                        </form>
+                                        <button type="button" class="btn-sm danger" onclick="openRejectMilestoneModal('{{ milestone.id }}', '{{ milestone.title|escapejs }}')">
+                                            ❌ رفض
+                                        </button>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center text-muted py-4">لا توجد مراحل محددة لهذا المشروع.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {# --- Tab: Offers (Only for Client/Admin) --- #}
+            {% if req.status == 'new' or req.status == 'offer_pending' or req.offers.exists %}
+            <div id="tab-offers" class="tab-content fade-in-up">
+                {% if req.offers.all %}
+                    {% for offer in req.offers.all %}
+                    <div class="card offer-card">
+                        <div class="offer-header">
+                            <div class="offer-user">
+                                <div class="avatar">{{ offer.employee.first_name|first }}</div>
+                                <div>
+                                    <h4>{{ offer.employee.get_full_name }}</h4>
+                                    <span class="role">موظف مختص</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="offer-highlights">
+                            <div class="highlight-item price">
+                                <span class="label">السعر الإجمالي</span>
+                                {% with breakdown=offer.breakdown %}
+                                <span class="value">{{ breakdown.client_total|floatformat:2|intcomma }} <small>ر.س</small></span>
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+                                    (شامل الضريبة)
+                                </div>
+                                {% endwith %}
+                            </div>
+                            <div class="highlight-item duration">
+                                <span class="label">مدة التنفيذ</span>
+                                <span class="value">{{ offer.proposed_duration_days }} <small>يوم</small></span>
+                            </div>
+                        </div>
+
+                        <div class="offer-body">
+                            <p>{{ offer.note|truncatewords:30 }}</p>
+                            <a href="{% url 'marketplace:offer_detail' offer.id %}" class="read-more-link">عرض التفاصيل كاملة &larr;</a>
+                        </div>
+
+                        {% if request.user.id == req.client_id %}
+                        <div class="offer-actions">
+                            {% if offer.status == 'selected' or req.selected_offer == offer %}
+                                <div class="selected-badge" style="background: #dcfce7; color: #166534; padding: 0.75rem; border-radius: 8px; text-align: center; font-weight: 600; border: 1px solid #bbf7d0;">
+                                    <i class="fas fa-check-circle"></i> تم اختيار هذا العرض
+                                </div>
+                            {% elif req.status == 'offer_selected' or req.status == 'agreement_pending' or req.status == 'in_progress' or req.status == 'completed' %}
+                                {# If ANY offer is selected, hide actions for others #}
+                                <div class="text-center text-muted" style="padding: 0.5rem; font-size: 0.9rem;">
+                                    تم اختيار عرض آخر
+                                </div>
+                            {% else %}
+                                <form method="post" action="{% url 'marketplace:offer_select' offer.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn-block primary">قبول العرض وبدء الاتفاقية</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="empty-state-card">
+                    <div class="icon">🏷️</div>
+                    <h3>لا توجد عروض حتى الآن</h3>
+                    <p>سيقوم الموظفون المختصون بتقديم عروضهم قريباً.</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+
+        {# --- Sidebar Column --- #}
+        <div class="sidebar-column">
+            
+            {# --- Employee Actions (Submit Offer) --- #}
+            {% if can_offer %}
+            <div class="card action-card-highlight">
+                <div class="action-icon-wrapper">
+                    <div class="action-icon">🚀</div>
+                </div>
+                <h3>فرصة متاحة!</h3>
+                <p>هذا الطلب بانتظار عروض المختصين. قدّم عرضك الآن.</p>
+                <a href="{% url 'marketplace:offer_create' req.pk %}" class="btn-block primary pulse-btn" style="display: flex; align-items: center; justify-content: center; text-decoration: none;">
+                    <i class="fas fa-plus-circle" style="margin-left: 0.5rem;"></i> تقديم عرض
+                </a>
+            </div>
+            {% endif %}
+
+            {# --- Counterparty Card --- #}
+            <div class="card profile-card">
+                {% if request.user.id == req.client_id %}
+                    {# Client viewing Employee #}
+                    <div class="card-header-sm">الموظف المسؤول</div>
+                    {% if req.assigned_employee %}
+                    <div class="profile-info">
+                        <div class="avatar lg">{{ req.assigned_employee.first_name|first }}</div>
+                        <h3>{{ req.assigned_employee.get_full_name }}</h3>
+                        <p class="role">موظف معتمد</p>
+                        <div class="contact-details">
+                            <div class="contact-item"><i class="fas fa-envelope"></i> {{ req.assigned_employee.email }}</div>
+                            {% if req.assigned_employee.phone %}<div class="contact-item"><i class="fas fa-phone"></i> {{ req.assigned_employee.phone }}</div>{% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-profile">
+                        <div class="icon">⏳</div>
+                        <p>جاري تعيين موظف...</p>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    {# Employee viewing Client #}
+                    <div class="card-header-sm">صاحب المشروع</div>
+                    <div class="profile-info">
+                        <div class="avatar lg">{{ client_name_safe|first }}</div>
+                        <h3>{{ client_name_safe }}</h3>
+                        <p class="role">العميل</p>
+                        <div class="contact-details">
+                            <div class="contact-item"><i class="fas fa-envelope"></i> {{ client_email_safe }}</div>
+                            <div class="contact-item"><i class="fas fa-phone"></i> {{ client_phone_safe }}</div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            {# --- Countdown Timer --- #}
+            {% if req.status == 'in_progress' and req.agreement %}
+            <div class="card timer-card">
+                <div class="timer-icon">⏰</div>
+                <div class="timer-content">
+                    <span class="label">الوقت المتبقي</span>
+                    <span class="value {% if req.agreement.days_remaining < 3 %}danger{% endif %}">
+                        {{ req.agreement.days_remaining }} يوم
+                    </span>
+                </div>
+            </div>
+            {% endif %}
+
+            {# --- Admin Actions --- #}
+            {% if request.user.is_staff or request.user.role == 'admin' %}
+            <div class="card actions-card" style="border-color: #f59e0b;">
+                <div class="card-header-sm" style="color: #b45309;">إجراءات الإدارة</div>
+                <div class="actions-list">
+                    
+                    {# 1. Move to In Progress #}
+                    {% if req.status != 'in_progress' and req.status != 'completed' and req.status != 'cancelled' %}
+                    <form method="post" action="{% url 'marketplace:request_change_status' req.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="in_progress">
+                        <button type="submit" class="action-btn" style="width:100%; text-align:right; justify-content:flex-start; border:none; cursor:pointer;">
+                            <span>▶️</span> تحويل لقيد التنفيذ
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {# 2. Reassign #}
+                    <a href="{% url 'marketplace:admin_request_reassign' req.pk %}" class="action-btn">
+                        <span>🔄</span> إعادة إسناد
+                    </a>
+
+                    {# 3. Cancel #}
+                    {% if req.status != 'cancelled' %}
+                    <a href="{% url 'marketplace:request_cancel' req.pk %}" class="action-btn danger" onclick="return confirm('هل أنت متأكد من إلغاء هذا الطلب؟')">
+                        <span>🚫</span> إلغاء الطلب
+                    </a>
+                    {% endif %}
+
+                    {# 4. Delete #}
+                    <a href="{% url 'marketplace:admin_request_delete' req.pk %}" class="action-btn danger" onclick="return confirm('تحذير: سيتم حذف الطلب نهائياً. هل أنت متأكد؟')">
+                        <span>🗑️</span> شطب نهائي
+                    </a>
+
+                </div>
+            </div>
+            {% endif %}
+
+            {# --- Quick Actions --- #}
+            <div class="card actions-card">
+                <div class="card-header-sm">إجراءات سريعة</div>
+                <div class="actions-list">
+                    {% if can_create_agreement and not req.agreement %}
+                        <a href="{% url 'agreements:open_by_request' req.pk %}" class="action-btn primary">
+                            <span>📝</span> إنشاء الاتفاقية
+                        </a>
+                    {% endif %}
+
+                    {% if req.agreement %}
+                        <a href="{% url 'agreements:detail' req.agreement.pk %}" class="action-btn">
+                            <span>📜</span> عرض العقد
+                        </a>
+                    {% endif %}
+                    
+                    {% if req.status == 'in_progress' %}
+                        {% if request.user.id == req.client_id or request.user.id == req.assigned_employee_id %}
+                        <a href="{% url 'disputes:open_by_request' req.pk %}" class="action-btn danger">
+                            <span>⚖️</span> فتح نزاع
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
     </div>
+</div>
+
+<style>
+    /* --- Workspace Variables --- */
+    :root {
+        --ws-bg: var(--surface-alt, #f8fafc);
+        --ws-card: var(--surface, #ffffff);
+        --ws-primary: var(--primary-600, #16a34a);
+        --ws-primary-soft: var(--primary-100, #dcfce7);
+        --ws-text: var(--dark-900, #0f172a);
+        --ws-text-light: var(--dark-500, #64748b);
+        --ws-border: var(--dark-200, #e2e8f0);
+        --ws-radius: var(--radius-md, 0.75rem);
+        --ws-shadow: var(--shadow-sm, 0 1px 2px 0 rgb(0 0 0 / 0.05));
+    }
+
+    /* --- Layout --- */
+    .project-workspace {
+        background: var(--ws-bg);
+        min-height: 100vh;
+        padding-bottom: 3rem;
+        font-family: 'Tajawal', sans-serif;
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+    }
+
+    .main-layout {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 1.5rem;
+        margin-top: -2rem; /* Overlap header */
+    }
+
+    /* --- Header --- */
+    .workspace-header {
+        background: #16a34a;
+        background: linear-gradient(135deg, var(--ws-primary), #064e3b);
+        color: white;
+        padding: 3rem 0 5rem;
+    }
+
+    .workspace-header .project-title {
+        color: #ffffff !important;
+    }
+
+    .workspace-header .project-meta, 
+    .workspace-header .status-label,
+    .workspace-header .id-badge {
+        color: #ffffff !important;
+    }
+    
+    .workspace-header .project-meta i {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+
+    .workspace-header .meta-item {
+        color: #ffffff !important;
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .project-identity .id-badge {
+        background: rgba(255,255,255,0.1);
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .project-title {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin: 0 0 1rem;
+        line-height: 1.3;
+    }
+
+    .project-meta {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.9rem;
+        color: #ffffff !important;
+    }
+
+    .status-box {
+        text-align: center;
+    }
+    .status-label { font-size: 0.8rem; opacity: 0.7; margin-bottom: 0.5rem; }
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(4px);
+    }
+    .status-badge.in_progress { background: #3b82f6; color: white; }
+    .status-badge.completed { background: var(--primary-500, #22c55e); color: white; }
+    .status-badge.new { background: var(--secondary-500, #f59e0b); color: white; }
+
+    /* --- Cards --- */
+    .card {
+        background: var(--ws-card);
+        border-radius: var(--ws-radius);
+        box-shadow: var(--ws-shadow);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--ws-border);
+    }
+
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 1rem;
+        color: var(--ws-text);
+        border-bottom: 1px solid var(--ws-border);
+        padding-bottom: 0.75rem;
+    }
+
+    /* --- Stepper --- */
+    .stepper {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+    }
+    .stepper::before {
+        content: ''; position: absolute; top: 20px; left: 0; right: 0; height: 2px; background: #e5e7eb; z-index: 0;
+    }
+    .step {
+        position: relative; z-index: 1; background: var(--ws-card); padding: 0 1rem; text-align: center;
+        opacity: 0.5; transition: all 0.3s;
+    }
+    .step.active { opacity: 1; }
+    .step-icon {
+        width: 40px; height: 40px; background: #f3f4f6; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;
+        border: 2px solid #e5e7eb; color: #6b7280;
+    }
+    .step.active .step-icon {
+        background: var(--ws-primary); border-color: var(--ws-primary); color: white;
+    }
+    .step-label { font-size: 0.85rem; font-weight: 600; color: var(--ws-text-light); }
+    .step.active .step-label { color: var(--ws-primary); font-weight: 700; }
+
+    /* --- Tabs --- */
+    .tabs-nav {
+        display: flex; gap: 0.5rem; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem;
+    }
+    .tab-btn {
+        background: transparent; border: none; padding: 0.75rem 1.25rem;
+        font-family: inherit; font-weight: 600; color: var(--ws-text-light);
+        cursor: pointer; border-radius: 8px; transition: all 0.2s; white-space: nowrap;
+    }
+    .tab-btn.active {
+        background: var(--ws-card); color: var(--ws-primary); box-shadow: var(--ws-shadow);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* --- Chat --- */
+    .chat-card { padding: 0; overflow: hidden; display: flex; flex-direction: column; height: 600px; }
+    .chat-header {
+        padding: 1rem 1.5rem; border-bottom: 1px solid var(--ws-border); background: #f9fafb;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .chat-header h3 { margin: 0; font-size: 1rem; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 1.5rem; background: #f9fafb; }
+    
+    .message { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+    .message.outgoing { flex-direction: row-reverse; }
+    .msg-avatar {
+        width: 36px; height: 36px; background: #e5e7eb; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem;
+    }
+    .message.outgoing .msg-avatar { background: var(--ws-primary-soft); color: var(--ws-primary); }
+    
+    .msg-bubble {
+        max-width: 70%; background: white; padding: 1rem; border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative;
+    }
+    .message.outgoing .msg-bubble { background: var(--ws-primary); color: white; }
+    .message.outgoing .msg-author { color: rgba(255,255,255,0.9); }
+    .message.outgoing .msg-time { color: rgba(255,255,255,0.7); }
+    .message.outgoing .msg-file { color: white; background: rgba(255,255,255,0.2); }
+
+    .msg-author { font-size: 0.75rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--ws-text-light); }
+    .msg-text { font-size: 0.95rem; line-height: 1.5; }
+    .msg-time { font-size: 0.7rem; color: #9ca3af; margin-top: 0.5rem; text-align: left; }
+    .msg-file {
+        display: block; margin-top: 0.5rem; padding: 0.5rem; background: #f3f4f6;
+        border-radius: 6px; text-decoration: none; font-size: 0.85rem; color: var(--ws-text);
+    }
+
+    .chat-input-area { padding: 1rem; background: white; border-top: 1px solid var(--ws-border); }
+    .chat-form { display: flex; gap: 0.75rem; }
+    .input-wrapper {
+        flex: 1; position: relative; border: 1px solid var(--ws-border); border-radius: 24px;
+        padding: 0.5rem 1rem; display: flex; align-items: center; background: #f9fafb;
+    }
+    .input-wrapper textarea {
+        flex: 1; border: none; background: transparent; resize: none; height: 24px;
+        font-family: inherit; outline: none; padding: 0;
+    }
+    .file-btn { cursor: pointer; font-size: 1.2rem; color: #6b7280; padding: 0 0.5rem; }
+    .hidden-input { display: none; }
+    .send-btn {
+        background: var(--ws-primary); color: white; border: none; width: 44px; height: 44px;
+        border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        transition: transform 0.2s;
+    }
+    .send-btn:hover { transform: scale(1.05); }
+
+    /* --- Sidebar --- */
+    .profile-card { text-align: center; }
+    .card-header-sm {
+        font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;
+        color: var(--ws-text-light); margin-bottom: 1rem; font-weight: 700;
+    }
+    .avatar.lg {
+        width: 80px; height: 80px; background: #f3f4f6; border-radius: 50%;
+        margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; color: #9ca3af;
+    }
+    .profile-info h3 { margin: 0 0 0.25rem; font-size: 1.1rem; }
+    .profile-info .role { color: var(--ws-text-light); font-size: 0.9rem; margin: 0; }
+    
+    .contact-details { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--ws-border); text-align: right; }
+    .contact-item { font-size: 0.85rem; color: var(--ws-text); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; justify-content: center; }
+    .contact-item i { color: var(--ws-text-light); width: 16px; }
+
+    .timer-card {
+        background: #1e293b; color: white; display: flex; align-items: center; gap: 1rem;
+    }
+    .timer-icon { font-size: 2rem; }
+    .timer-content { display: flex; flex-direction: column; }
+    .timer-content .label { font-size: 0.8rem; opacity: 0.7; }
+    .timer-content .value { font-size: 1.2rem; font-weight: 700; color: #38bdf8; }
+    .timer-content .value.danger { color: #f87171; }
+
+    .action-btn {
+        display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem;
+        background: #f9fafb; border-radius: 8px; text-decoration: none;
+        color: var(--ws-text); font-weight: 600; margin-bottom: 0.5rem;
+        transition: all 0.2s;
+    }
+    .action-btn:hover { background: #e5e7eb; }
+    .action-btn.danger { color: #dc2626; background: #fef2f2; }
+    .action-btn.danger:hover { background: #fee2e2; }
+
+    /* --- Responsive --- */
+    @media (max-width: 900px) {
+        .main-layout { grid-template-columns: 1fr; }
+        .sidebar-column { order: -1; }
+    }
+    
+    /* --- Utilities --- */
+    .fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .btn-sm { padding: 0.4rem 0.8rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 0.85rem; text-decoration: none; display: inline-block; }
+    .btn-sm.primary { background: var(--ws-primary); color: white; }
+    .btn-sm.outline { border: 1px solid var(--ws-border); background: white; color: var(--ws-text); }
+    .btn-block { width: 100%; padding: 0.75rem; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+    .btn-block.primary { background: var(--ws-primary); color: white; }
+
+    .modern-table { width: 100%; border-collapse: collapse; }
+    .modern-table th { text-align: right; padding: 0.75rem; background: #f9fafb; font-size: 0.85rem; color: var(--ws-text-light); }
+    .modern-table td { padding: 0.75rem; border-bottom: 1px solid var(--ws-border); }
+    .status-pill { padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+    .status-pill.success { background: #dcfce7; color: #166534; }
+    .status-pill.warning { background: #fef3c7; color: #92400e; }
+
+    /* --- Highlight Card --- */
+    .action-card-highlight {
+        background: linear-gradient(135deg, var(--ws-primary) 0%, #15803d 100%);
+        color: white;
+        text-align: center;
+        border: none;
+        position: relative;
+        overflow: hidden;
+    }
+    .action-card-highlight h3 { color: white; margin-bottom: 0.5rem; font-size: 1.25rem; }
+    .action-card-highlight p { color: rgba(255,255,255,0.9); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .action-icon-wrapper {
+        width: 60px; height: 60px; background: rgba(255,255,255,0.2); border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;
+        backdrop-filter: blur(4px);
+    }
+    .action-icon { font-size: 1.75rem; }
+    .pulse-btn {
+        background: white; color: var(--ws-primary); animation: pulse 2s infinite;
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+    }
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+    }
+
+    /* --- Modal --- */
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); z-index: 1000;
+        display: flex; align-items: center; justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+    .modal-content {
+        background: white; width: 90%; max-width: 500px; border-radius: 16px;
+        padding: 2rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .modal-header h3 { margin: 0; font-size: 1.25rem; font-weight: 700; }
+    .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; }
+    
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: var(--ws-text); }
+    .form-group input, .form-group textarea {
+        width: 100%; padding: 0.75rem; border: 1px solid var(--ws-border); border-radius: 8px;
+        font-family: inherit; font-size: 0.95rem; transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group textarea:focus {
+        outline: none; border-color: var(--ws-primary); box-shadow: 0 0 0 3px var(--ws-primary-soft);
+    }
+
+    /* --- Offer Highlights --- */
+    .offer-highlights {
+        display: flex; gap: 1rem; margin: 1rem 0;
+        background: #f8fafc; padding: 0.75rem; border-radius: 8px;
+    }
+    .highlight-item { flex: 1; text-align: center; }
+    .highlight-item .label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem; }
+    .highlight-item .value { font-weight: 700; color: #0f172a; font-size: 1.1rem; }
+    .highlight-item.price .value { color: var(--ws-primary); }
+    
+    .read-more-link {
+        display: inline-block; margin-top: 0.5rem; font-size: 0.85rem;
+        color: var(--ws-primary); font-weight: 600; text-decoration: none;
+    }
+    .read-more-link:hover { text-decoration: underline; }
+</style>
+
+<script>
+    function switchTab(tabId) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        // Show selected
+        document.getElementById('tab-' + tabId).classList.add('active');
+        event.target.classList.add('active');
+    }
+    
+    // Auto-scroll chat to bottom
+    window.onload = function() {
+        var chatBox = document.getElementById('chatBox');
+        if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+    }
+</script>
+
+{# --- Deliver Milestone Modal --- #}
+<div id="deliverMilestoneModal" class="modal-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+  <div class="modal-content" style="background:white;padding:2rem;border-radius:16px;width:90%;max-width:500px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);">
+    <h3 style="margin-top:0;margin-bottom:1rem;color:#0f172a;">تسليم المرحلة: <span id="deliverMilestoneTitle"></span></h3>
+    <form id="deliverMilestoneForm" method="post" action="">
+      {% csrf_token %}
+      <div style="margin-bottom:1.5rem;">
+        <label style="display:block;margin-bottom:0.5rem;font-weight:600;">ملاحظات التسليم (اختياري):</label>
+        <textarea name="note" style="width:100%;padding:0.75rem;border:1px solid #e2e8f0;border-radius:8px;min-height:100px;" placeholder="أضف رابط العمل أو تفاصيل التسليم هنا..."></textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:1rem;">
+        <button type="button" class="btn-sm outline" onclick="document.getElementById('deliverMilestoneModal').style.display='none'">إلغاء</button>
+        <button type="submit" class="btn-sm primary">تأكيد التسليم</button>
+      </div>
+    </form>
   </div>
-</section>
-{% endblock %}
+</div>
 
-{% block extra_scripts %}
-  {{ block.super }}
-  <script>
-  (function () {
+{# --- Reject Milestone Modal --- #}
+<div id="rejectMilestoneModal" class="modal-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+  <div class="modal-content" style="background:white;padding:2rem;border-radius:16px;width:90%;max-width:500px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);">
+    <h3 style="margin-top:0;margin-bottom:1rem;color:#991b1b;">رفض المرحلة: <span id="rejectMilestoneTitle"></span></h3>
+    <form id="rejectMilestoneForm" method="post" action="">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reject">
+      <div style="margin-bottom:1.5rem;">
+        <label style="display:block;margin-bottom:0.5rem;font-weight:600;">سبب الرفض (مطلوب):</label>
+        <textarea name="reason" required style="width:100%;padding:0.75rem;border:1px solid #e2e8f0;border-radius:8px;min-height:100px;" placeholder="يرجى توضيح سبب الرفض والتعديلات المطلوبة..."></textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:1rem;">
+        <button type="button" class="btn-sm outline" onclick="document.getElementById('rejectMilestoneModal').style.display='none'">إلغاء</button>
+        <button type="submit" class="btn-sm danger">تأكيد الرفض</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-    // --- إخفاء تنبيه المنصّة بعد مدة --- 
-    var pn = document.getElementById("platformNoticeCard");
-    var pnClose = document.getElementById("platformNoticeClose");
-    if (pn) {
-      var hidePlatformNotice = function(){
-        pn.style.opacity = "0";
-        pn.style.transform = "translateY(6px)";
-        setTimeout(function(){ pn.remove(); }, 220);
-      };
+<script>
+function openDeliverModal(pk, title) {
+  {% if req.agreement %}
+  document.getElementById('deliverMilestoneTitle').textContent = title;
+  var url = "{% url 'agreements:milestone_deliver' req.agreement.pk 999999 %}".replace('999999', pk);
+  document.getElementById('deliverMilestoneForm').action = url;
+  document.getElementById('deliverMilestoneModal').style.display = 'flex';
+  {% endif %}
+}
 
-      setTimeout(hidePlatformNotice, 15000);
-
-      if (pnClose) {
-        pnClose.addEventListener("click", function(){
-          hidePlatformNotice();
-        });
-      }
-    }
-
-    // نحتاج للضريبة فقط كـ fallback في حال لم يصل إجمالي العميل من الباك-إند
-    var vatPercentRaw = "{{ vat_percent|default_if_none:'' }}";
-
-    function normalizePercent(raw) {
-      if (!raw) return 0;
-      raw = String(raw).replace(',', '.');
-      var num = parseFloat(raw);
-      if (isNaN(num) || !isFinite(num)) return 0;
-      if (num > 1) {
-        return num / 100.0;
-      }
-      return num;
-    }
-
-    var vatPercent = normalizePercent(vatPercentRaw);
-
-    // ✅ سياسة العميل: ClientTotal = P + (P * VAT)
-    function computeClientTotal(priceVal) {
-      var P = +(priceVal).toFixed(2);
-      var vat = +(P * vatPercent).toFixed(2);
-      var total = +(P + vat).toFixed(2);
-      return total;
-    }
-
-    // تحديث إجمالي العميل لكل عرض إذا لم يأتِ من الباك-إند
-    function updateOfferTotals() {
-      var offerItems = document.querySelectorAll('.offer-item');
-      if (!offerItems || offerItems.length === 0) return;
-
-      offerItems.forEach(function (item) {
-        var netEl = item.querySelector('.off-net');
-        var totalEl = item.querySelector('.off-total');
-        if (!netEl || !totalEl) return;
-
-        var totalRaw = totalEl.getAttribute('data-total');
-        if (totalRaw && String(totalRaw).trim() !== '') {
-          var t = parseFloat(totalRaw);
-          if (!isNaN(t)) totalEl.textContent = t.toFixed(2);
-          return;
-        }
-
-        var netRaw = netEl.getAttribute('data-net') || netEl.textContent;
-        var priceVal = parseFloat(netRaw);
-        if (isNaN(priceVal) || priceVal <= 0) return;
-
-        var total = computeClientTotal(priceVal);
-        totalEl.textContent = total.toFixed(2);
-      });
-    }
-
-    function updateSelectedOfferTotal() {
-      var totalEl = document.querySelector('.sel-total');
-      if (!totalEl) return;
-
-      var totalRaw = totalEl.getAttribute('data-total');
-      if (totalRaw && String(totalRaw).trim() !== '') {
-        var t = parseFloat(totalRaw);
-        if (!isNaN(t)) totalEl.textContent = t.toFixed(2);
-      }
-    }
-
-    function updateMyOfferTotal() {
-      var totalEl = document.querySelector('.my-offer-total');
-      if (!totalEl) return;
-
-      var totalRaw = totalEl.getAttribute('data-total');
-      if (totalRaw && String(totalRaw).trim() !== '') {
-        var t = parseFloat(totalRaw);
-        if (!isNaN(t)) totalEl.textContent = t.toFixed(2);
-      }
-    }
-
-    updateOfferTotals();
-    updateSelectedOfferTotal();
-    updateMyOfferTotal();
-
-    // مودال الرفض
-    document.addEventListener('click', function (e) {
-      var trigger = e.target.closest('[data-reject-modal]');
-      if (trigger) {
-        var modalId = trigger.getAttribute('data-reject-modal');
-        var modal = document.querySelector(modalId);
-        if (modal) modal.style.display = 'flex';
-      }
-
-      if (e.target.matches('[data-close-modal]') || e.target.classList.contains('modal-backdrop')) {
-        var modalOverlay = e.target.closest('.modal-overlay');
-        if (modalOverlay) modalOverlay.style.display = 'none';
-      }
-    });
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        var openModal = document.querySelector('.modal-overlay[style*="display: flex"]');
-        if (openModal) openModal.style.display = 'none';
-      }
-    });
-
-    // تأثيرات لطيفة
-    var sections = document.querySelectorAll('.profile-section');
-    sections.forEach(function (section, index) {
-      section.style.animationDelay = (index * 0.05) + 's';
-      section.classList.add('scroll-reveal');
-    });
-
-    if (typeof initScrollReveal === 'function') {
-      initScrollReveal();
-    }
-  })();
-  </script>
+function openRejectMilestoneModal(pk, title) {
+  {% if req.agreement %}
+  document.getElementById('rejectMilestoneTitle').textContent = title;
+  var url = "{% url 'agreements:milestone_review' req.agreement.pk 999999 %}".replace('999999', pk);
+  document.getElementById('rejectMilestoneForm').action = url;
+  document.getElementById('rejectMilestoneModal').style.display = 'flex';
+  {% endif %}
+}
+</script>
 {% endblock %}

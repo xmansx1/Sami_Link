@@ -7,11 +7,17 @@ from django.db import transaction
 from django.http import HttpRequest
 from django.utils import timezone
 
-from .models import Dispute
+from .models import Dispute, DisputeMessage
 
+class DisputeMessageInline(admin.TabularInline):
+    model = DisputeMessage
+    extra = 0
+    readonly_fields = ["created_at"]
+    fields = ["sender", "content", "attachment", "is_internal", "created_at"]
 
 @admin.register(Dispute)
 class DisputeAdmin(admin.ModelAdmin):
+    inlines = [DisputeMessageInline]
     """
     إدارة النزاعات وفق التحليل:
     - عند فتح نزاع: يُجمَّد الطلب/الصرف (إن وُجد حقل مناسب على الطلب).

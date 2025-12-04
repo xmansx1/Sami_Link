@@ -6,46 +6,63 @@
     <article class="mini-tech-card scroll-reveal" aria-label="تقني">
       <div class="mini-tech-head">
 
-        <div class="mini-tech-avatar">
-          {% if emp.avatar_url %}
-            <img src="{{ emp.avatar_url }}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
-          {% elif emp.avatar %}
-            <img src="{{ emp.avatar.url }}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
-          {% elif emp.image %}
-            <img src="{{ emp.image.url }}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
-          {% elif emp.photo %}
-            <img src="{{ emp.photo.url }}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
-          {% elif emp.profile_image %}
-            <img src="{{ emp.profile_image.url }}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
-          {% elif emp.profile and emp.profile.avatar %}
-            <img src="{{ emp.profile.avatar.url }}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
-          {% elif emp.profile and emp.profile.photo %}
-            <img src="{{ emp.profile.photo.url }}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
-          {% elif emp.profile and emp.profile.image %}
-            <img src="{{ emp.profile.image.url }}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
-          {% elif emp.employee_profile and emp.employee_profile.photo %}
-            <img src="{{ emp.employee_profile.photo.url }}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
-          {% else %}
-            <img src="{% static 'img/avatar-placeholder.png' %}" alt="{{ emp.full_name|default:emp.name|default:'تقني' }}" loading="lazy" />
+        <div class="mini-tech-avatar-wrapper">
+          <div class="mini-tech-avatar">
+            {% if emp.employee_profile and emp.employee_profile.photo %}
+              <img src="{{ emp.employee_profile.photo.url }}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% elif emp.avatar_url %}
+              <img src="{{ emp.avatar_url }}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% elif emp.avatar %}
+              <img src="{{ emp.avatar.url }}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% elif emp.image %}
+              <img src="{{ emp.image.url }}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% elif emp.photo %}
+              <img src="{{ emp.photo.url }}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% elif emp.profile_image %}
+              <img src="{{ emp.profile_image.url }}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% elif emp.profile and emp.profile.avatar %}
+              <img src="{{ emp.profile.avatar.url }}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% elif emp.profile and emp.profile.photo %}
+              <img src="{{ emp.profile.photo.url }}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% elif emp.profile and emp.profile.image %}
+              <img src="{{ emp.profile.image.url }}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% else %}
+              <img src="{% static 'img/avatar-placeholder.png' %}" alt="{{ emp.get_full_name }}" loading="lazy" />
+            {% endif %}
+          </div>
+          
+          {% if emp.employee_profile.kyc_status == 'verified' %}
+            <div class="verified-badge" title="هوية موثقة"><i class="fas fa-check"></i></div>
           {% endif %}
         </div>
 
         <div class="mini-tech-info">
           <div class="mini-tech-name">
-            {{ emp.full_name|default:emp.name|default:emp.email|default:"تقني سعودي" }}
+            {{ emp.get_full_name|default:emp.name|default:"تقني سعودي" }}
           </div>
-          <div class="mini-tech-sub">تقني سعودي معتمد</div>
+          
+          <div class="mini-tech-sub">
+            {{ emp.employee_profile.title|default:"تقني سعودي معتمد" }}
+          </div>
+
+          <div class="mini-tech-rating">
+            {% if emp.employee_profile.rating > 0 %}
+              <i class="fas fa-star text-warning"></i> 
+              <span>{{ emp.employee_profile.rating }}</span> 
+              <span class="text-muted" style="font-size:0.8em;">({{ emp.employee_profile.reviews_count }} تقييم)</span>
+            {% else %}
+              <span class="text-muted" style="font-size:0.85em;"><i class="far fa-star me-1"></i> عضو جديد</span>
+            {% endif %}
+          </div>
         </div>
 
       </div>
 
       <div class="mini-tech-skills">
-        {% for skill in emp.skills.all|slice:":3" %}
-          <span class="skill-tag-small">{{ skill.name|default:skill }}</span>
+        {% for skill in emp.skills_list %}
+          <span class="skill-tag-small">{{ skill }}</span>
         {% empty %}
-          <span class="skill-tag-small">Django</span>
-          <span class="skill-tag-small">React</span>
-          <span class="skill-tag-small">API</span>
+          <!-- لا نعرض مهارات وهمية -->
         {% endfor %}
       </div>
     </article>

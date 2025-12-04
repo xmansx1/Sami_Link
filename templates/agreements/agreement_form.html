@@ -521,12 +521,15 @@
         return;
       }
 
-      if (sum > agreedDuration) {
-        var msg = '⚠️ مجموع مدد المراحل (' + String(sum) +
-                  ' يومًا) أكبر من المدة المتفق عليها (' +
-                  String(agreedDuration) + ' يومًا). عدّل مدد المراحل أو قلّل عددها.';
+      if (sum !== agreedDuration && sum > 0) {
+        var msg = 'ℹ️ سيتم تحديث مدة الاتفاقية لتصبح ' + String(sum) + ' يومًا (بدلاً من ' + String(agreedDuration) + ').';
         showDurationWarning(true, msg);
-        toggleActionButtons(true);
+        if (warningBox) {
+             warningBox.style.background = '#eff6ff';
+             warningBox.style.borderColor = '#bfdbfe';
+             warningBox.style.color = '#1e40af';
+        }
+        toggleActionButtons(false);
       } else {
         showDurationWarning(false, '');
         toggleActionButtons(false);

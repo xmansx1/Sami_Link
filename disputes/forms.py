@@ -8,7 +8,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.html import strip_tags
 
-from .models import Dispute
+from .models import Dispute, DisputeMessage
 
 # محظورات: منع تسريب وسائل الاتصال خارج المنصّة
 PHONE_RE = re.compile(r"(?:\+?\d[\d\-\s]{7,}\d)")
@@ -111,47 +111,38 @@ class DisputeForm(forms.ModelForm):
         _forbid_external_contacts(details, "التفاصيل")
         return details
 
-    # -------- تحقّق الدلائل (ملفات) --------
-    def clean_evidence(self) -> object:
-        """
-        تحقّق الأنواع/الأحجام للمرفقات. تذكير: هذا الحقل غير مرتبط بالموديل.
-        احفظ الملفات الفعلية في الـ view عبر نظام الرفع لديك (uploads app).
-        """
-        f = self.files.get("evidence")
+
+class DisputeMessageForm(forms.ModelForm):
+    """نموذج إضافة رسالة/رد في النزاع."""
+    class Meta:
+        model = DisputeMessage
+        fields = ["content", "attachment"]
+        widgets = {
+            "content": forms.Textarea(attrs={
+                "rows": 3,
+                "class": "form-control",
+                "placeholder": "اكتب ردك هنا..."
+            }),
+            "attachment": forms.FileInput(attrs={"class": "form-control"}),
+        }
+
+    def clean_content(self):
+        data = self.cleaned_data.get("content", "")
+        data = _sanitize_text(data)
+        _forbid_external_contacts(data, "نص الرسالة")
+        return data
+
+    def clean_attachment(self):
+        f = self.cleaned_data.get("attachment")
         if not f:
             return f
         
         ctype = getattr(f, "content_type", "") or ""
         size = getattr(f, "size", 0) or 0
+        
         if ctype not in ALLOWED_CONTENT_TYPES:
             raise ValidationError(f"نوع ملف غير مسموح: {ctype}")
         if size > MAX_FILE_SIZE_MB * 1024 * 1024:
             raise ValidationError(f"حجم الملف يتجاوز {MAX_FILE_SIZE_MB}MB.")
         return f
 
-    # -------- تحقّق إجمالي (عبر الحقول) --------
-    def clean(self):
-        cleaned = super().clean()
-        title = cleaned.get("title") or ""
-        reason = cleaned.get("reason") or ""
-        details = cleaned.get("details") or ""
-
-        # منع التكرار الفارغ بين العنوان/السبب
-        if title and reason and title.strip().lower() == reason.strip().lower():
-            self.add_error("reason", "السبب مطابق تمامًا للعنوان؛ رجاءً وضّح السبب بشكل مختلف.")
-
-        return cleaned
-
-    # -------- ملاحظة حول حفظ الدلائل --------
-    def save_evidence(self, request, dispute: Dispute) -> int:
-        """
-        مساعد اختياري: احفظ الدلائل باستخدام نظام الرفع لديك (uploads app).
-        يعيد عدد الملفات المحفوظة. يمكنك تعديل هذا ليسجّل في ContentType الخاص بك.
-        """
-        files = self.cleaned_data.get("evidence") or []
-        saved = 0
-        # مثال (افتراضي): اترك الحفظ للـ view حيث لديك المنطق الجاهز للـ ContentType/S3.
-        # for f in files:
-        #     Upload.objects.create_for_object(dispute, file=f, uploaded_by=request.user, ...)
-        #     saved += 1
-        return saved

@@ -3,201 +3,423 @@
 
 {% block title %}{{ emp.user.name|default:"بروفايل تقني" }} - سامي لينك{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Profile Hero */
+    .profile-hero {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 24px;
+        padding: 3rem 2rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    .profile-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+    }
+    
+    .avatar-wrapper {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        border: 4px solid #fff;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        position: relative;
+        background: #fff;
+        margin-bottom: 1rem;
+    }
+    .avatar-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .kyc-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 99px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+    }
+    .kyc-verified { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .kyc-pending { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+    .kyc-rejected { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .kyc-none { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+    /* Stats Cards */
+    .stat-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.25rem;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        border-color: #cbd5e1;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 0.25rem;
+    }
+    .stat-label {
+        color: #64748b;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    /* Section Styling */
+    .content-card {
+        background: #fff;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .section-title::before {
+        content: '';
+        display: block;
+        width: 4px;
+        height: 24px;
+        background: #3b82f6;
+        border-radius: 2px;
+    }
+
+    /* Skills */
+    .skill-tag {
+        display: inline-block;
+        background: #f8fafc;
+        color: #334155;
+        padding: 0.6rem 1.2rem;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin: 0.25rem;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s;
+    }
+    .skill-tag:hover {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-color: #bfdbfe;
+        transform: translateY(-1px);
+    }
+
+    /* Portfolio & Projects */
+    .portfolio-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        background: #fff;
+        height: 100%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .portfolio-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px -8px rgba(0,0,0,0.1);
+        border-color: #cbd5e1;
+    }
+    .portfolio-img {
+        height: 200px;
+        background: #f1f5f9;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .portfolio-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s;
+    }
+    .portfolio-card:hover .portfolio-img img {
+        transform: scale(1.05);
+    }
+    
+    .project-history-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem;
+        border: 1px solid #f1f5f9;
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s;
+        background: #fff;
+    }
+    .project-history-item:hover { 
+        background: #f8fafc; 
+        border-color: #e2e8f0;
+        transform: translateX(-4px);
+    }
+    .project-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: #dcfce7;
+        color: #166534;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="employee-profile">
-  <!-- رأس البروفايل -->
-  <div class="profile-header scroll-reveal">
-    <div class="profile-avatar">
-      <img
-        src="{% if emp.photo %}{{ emp.photo.url }}{% else %}{% static 'img/avatar-placeholder.png' %}{% endif %}"
-        alt="صورة {{ emp.user.name }}"
-        loading="lazy">
-    </div>
+<div class="container py-5">
     
-    <div class="profile-info">
-      <h1 class="profile-name">{{ emp.user.name|default:"تقني" }}</h1>
-      <div class="profile-title">
-        {% if emp.title %}{{ emp.title }}{% elif emp.specialty %}{{ emp.specialty }}{% else %}تقني معتمد{% endif %}
-      </div>
-      
-      {% if emp.city %}
-      <div class="profile-location">
-        <span>📍</span>
-        <span>{{ emp.city }}</span>
-      </div>
-      {% endif %}
-      
-      <div class="profile-stats">
-        <div class="profile-stat">
-          <span class="profile-rating">
-            ★ {{ emp.rating|floatformat:1 }}
-          </span>
-          <span>({{ emp.reviews_count }} تقييم)</span>
+    <!-- Profile Hero -->
+    <div class="profile-hero text-center text-md-start">
+        <div class="row align-items-center">
+            <div class="col-md-auto d-flex justify-content-center mb-3 mb-md-0">
+                <div class="avatar-wrapper">
+                    <img src="{% if emp.photo %}{{ emp.photo.url }}{% else %}{% static 'img/avatar-placeholder.png' %}{% endif %}" 
+                         alt="{{ emp.user.name }}">
+                </div>
+            </div>
+            <div class="col-md">
+                <div class="d-flex flex-column flex-md-row align-items-center align-items-md-start justify-content-between gap-3">
+                    <div>
+                        <h1 class="fw-bold mb-2 text-dark">{{ emp.user.name|default:"تقني" }}</h1>
+                        <p class="text-primary fw-medium mb-3 fs-5">
+                            {% if emp.title %}{{ emp.title }}{% elif emp.specialty %}{{ emp.specialty }}{% else %}تقني معتمد{% endif %}
+                        </p>
+                        
+                        <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-3 mb-3">
+                            {% if emp.city %}
+                            <span class="text-muted bg-light px-3 py-1 rounded-pill border">
+                                <i class="fas fa-map-marker-alt me-1 text-danger"></i> {{ emp.city }}
+                            </span>
+                            {% endif %}
+                            <span class="text-muted bg-light px-3 py-1 rounded-pill border">
+                                <i class="fas fa-calendar-alt me-1 text-primary"></i> عضو منذ {{ emp.user.date_joined|date:"Y" }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- KYC Status -->
+                    <div class="text-center text-md-end">
+                        {% if emp.kyc_status == 'verified' %}
+                            <div class="kyc-badge kyc-verified" title="تم التحقق من الهوية">
+                                <i class="fas fa-check-circle"></i> هوية موثقة
+                            </div>
+                            {% if emp.kyc_verified_at %}
+                            <div class="text-muted small mt-1">منذ {{ emp.kyc_verified_at|date:"Y-m-d" }}</div>
+                            {% endif %}
+                        {% elif emp.kyc_status == 'pending' %}
+                            <div class="kyc-badge kyc-pending">
+                                <i class="fas fa-clock"></i> قيد المراجعة
+                            </div>
+                        {% elif emp.kyc_status == 'rejected' %}
+                            <div class="kyc-badge kyc-rejected">
+                                <i class="fas fa-times-circle"></i> التوثيق مرفوض
+                            </div>
+                        {% else %}
+                            <div class="kyc-badge kyc-none">
+                                <i class="fas fa-shield-alt"></i> غير موثق
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <div class="profile-stat">
-          <span>✅ {{ emp.completed_jobs }} مشروع مكتمل</span>
+
+        <!-- Stats Grid -->
+        <div class="row g-3 mt-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value text-warning">
+                        <i class="fas fa-star me-1"></i>{{ emp.rating|floatformat:1 }}
+                    </div>
+                    <div class="stat-label">{{ emp.reviews_count }} تقييم</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value text-success">
+                        {{ completed_requests_count|default:0 }}
+                    </div>
+                    <div class="stat-label">مشروع مكتمل</div>
+                </div>
+            </div>
         </div>
-      </div>
-      
-      <!-- حالة KYC -->
-      <div class="kyc-status">
-        {% if emp.kyc_status == 'verified' %}
-          <span class="badge badge-verified">✅ KYC موثّق</span>
-        {% elif emp.kyc_status == 'pending' %}
-          <span class="badge badge-pending">⏳ KYC قيد المراجعة</span>
-        {% elif emp.kyc_status == 'rejected' %}
-          <span class="badge badge-rejected">❌ KYC مرفوض</span>
-        {% else %}
-          <span class="badge badge-default">ℹ️ بدون توثيق</span>
-        {% endif %}
-        
-        {% if emp.kyc_verified_at %}
-          <span class="text-sm text-slate-500">موثّق منذ {{ emp.kyc_verified_at|date:"Y-m-d" }}</span>
-        {% endif %}
-      </div>
     </div>
-    
-  </div>
 
-  <!-- السيرة الذاتية -->
-  {% if emp.bio %}
-  <section class="profile-section bio-section scroll-reveal">
-    <h2 class="section-title">نبذة عني</h2>
-    <div class="bio-content">
-      <p class="leading-relaxed whitespace-pre-line text-slate-700">{{ emp.bio }}</p>
-    </div>
-  </section>
-  {% endif %}
+    <div class="row g-4">
+        <!-- Left Column: Bio & Skills -->
+        <div class="col-lg-4">
+            <!-- Bio -->
+            {% if emp.bio %}
+            <div class="content-card">
+                <h2 class="section-title">نبذة عني</h2>
+                <p class="text-muted leading-relaxed mb-0" style="white-space: pre-line; line-height: 1.8;">{{ emp.bio }}</p>
+            </div>
+            {% endif %}
 
-  <!-- المؤشرات والمهارات -->
-  <div class="grid md:grid-cols-3 gap-6">
-    <!-- المؤشرات -->
-
-    <!-- المهارات -->
-    <section class="profile-section md:col-span-2 scroll-reveal">
-      <h2 class="section-title">المهارات والتخصصات</h2>
-      {% if emp.skills_list %}
-        <div class="skills-container">
-          {% for skill in emp.skills_list %}
-            <span class="skill-tag">{{ skill }}</span>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="text-slate-500">لا توجد مهارات مدخلة.</p>
-      {% endif %}
-    </section>
-  </div>
-
-  <!-- المشاريع المكتملة -->
-  {% if completed_requests_count %}
-  <section class="profile-section scroll-reveal">
-    <h2 class="section-title">
-      المشاريع المكتملة عبر سامي لينك
-      <span class="text-sm font-normal text-slate-500">({{ completed_requests_count }})</span>
-    </h2>
-    
-    <div class="projects-grid">
-      {% for req in completed_requests %}
-      <div class="project-card">
-        <div class="project-info">
-          <h3 class="project-title">{{ req.title|default:"مشروع بدون عنوان" }}</h3>
-          <div class="project-meta">
-            {% if req.client %}
-            <div class="meta-item">
-              <span>👤</span>
-              <span>
-                {% if req.client.name %}
-                  {{ req.client.name }}
+            <!-- Skills -->
+            <div class="content-card">
+                <h2 class="section-title">المهارات</h2>
+                {% if emp.skills_list %}
+                    <div class="d-flex flex-wrap">
+                        {% for skill in emp.skills_list %}
+                            <span class="skill-tag">{{ skill }}</span>
+                        {% endfor %}
+                    </div>
                 {% else %}
-                  {{ req.client.email }}
+                    <p class="text-muted small fst-italic">لم يتم إضافة مهارات بعد.</p>
                 {% endif %}
-              </span>
             </div>
-            {% endif %}
-            
-            {% if req.completed_at %}
-            <div class="meta-item">
-              <span>📅</span>
-              <span>{{ req.completed_at|date:"Y-m-d" }}</span>
-            </div>
-            {% else %}
-            <div class="meta-item">
-              <span>📅</span>
-              <span>{{ req.created_at|date:"Y-m-d" }}</span>
-            </div>
-            {% endif %}
-            
-            {% if req.category %}
-            <div class="meta-item">
-              <span>🏷️</span>
-              <span>{{ req.get_category_display|default:req.category }}</span>
-            </div>
-            {% endif %}
-          </div>
         </div>
-        
 
-      </div>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  <!-- معرض الأعمال -->
-  <section class="profile-section scroll-reveal">
-    <h2 class="section-title">
-      معرض الأعمال
-      <span class="text-sm font-normal text-slate-500">(يُعرض العام فقط)</span>
-    </h2>
-    
-    <div class="portfolio-grid">
-      {% for item in emp.user.portfolio_items.all %}
-        {% if item.is_public %}
-        <div class="portfolio-item">
-          {% if item.image %}
-          <div class="portfolio-image">
-            <img src="{{ item.image.url }}" alt="{{ item.title }}" loading="lazy">
-          </div>
-          {% endif %}
-          
-          <div class="portfolio-content">
-            <h3 class="portfolio-title">{{ item.title }}</h3>
+        <!-- Right Column: Portfolio & History -->
+        <div class="col-lg-8">
             
-            {% if item.tags_list %}
-            <div class="portfolio-tags">
-              {% for tag in item.tags_list|slice:":5" %}
-                <span class="portfolio-tag">{{ tag }}</span>
-              {% endfor %}
+            <!-- Portfolio Section -->
+            <div class="content-card bg-transparent border-0 shadow-none p-0 mb-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="section-title mb-0">معرض الأعمال</h2>
+                    {% if request.user == emp.user %}
+                    <a href="{% url 'profiles:portfolio_list' %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
+                        <i class="fas fa-edit me-1"></i> إدارة أعمالي
+                    </a>
+                    {% endif %}
+                </div>
+
+                {% if emp.user.portfolio_items.exists %}
+                <div class="row g-4">
+                    {% for item in emp.user.portfolio_items.all %}
+                        {% if item.is_public %}
+                        <div class="col-md-6">
+                            <div class="portfolio-card h-100 d-flex flex-column">
+                                <div class="portfolio-img">
+                                    {% if item.image %}
+                                        <img src="{{ item.image.url }}" alt="{{ item.title }}">
+                                    {% else %}
+                                        <i class="fas fa-image fa-3x text-light"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="p-3 flex-grow-1 d-flex flex-column">
+                                    <h5 class="fw-bold mb-2 text-dark">{{ item.title }}</h5>
+                                    
+                                    {% if item.tags_list %}
+                                    <div class="mb-2">
+                                        {% for tag in item.tags_list|slice:":3" %}
+                                            <span class="badge bg-light text-secondary border fw-normal">{{ tag }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+
+                                    <p class="text-muted small mb-3 flex-grow-1 line-clamp-2">
+                                        {{ item.description|truncatechars:100 }}
+                                    </p>
+                                    
+                                    <div class="d-flex gap-2 mt-auto">
+                                        {% if item.link %}
+                                        <a href="{{ item.link }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill w-100">
+                                            <i class="fas fa-external-link-alt me-1"></i> زيارة
+                                        </a>
+                                        {% endif %}
+                                        {% if item.attachment %}
+                                        <a href="{{ item.attachment.url }}" class="btn btn-sm btn-outline-secondary rounded-pill w-100">
+                                            <i class="fas fa-download me-1"></i> ملف
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 bg-white rounded-4 border border-dashed">
+                    <div class="text-muted mb-3"><i class="fas fa-briefcase fa-3x opacity-25"></i></div>
+                    <h5 class="text-muted">لا توجد أعمال معروضة حالياً</h5>
+                    <p class="text-muted small">سيظهر هنا معرض الأعمال الخاص بالتقني</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Platform History Section -->
+            {% if completed_requests_count %}
+            <div class="content-card">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h2 class="section-title mb-0">
+                        مشاريع مكتملة عبر المنصة
+                    </h2>
+                    <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 fs-6">
+                        {{ completed_requests_count }} مشروع
+                    </span>
+                </div>
+                
+                <div class="d-flex flex-column gap-3">
+                    {% for req in completed_requests %}
+                    <div class="project-history-item">
+                        <div class="project-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="fw-bold mb-1 text-dark">{{ req.title|default:"مشروع تقني" }}</h6>
+                            <div class="d-flex flex-wrap gap-3 text-muted small">
+                                <span><i class="far fa-calendar me-1"></i> {{ req.completed_at|date:"Y-m-d"|default:req.created_at|date:"Y-m-d" }}</span>
+                                {% if req.category %}
+                                <span><i class="fas fa-tag me-1"></i> {{ req.get_category_display }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if req.client %}
+                        <div class="text-end d-none d-sm-block">
+                            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                                <i class="fas fa-user me-1 text-secondary"></i> {{ req.client.name|default:"عميل" }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
             {% endif %}
-            
-            {% if item.description %}
-            <p class="portfolio-description">{{ item.description }}</p>
-            {% endif %}
-            
-            <div class="portfolio-actions">
-              {% if item.link %}
-              <a href="{{ item.link }}" target="_blank" rel="noopener" class="text-sm text-primary-600 hover:text-primary-700">
-                فتح الرابط
-              </a>
-              {% endif %}
-              
-              {% if item.attachment %}
-              <a href="{{ item.attachment.url }}" class="text-sm text-slate-600 hover:text-slate-700">
-                تنزيل الملف
-              </a>
-              {% endif %}
-            </div>
-          </div>
+
         </div>
-        {% endif %}
-      {% empty %}
-      <div class="col-span-full text-center py-8">
-        <p class="text-slate-500">لا توجد عناصر في معرض الأعمال.</p>
-      </div>
-      {% endfor %}
     </div>
-  </section>
 </div>
 {% endblock %}

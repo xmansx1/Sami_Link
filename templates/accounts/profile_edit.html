@@ -1,26 +1,245 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block title %}تعديل الملف الشخصي{% endblock %}
+
+{% block extra_head %}
+<style>
+    .edit-profile-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+        border-radius: 24px;
+        padding: 3rem 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+    }
+    .form-section {
+        background: #fff;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .form-section:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .section-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    .icon-account { background: #eff6ff; color: #3b82f6; }
+    .icon-pro { background: #f0fdf4; color: #22c55e; }
+    
+    .form-label {
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 0.5rem;
+        display: block;
+        font-size: 0.9rem;
+    }
+    .form-control, .input {
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        width: 100%;
+        transition: all 0.2s;
+        background-color: #f8fafc;
+        display: block;
+    }
+    .form-control:focus, .input:focus {
+        border-color: #3b82f6;
+        background-color: #fff;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        outline: none;
+    }
+    .help-text {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.25rem;
+    }
+    .current-photo-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #fff;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .btn-save {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 0.75rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        border: none;
+        transition: all 0.2s;
+        box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+    }
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+    }
+    .btn-cancel {
+        background: #fff;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        padding: 0.75rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .btn-cancel:hover {
+        background: #f8fafc;
+        color: #475569;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-2xl mx-auto p-6">
-  {% include "accounts/_messages.html" %}
-  <div class="bg-white rounded-2xl shadow border p-6">
-    <h1 class="text-2xl font-bold mb-4">تعديل الملف الشخصي</h1>
-    <form method="post" class="space-y-4">
-      {% csrf_token %}
-      <div>
-        <label class="block mb-1 text-slate-700">الاسم</label>
-        {{ form.name }}
-      </div>
-      <div>
-        <label class="block mb-1 text-slate-700">الجوال</label>
-        {{ form.phone }}
-        <p class="text-sm text-slate-500 mt-1">سيُحفظ بصيغة دولية تلقائيًا (E.164).</p>
-      </div>
-      <div class="flex gap-3">
-        <a href="{% url 'accounts:profile' %}" class="px-4 py-2 rounded-xl border">رجوع</a>
-        <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white">حفظ</button>
-      </div>
-    </form>
-  </div>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            
+            <!-- Header -->
+            <div class="edit-profile-header">
+                <h1 class="h3 fw-bold text-dark mb-2">تعديل الملف الشخصي</h1>
+                <p class="text-muted mb-0">قم بتحديث معلوماتك الشخصية والمهنية لتبدو بأفضل صورة</p>
+            </div>
+
+            {% include "accounts/_messages.html" %}
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- Account Info Section -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <div class="section-icon icon-account">
+                            <i class="fas fa-user-cog"></i>
+                        </div>
+                        بيانات الحساب الأساسية
+                    </h3>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label">الاسم الكامل</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">البريد الإلكتروني</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">رقم الجوال</label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                                <div class="text-danger small mt-1">{{ form.phone.errors.0 }}</div>
+                            {% endif %}
+                            <div class="help-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                سيتم حفظ الرقم بالصيغة الدولية (E.164) تلقائياً
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Professional Info Section (For Employees) -->
+                {% if employee_form %}
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <div class="section-icon icon-pro">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        البيانات المهنية
+                    </h3>
+                    
+                    <div class="row g-4">
+                        <!-- Photo Upload -->
+                        <div class="col-12">
+                            <div class="d-flex align-items-center gap-4 p-3 bg-light rounded-3 border">
+                                {% if employee_form.instance.photo %}
+                                    <img src="{{ employee_form.instance.photo.url }}" alt="Current Photo" class="current-photo-preview">
+                                {% else %}
+                                    <div class="current-photo-preview d-flex align-items-center justify-content-center bg-white text-muted">
+                                        <i class="fas fa-user fa-2x"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="flex-grow-1">
+                                    <label class="form-label mb-2">الصورة الشخصية</label>
+                                    {{ employee_form.photo }}
+                                    <div class="help-text">يفضل استخدام صورة مربعة عالية الجودة</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">{{ employee_form.title.label }}</label>
+                            {{ employee_form.title }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">{{ employee_form.specialty.label }}</label>
+                            {{ employee_form.specialty }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">{{ employee_form.city.label }}</label>
+                            {{ employee_form.city }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">{{ employee_form.skills.label }}</label>
+                            {{ employee_form.skills }}
+                            <div class="help-text">{{ employee_form.skills.help_text }}</div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">{{ employee_form.bio.label }}</label>
+                            {{ employee_form.bio }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Actions -->
+                <div class="d-flex gap-3 justify-content-end mt-4 mb-5">
+                    <a href="{% url 'accounts:profile' %}" class="btn-cancel text-decoration-none d-flex align-items-center justify-content-center">
+                        إلغاء
+                    </a>
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save me-2"></i>
+                        حفظ التغييرات
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}

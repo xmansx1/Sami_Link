@@ -1,0 +1,696 @@
+{% extends "dashboard/base_admin.html" %}
+{% load static %}
+
+{% block title %}رسائل التواصل{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* --- Page Layout --- */
+  .msg-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .msg-title-group h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--dark-900);
+    margin: 0 0 0.5rem;
+  }
+  .msg-title-group p {
+    color: var(--dark-500);
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  /* --- Stats Cards --- */
+  .msg-stats {
+    display: flex;
+    gap: 1rem;
+  }
+  .msg-stat-card {
+    background: var(--card);
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--dark-100);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 140px;
+  }
+  .msg-stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+  }
+  .msg-stat-icon.blue { background: #eff6ff; color: #2563eb; }
+  .msg-stat-icon.orange { background: #fff7ed; color: #ea580c; }
+  
+  .msg-stat-info { display: flex; flex-direction: column; }
+  .msg-stat-value { font-weight: 800; font-size: 1.2rem; color: var(--dark-900); line-height: 1; }
+  .msg-stat-label { font-size: 0.8rem; color: var(--dark-500); margin-top: 2px; }
+
+  /* --- Main Container --- */
+  .msg-inbox-card {
+    background: var(--card);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--dark-100);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 600px;
+  }
+
+  /* --- Toolbar --- */
+  .msg-toolbar {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--dark-100);
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .msg-filter-group {
+    display: flex;
+    background: var(--bg);
+    padding: 4px;
+    border-radius: 10px;
+  }
+  .msg-filter-btn {
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark-500);
+    text-decoration: none;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .msg-filter-btn:hover { color: var(--dark-900); background: rgba(0,0,0,0.03); }
+  .msg-filter-btn.active {
+    background: var(--white);
+    color: var(--brand);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .msg-badge {
+    background: var(--danger);
+    color: #fff;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .msg-search {
+    position: relative;
+    width: 300px;
+    max-width: 100%;
+  }
+  .msg-search input {
+    width: 100%;
+    padding: 0.6rem 2.5rem 0.6rem 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--dark-200);
+    background: var(--bg);
+    font-family: inherit;
+    transition: var(--transition);
+  }
+  .msg-search input:focus {
+    background: #fff;
+    border-color: var(--brand);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  .msg-search i {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--dark-500);
+    pointer-events: none;
+  }
+
+  /* --- Bulk Actions --- */
+  .msg-bulk-bar {
+    background: var(--dark-900);
+    color: #fff;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    animation: slideDown 0.2s ease-out;
+  }
+  @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+  
+  .msg-bulk-actions { display: flex; gap: 0.5rem; }
+  .btn-bulk {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-bulk:hover { background: rgba(255,255,255,0.2); }
+  .btn-bulk.danger:hover { background: var(--danger); }
+
+  /* --- Message List --- */
+  .msg-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .msg-item {
+    display: grid;
+    grid-template-columns: auto 50px 200px 1fr 120px;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--dark-100);
+    cursor: pointer;
+    transition: var(--transition);
+    background: #fff;
+    gap: 1rem;
+  }
+  .msg-item:hover {
+    background: #f8fafc;
+  }
+  .msg-item.unread {
+    background: #f0f9ff;
+  }
+  .msg-item.unread .msg-sender,
+  .msg-item.unread .msg-subject {
+    font-weight: 800;
+    color: var(--dark-900);
+  }
+  
+  /* Checkbox */
+  .custom-check {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--dark-200);
+    border-radius: 4px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: var(--transition);
+  }
+  .custom-check.checked {
+    background: var(--brand);
+    border-color: var(--brand);
+  }
+  .custom-check i { color: #fff; font-size: 10px; display: none; }
+  .custom-check.checked i { display: block; }
+  input[type="checkbox"] { display: none; }
+
+  /* Avatar */
+  .msg-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+    color: #4338ca;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  
+  /* Content Columns */
+  .msg-sender {
+    font-size: 0.95rem;
+    color: var(--dark-700);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .msg-content-preview {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .msg-subject {
+    font-size: 0.95rem;
+    color: var(--dark-700);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .msg-snippet {
+    font-size: 0.85rem;
+    color: var(--dark-500);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .msg-meta {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .msg-date { font-size: 0.8rem; color: var(--dark-500); }
+  
+  .msg-actions-hover {
+    opacity: 0;
+    transition: var(--transition);
+    display: flex;
+    gap: 0.5rem;
+  }
+  .msg-item:hover .msg-actions-hover { opacity: 1; }
+  
+  .btn-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--dark-200);
+    background: #fff;
+    color: var(--dark-500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .btn-icon:hover { border-color: var(--brand); color: var(--brand); }
+  .btn-icon.delete:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* --- Empty State --- */
+  .msg-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1rem;
+    color: var(--dark-500);
+  }
+  .msg-empty i { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
+
+  /* --- Offcanvas (Reading View) --- */
+  .msg-offcanvas {
+    position: fixed;
+    top: 0;
+    left: 0; /* RTL: left side */
+    width: 600px;
+    height: 100vh;
+    background: #fff;
+    box-shadow: 0 0 50px rgba(0,0,0,0.15);
+    z-index: 1050;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+  }
+  .msg-offcanvas.show { transform: translateX(0); }
+  
+  .offcanvas-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--dark-100);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+  }
+  .offcanvas-body {
+    padding: 2rem;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .offcanvas-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--dark-100);
+    background: #f8fafc;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+
+  .read-subject { font-size: 1.4rem; font-weight: 800; color: var(--dark-900); margin-bottom: 1.5rem; }
+  .read-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--dark-100);
+  }
+  .read-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #fff;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .read-info h4 { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--dark-900); }
+  .read-info p { margin: 0; color: var(--dark-500); font-size: 0.9rem; }
+  .read-date { margin-right: auto; color: var(--dark-500); font-size: 0.9rem; }
+  
+  .read-content {
+    font-size: 1.05rem;
+    line-height: 1.8;
+    color: var(--dark-700);
+    white-space: pre-wrap;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .msg-item {
+      grid-template-columns: auto 1fr auto;
+      gap: 0.75rem;
+      padding: 1rem;
+    }
+    .msg-avatar, .msg-snippet { display: none; }
+    .msg-offcanvas { width: 100%; }
+    .msg-toolbar { flex-direction: column; align-items: stretch; }
+    .msg-search { width: 100%; }
+    .msg-filter-group { justify-content: center; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  
+  <!-- Header -->
+  <div class="msg-page-header">
+    <div class="msg-title-group">
+      <h1>رسائل التواصل</h1>
+      <p>إدارة ومتابعة جميع الرسائل الواردة من العملاء والزوار</p>
+    </div>
+    <div class="msg-stats">
+      <div class="msg-stat-card">
+        <div class="msg-stat-icon blue"><i class="fas fa-inbox"></i></div>
+        <div class="msg-stat-info">
+          <span class="msg-stat-value">{{ all_count }}</span>
+          <span class="msg-stat-label">الكل</span>
+        </div>
+      </div>
+      <div class="msg-stat-card">
+        <div class="msg-stat-icon orange"><i class="fas fa-envelope"></i></div>
+        <div class="msg-stat-info">
+          <span class="msg-stat-value">{{ unread_count }}</span>
+          <span class="msg-stat-label">غير مقروء</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Inbox Card -->
+  <div class="msg-inbox-card">
+    
+    <!-- Toolbar -->
+    <div class="msg-toolbar">
+      <div class="d-flex align-items-center gap-3">
+        <!-- Select All Checkbox Wrapper -->
+        <div class="custom-check" id="selectAllBtn" onclick="toggleSelectAll()">
+          <i class="fas fa-check"></i>
+        </div>
+        
+        <!-- Filters -->
+        <div class="msg-filter-group">
+          <a href="?status=all" class="msg-filter-btn {% if status_filter == 'all' %}active{% endif %}">
+            الكل
+          </a>
+          <a href="?status=unread" class="msg-filter-btn {% if status_filter == 'unread' %}active{% endif %}">
+            غير مقروء
+            {% if unread_count > 0 %}<span class="msg-badge">{{ unread_count }}</span>{% endif %}
+          </a>
+          <a href="?status=read" class="msg-filter-btn {% if status_filter == 'read' %}active{% endif %}">
+            مقروء
+          </a>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <form class="msg-search" method="get">
+        <i class="fas fa-search"></i>
+        <input type="text" name="q" value="{{ q }}" placeholder="بحث في الرسائل..." onkeydown="if(event.key === 'Enter') this.form.submit()">
+        {% if status_filter != 'all' %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+      </form>
+    </div>
+
+    <!-- Bulk Actions Bar (Hidden by default) -->
+    <form method="post" id="bulkForm">
+      {% csrf_token %}
+      <div class="msg-bulk-bar" id="bulkBar" style="display: none;">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fas fa-check-circle text-success"></i>
+          <span>تم تحديد <strong id="selectedCount">0</strong> رسالة</span>
+        </div>
+        <div class="msg-bulk-actions">
+          <button type="submit" name="action" value="bulk_read" class="btn-bulk">
+            <i class="fas fa-envelope-open"></i> تحديد كمقروء
+          </button>
+          <button type="submit" name="action" value="bulk_unread" class="btn-bulk">
+            <i class="fas fa-envelope"></i> تحديد كغير مقروء
+          </button>
+          <button type="submit" name="action" value="bulk_delete" class="btn-bulk danger" onclick="return confirm('هل أنت متأكد من الحذف؟')">
+            <i class="fas fa-trash"></i> حذف
+          </button>
+        </div>
+      </div>
+
+      <!-- Message List -->
+      <ul class="msg-list">
+        {% for msg in page_obj %}
+        <li class="msg-item {% if not msg.is_read %}unread{% endif %}" onclick="openMessage('{{ msg.id }}')">
+          
+          <!-- Checkbox -->
+          <div class="custom-check item-check" onclick="event.stopPropagation(); toggleItem(this, '{{ msg.id }}')">
+            <i class="fas fa-check"></i>
+            <input type="checkbox" name="selected_ids" value="{{ msg.id }}">
+          </div>
+
+          <!-- Avatar -->
+          <div class="msg-avatar">
+            {{ msg.name|first|upper }}
+          </div>
+
+          <!-- Sender -->
+          <div class="msg-sender" title="{{ msg.name }}">
+            {{ msg.name }}
+          </div>
+
+          <!-- Content -->
+          <div class="msg-content-preview">
+            <div class="msg-subject">{{ msg.subject }}</div>
+            <div class="msg-snippet">{{ msg.message|truncatechars:80 }}</div>
+          </div>
+
+          <!-- Meta & Actions -->
+          <div class="msg-meta">
+            <span class="msg-date">{{ msg.created_at|date:"d M, H:i" }}</span>
+            <div class="msg-actions-hover" onclick="event.stopPropagation()">
+              {% if not msg.is_read %}
+              <button type="submit" name="action" value="mark_read" formaction="?msg_id={{ msg.id }}" class="btn-icon" title="تحديد كمقروء">
+                <input type="hidden" name="msg_id" value="{{ msg.id }}" disabled>
+                <i class="fas fa-check"></i>
+              </button>
+              {% endif %}
+              <button type="button" class="btn-icon delete" onclick="deleteSingle('{{ msg.id }}')" title="حذف">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </li>
+        {% empty %}
+        <div class="msg-empty">
+          <i class="fas fa-inbox"></i>
+          <h3>لا توجد رسائل</h3>
+          <p>صندوق الوارد فارغ حالياً أو لا توجد نتائج للبحث.</p>
+        </div>
+        {% endfor %}
+      </ul>
+    </form>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="p-3 border-top bg-light d-flex justify-content-center">
+      <nav>
+        <ul class="pagination pagination-sm m-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ status_filter }}&q={{ q }}">السابق</a></li>
+          {% endif %}
+          <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+          {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ status_filter }}&q={{ q }}">التالي</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Offcanvas Reading View -->
+<div class="msg-offcanvas" id="readPanel">
+  <div class="offcanvas-header">
+    <h5 class="m-0 text-dark">تفاصيل الرسالة</h5>
+    <button type="button" class="btn-close" onclick="closePanel()"></button>
+  </div>
+  <div class="offcanvas-body" id="panelContent">
+    <!-- Content injected via JS -->
+  </div>
+  <div class="offcanvas-footer" id="panelFooter">
+    <!-- Actions injected via JS -->
+  </div>
+</div>
+
+<!-- Hidden Form for Single Actions -->
+<form id="singleActionForm" method="post" style="display:none;">
+  {% csrf_token %}
+  <input type="hidden" name="action" id="singleActionInput">
+  <input type="hidden" name="msg_id" id="singleMsgIdInput">
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // --- Data Store ---
+  const messages = {
+    {% for msg in page_obj %}
+    "{{ msg.id }}": {
+      id: "{{ msg.id }}",
+      name: "{{ msg.name|escapejs }}",
+      email: "{{ msg.email|escapejs }}",
+      phone: "{{ msg.phone|default:''|escapejs }}",
+      subject: "{{ msg.subject|escapejs }}",
+      message: `{{ msg.message|escapejs }}`,
+      date: "{{ msg.created_at|date:'d F Y, h:i A' }}",
+      avatar: "{{ msg.name|first|upper }}"
+    },
+    {% endfor %}
+  };
+
+  // --- Selection Logic ---
+  function toggleItem(el, id) {
+    el.classList.toggle('checked');
+    const checkbox = el.querySelector('input');
+    checkbox.checked = !checkbox.checked;
+    updateBulkBar();
+  }
+
+  function toggleSelectAll() {
+    const master = document.getElementById('selectAllBtn');
+    master.classList.toggle('checked');
+    const isChecked = master.classList.contains('checked');
+    
+    document.querySelectorAll('.item-check').forEach(el => {
+      if (isChecked) el.classList.add('checked');
+      else el.classList.remove('checked');
+      el.querySelector('input').checked = isChecked;
+    });
+    updateBulkBar();
+  }
+
+  function updateBulkBar() {
+    const count = document.querySelectorAll('input[name="selected_ids"]:checked').length;
+    const bar = document.getElementById('bulkBar');
+    document.getElementById('selectedCount').innerText = count;
+    bar.style.display = count > 0 ? 'flex' : 'none';
+  }
+
+  // --- Offcanvas Logic ---
+  const panel = document.getElementById('readPanel');
+  const overlay = document.createElement('div');
+  overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:1040;display:none;opacity:0;transition:opacity 0.3s;";
+  document.body.appendChild(overlay);
+
+  overlay.onclick = closePanel;
+
+  function openMessage(id) {
+    const msg = messages[id];
+    if (!msg) return;
+
+    // Populate Content
+    const contentHtml = `
+      <div class="read-subject">${msg.subject}</div>
+      <div class="read-meta">
+        <div class="read-avatar">${msg.avatar}</div>
+        <div class="read-info">
+          <h4>${msg.name}</h4>
+          <p>${msg.email} ${msg.phone ? ' • ' + msg.phone : ''}</p>
+        </div>
+        <div class="read-date">${msg.date}</div>
+      </div>
+      <div class="read-content">${msg.message.replace(/\n/g, '<br>')}</div>
+    `;
+    
+    const footerHtml = `
+      <button type="button" class="btn btn-outline-danger" onclick="deleteSingle('${msg.id}')">
+        <i class="fas fa-trash me-1"></i> حذف
+      </button>
+      <a href="mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject)}" class="btn btn-primary">
+        <i class="fas fa-reply me-1"></i> رد عبر البريد
+      </a>
+    `;
+
+    document.getElementById('panelContent').innerHTML = contentHtml;
+    document.getElementById('panelFooter').innerHTML = footerHtml;
+
+    // Show Panel
+    panel.classList.add('show');
+    overlay.style.display = 'block';
+    setTimeout(() => overlay.style.opacity = '1', 10);
+
+    // Mark as read (Optimistic UI)
+    const row = document.querySelector(`.msg-item[onclick="openMessage('${id}')"]`);
+    if (row && row.classList.contains('unread')) {
+      row.classList.remove('unread');
+      // Send background request
+      const formData = new FormData();
+      formData.append('action', 'mark_read');
+      formData.append('msg_id', id);
+      formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+      fetch(window.location.href, { method: 'POST', body: formData });
+    }
+  }
+
+  function closePanel() {
+    panel.classList.remove('show');
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.style.display = 'none', 300);
+  }
+
+  // --- Actions ---
+  function deleteSingle(id) {
+    if (!confirm('هل أنت متأكد من حذف هذه الرسالة؟')) return;
+    document.getElementById('singleActionInput').value = 'delete';
+    document.getElementById('singleMsgIdInput').value = id;
+    document.getElementById('singleActionForm').submit();
+  }
+</script>
+{% endblock %}

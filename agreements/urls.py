@@ -84,6 +84,10 @@ if hasattr(views, "detail"):
 if hasattr(views, "edit"):
     urlpatterns.append(path("<int:pk>/edit/", _wrap_pk("edit"), name="edit"))
 
+# إضافة مسار قبول الاتفاقية عبر pk (POST)
+if hasattr(views, "accept"):
+    urlpatterns.append(path("<int:pk>/accept/", _wrap_pk("accept"), name="accept"))
+
 # إضافة مسار رفض الاتفاقية عبر pk (POST)
 if hasattr(views, "reject"):
     urlpatterns.append(path("<int:pk>/reject/", _wrap_pk("reject"), name="reject"))

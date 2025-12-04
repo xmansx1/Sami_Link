@@ -1,4 +1,5 @@
-from .forms import OfferCancelForm, OfferExtensionForm
+from .forms import OfferCancelForm, OfferExtensionForm, ReviewForm
+from .models import Review
 from django.contrib.auth.decorators import login_required
 # ======================
 # إلغاء العرض
@@ -141,7 +142,7 @@ from core.permissions import require_role
 from finance.models import FinanceSettings, Invoice
 from notifications.utils import create_notification
 from .forms import AdminReassignForm, OfferCreateForm, OfferForm, RequestCreateForm
-from .models import Note, Offer, Request, Status
+from .models import Note, Offer, Request, Status, Comment
 
 logger = logging.getLogger(__name__)
 
@@ -521,6 +522,17 @@ class RequestCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.client = self.request.user
         self.object = form.save()
+
+        # حفظ المرفقات إن وجدت
+        files = self.request.FILES.getlist('attachments')
+        if files:
+            try:
+                from uploads.models import RequestFile
+                for f in files:
+                    RequestFile.objects.create(request=self.object, file=f)
+            except Exception:
+                pass
+
         messages.success(self.request, "تم إنشاء الطلب بنجاح.")
         try:
             _notify_link(
@@ -591,6 +603,7 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
         return Request.objects.select_related("client", "assigned_employee").prefetch_related(
             Prefetch("offers", queryset=Offer.objects.select_related("employee")),
             Prefetch("notes", queryset=Note.objects.select_related("author")),
+            Prefetch("comments", queryset=Comment.objects.select_related("author")),
         )
 
     # عرض التفاصيل
@@ -683,10 +696,26 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
 
         # إنشاء/فتح الاتفاقية (بعد اختيار العرض)
         ctx["can_create_agreement"] = False
-        if u.is_authenticated and getattr(u, "role", None) == "employee":
+        if u.is_authenticated:
+            # 1. Check if user is the assigned employee
+            is_assigned = getattr(req, "assigned_employee_id", None) == u.id
+            
+            # 2. Check if user is the owner of the selected offer (fallback)
             selected = getattr(req, "selected_offer", None)
-            if selected and (getattr(req, "assigned_employee_id", None) == u.id or getattr(selected, "employee_id", None) == u.id):
-                if getattr(req, "status", None) == getattr(Status, "OFFER_SELECTED", "offer_selected") or hasattr(req, "agreement"):
+            is_offer_owner = selected and getattr(selected, "employee_id", None) == u.id
+            
+            if is_assigned or is_offer_owner:
+                # التحقق من الحالة: تم اختيار العرض أو وجود اتفاقية
+                status_ok = str(getattr(req, "status", "")) == "offer_selected"
+                
+                # Check for agreement safely
+                has_agreement = False
+                try:
+                    has_agreement = req.agreement is not None
+                except Exception:
+                    pass
+                
+                if status_ok or has_agreement:
                     ctx["can_create_agreement"] = True
 
         # نزاع/تغيير حالة
@@ -708,6 +737,23 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
             except Exception:
                 ctx["selected_offer_client_total"] = None
                 selected_offer.client_total = None
+
+        # التقييم (للعميل فقط، عند اكتمال الطلب، ولم يقم بالتقييم بعد)
+        ctx["can_review"] = False
+        ctx["review_form"] = None
+        if (
+            u.is_authenticated
+            and getattr(req, "status", None) == "completed"
+            and getattr(req, "client_id", None) == u.id
+        ):
+            try:
+                if not hasattr(req, "review"):
+                    ctx["can_review"] = True
+                    ctx["review_form"] = ReviewForm()
+            except Review.DoesNotExist:
+                ctx["can_review"] = True
+                ctx["review_form"] = ReviewForm()
+
         return ctx
 
     # إرسال عرض من نفس صفحة التفاصيل (للموظف)
@@ -719,6 +765,29 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
         if not self._can_view(u, req):
             messages.error(request, "ليس لديك صلاحية لتنفيذ هذا الإجراء.")
             return redirect(_fallback_after_forbidden(u))
+
+        # معالجة التقييم
+        if "submit_review" in request.POST:
+            if (
+                getattr(req, "status", None) == "completed"
+                and getattr(req, "client_id", None) == u.id
+                and not hasattr(req, "review")
+            ):
+                form = ReviewForm(request.POST)
+                if form.is_valid():
+                    review = form.save(commit=False)
+                    review.request = req
+                    review.reviewer = u
+                    review.reviewee = req.assigned_employee
+                    review.save()
+                    messages.success(request, "تم إرسال تقييمك بنجاح.")
+                    return redirect("marketplace:request_detail", pk=req.pk)
+                else:
+                    messages.error(request, "يرجى تصحيح الأخطاء في نموذج التقييم.")
+                    context = self.get_context_data(object=req)
+                    context["can_review"] = True
+                    context["review_form"] = form
+                    return self.render_to_response(context)
 
         if not (u.is_authenticated and getattr(u, "role", None) == "employee"):
             messages.error(request, "غير مصرح بتقديم عرض على هذا الطلب.")
@@ -884,8 +953,11 @@ def offer_select(request, offer_id):
 
     # لا تعتمد على can_select إن كان متشددًا؛ نطبّق شروطنا بوضوح
     from .models import Status
-    if getattr(off, "status", None) not in ["pending", Status.NEW, Status.WAITING_CLIENT_APPROVAL, Status.MODIFIED]:
-        messages.info(request, "لا يمكن اختيار عرض غير معلّق.")
+    # السماح بالحالات: pending, new, waiting_client_approval, modified
+    allowed_statuses = ["pending", "new", Status.NEW, Status.WAITING_CLIENT_APPROVAL, Status.MODIFIED]
+    
+    if getattr(off, "status", None) not in allowed_statuses:
+        messages.info(request, f"لا يمكن اختيار عرض بحالة: {off.get_status_display()}")
         return redirect("marketplace:request_detail", pk=req.pk)
 
 
@@ -1029,6 +1101,10 @@ def request_change_state(request, pk: int):
 
     # الحالة المطلوبة (تطبيع)
     new_state = (request.POST.get("state") or "").strip().lower()
+    # تم إضافة "status" كاسم بديل للحقل في الفورم
+    if not new_state:
+        new_state = (request.POST.get("status") or "").strip().lower()
+
     allowed_states = {"in_progress", "awaiting_review", "awaiting_payment", "completed", "cancelled"}
     if new_state not in allowed_states:
         messages.error(request, "حالة غير مسموح بها.")
@@ -1404,3 +1480,56 @@ def create_invoice_from_offer(offer):
 def all_requests_admin(request):
     requests = Request.objects.select_related('client', 'assigned_employee').order_by('-created_at')
     return render(request, "marketplace/all_requests.html", {"requests": requests})
+
+
+@login_required
+def add_comment(request, pk):
+    from .models import Request, Comment
+    req = get_object_or_404(Request, pk=pk)
+    
+    # Check permissions: only client, assigned employee, or admin can comment
+    is_client = request.user == req.client
+    is_employee = request.user == req.assigned_employee
+    is_admin = request.user.is_staff or getattr(request.user, 'role', '') == 'admin'
+    
+    if not (is_client or is_employee or is_admin):
+        messages.error(request, "غير مصرح لك بإضافة تعليق على هذا الطلب.")
+        return redirect("marketplace:request_detail", pk=pk)
+
+    if request.method == "POST":
+        content = request.POST.get("content")
+        file = request.FILES.get("file")
+        
+        if content or file:
+            Comment.objects.create(
+                request=req,
+                author=request.user,
+                content=content,
+                file=file
+            )
+            messages.success(request, "تم إضافة التعليق بنجاح.")
+            
+            # Notify the other party
+            recipient = None
+            if is_client and req.assigned_employee:
+                recipient = req.assigned_employee
+            elif is_employee:
+                recipient = req.client
+            
+            if recipient:
+                try:
+                    from notifications.utils import create_notification
+                    create_notification(
+                        recipient=recipient,
+                        title=f"تعليق جديد على الطلب #{req.pk}",
+                        body=f"قام {request.user.get_full_name()} بإضافة تعليق جديد.",
+                        url=reverse("marketplace:request_detail", args=[req.pk]),
+                        actor=request.user,
+                        target=req,
+                    )
+                except Exception:
+                    pass
+        else:
+            messages.warning(request, "لا يمكن إضافة تعليق فارغ.")
+            
+    return redirect("marketplace:request_detail", pk=pk)

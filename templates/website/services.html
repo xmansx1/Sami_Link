@@ -1,21 +1,227 @@
 {% extends "base.html" %}
 {% block title %}خدماتنا{% endblock %}
 {% block content %}
-<section class="py-12">
-  <div class="max-w-6xl mx-auto">
-    <h1 class="text-3xl font-extrabold mb-6">خدماتنا</h1>
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div class="bg-white rounded-2xl shadow border p-6">
-        <h3 class="font-bold text-lg">تطوير الويب</h3>
-        <p class="text-slate-600 mt-2">بناء منصّات احترافية وداعم للّغة العربية والاتجاه RTL.</p>
+<style>
+  /* Hero Section */
+  .services-hero {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 5rem 0;
+    text-align: center;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .services-hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 4rem;
+    background: linear-gradient(to top, #f8fafc, transparent);
+  }
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    background: linear-gradient(to right, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-subtitle {
+    font-size: 1.2rem;
+    color: #cbd5e1;
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.8;
+  }
+
+  /* Services Grid */
+  .services-section {
+    padding: 4rem 0 6rem;
+    background: #f8fafc;
+  }
+  .service-card {
+    background: #ffffff;
+    border-radius: 1.5rem;
+    padding: 2.5rem 2rem;
+    height: 100%;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .service-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 0; height: 100%;
+    background: #eff6ff;
+    z-index: -1;
+    transition: width 0.4s ease;
+  }
+  .service-card:hover {
+    transform: translateY(-10px);
+    border-color: #bfdbfe;
+    box-shadow: 0 20px 40px -10px rgba(37, 99, 235, 0.1);
+  }
+  .service-card:hover::before {
+    width: 100%;
+  }
+  .service-icon-box {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.3);
+    transition: transform 0.3s ease;
+  }
+  .service-card:hover .service-icon-box {
+    transform: scale(1.1) rotate(-5deg);
+  }
+  .service-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 1rem;
+  }
+  .service-desc {
+    color: #64748b;
+    line-height: 1.7;
+    font-size: 0.95rem;
+  }
+
+  /* CTA Section */
+  .cta-section {
+    background: #ffffff;
+    padding: 5rem 0;
+    text-align: center;
+    border-top: 1px solid #e2e8f0;
+  }
+  .cta-box {
+    background: radial-gradient(circle at center, #eff6ff 0%, #ffffff 100%);
+    border: 1px solid #dbeafe;
+    border-radius: 2rem;
+    padding: 4rem 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+</style>
+
+<div class="services-hero">
+  <div class="container">
+    <h1 class="hero-title">حلول تقنية متكاملة</h1>
+    <p class="hero-subtitle">
+      نقدم في {{ SITE_NAME|default:"SamiLink" }} مجموعة شاملة من الخدمات الرقمية التي تساعدك على تحويل أفكارك إلى واقع ملموس، بأعلى معايير الجودة والاحترافية.
+    </p>
+  </div>
+</div>
+
+<section class="services-section">
+  <div class="container">
+    <div class="row g-4">
+      
+      <!-- Service 1 -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon-box">
+            <i class="fa-solid fa-laptop-code"></i>
+          </div>
+          <h3 class="service-title">تطوير الويب والتطبيقات</h3>
+          <p class="service-desc">
+            نطور مواقع وتطبيقات جوال باستخدام أحدث التقنيات، مع ضمان الأداء العالي، الأمان، وقابلية التوسع لتلبية نمو أعمالك المستقبلي.
+          </p>
+        </div>
       </div>
-      <div class="bg-white rounded-2xl shadow border p-6">
-        <h3 class="font-bold text-lg">تصميم UI/UX</h3>
-        <p class="text-slate-600 mt-2">تصاميم عصرية وتجربة مستخدم سلسة لكل الأجهزة.</p>
+
+      <!-- Service 2 -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon-box">
+            <i class="fa-solid fa-pen-nib"></i>
+          </div>
+          <h3 class="service-title">تصميم تجربة المستخدم (UI/UX)</h3>
+          <p class="service-desc">
+            نصمم واجهات عصرية وجذابة تركز على سهولة الاستخدام وتوفير تجربة مستخدم استثنائية تزيد من تفاعل عملائك مع منتجك.
+          </p>
+        </div>
       </div>
-      <div class="bg-white rounded-2xl shadow border p-6">
-        <h3 class="font-bold text-lg">دورات تدريبية</h3>
-        <p class="text-slate-600 mt-2">برامج متخصصة للفرق لرفع الجاهزية التقنية.</p>
+
+      <!-- Service 3 -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon-box">
+            <i class="fa-solid fa-cart-shopping"></i>
+          </div>
+          <h3 class="service-title">حلول التجارة الإلكترونية</h3>
+          <p class="service-desc">
+            نبني متاجر إلكترونية متكاملة تدعم بوابات الدفع المحلية، إدارة المخزون، والشحن، لتنطلق بتجارتك نحو آفاق جديدة.
+          </p>
+        </div>
+      </div>
+
+      <!-- Service 4 -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon-box">
+            <i class="fa-solid fa-list-check"></i>
+          </div>
+          <h3 class="service-title">إدارة المشاريع التقنية</h3>
+          <p class="service-desc">
+            نوفر مدراء مشاريع محترفين للإشراف على تنفيذ مشروعك، ضمان الالتزام بالجدول الزمني، وضبط الجودة في كل مرحلة.
+          </p>
+        </div>
+      </div>
+
+      <!-- Service 5 -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon-box">
+            <i class="fa-solid fa-lightbulb"></i>
+          </div>
+          <h3 class="service-title">الاستشارات التقنية</h3>
+          <p class="service-desc">
+            نقدم استشارات متخصصة لمساعدتك في اختيار التقنيات المناسبة، دراسة الجدوى التقنية، وتحليل المتطلبات بدقة.
+          </p>
+        </div>
+      </div>
+
+      <!-- Service 6 -->
+      <div class="col-lg-4 col-md-6">
+        <div class="service-card">
+          <div class="service-icon-box">
+            <i class="fa-solid fa-headset"></i>
+          </div>
+          <h3 class="service-title">الدعم والصيانة</h3>
+          <p class="service-desc">
+            لا تنتهي علاقتنا بالتسليم؛ نقدم باقات دعم فني وصيانة دورية لضمان استمرارية عمل منصتك بكفاءة عالية على مدار الساعة.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="container">
+    <div class="cta-box">
+      <h2 class="text-3xl font-bold mb-4 text-slate-800">هل لديك فكرة مشروع؟</h2>
+      <p class="text-slate-600 mb-8 text-lg">
+        دعنا نساعدك في تحويل فكرتك إلى واقع. فريقنا جاهز للبدء فوراً.
+      </p>
+      <div class="d-flex justify-content-center gap-3">
+        <a href="{% url 'marketplace:request_create' %}" class="btn btn-primary btn-lg rounded-pill px-5 py-3 fw-bold shadow-lg">
+          <i class="fa-solid fa-plus me-2"></i> ابدأ مشروعك الآن
+        </a>
+        <a href="{% url 'website:contact' %}" class="btn btn-outline-primary btn-lg rounded-pill px-5 py-3 fw-bold">
+          تواصل معنا
+        </a>
       </div>
     </div>
   </div>

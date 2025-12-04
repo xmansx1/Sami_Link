@@ -41,6 +41,12 @@ try:
 except Exception:  # pragma: no cover
     Dispute = None  # type: ignore
 
+try:
+    from website.models import SiteSetting, ContactMessage
+except Exception:
+    SiteSetting = None
+    ContactMessage = None
+
 
 # ====================== أمان وصلاحيات ======================
 
@@ -175,7 +181,7 @@ def admin_dashboard(request):
         "invoices": _safe_reverse("finance:invoice_list") or _safe_reverse("finance:home"),
         "agreements": _safe_reverse("agreements:list"),
         "offers": _safe_reverse("marketplace:offers_list"),
-        "disputes": _safe_reverse("dashboard:disputes_list") or _safe_reverse("disputes:list"),
+        "disputes": _safe_reverse("disputes:list"),
         "clients": _safe_reverse("dashboard:clients_list"),
         "employees": _safe_reverse("dashboard:employees_list"),
         "users": _safe_reverse("dashboard:employees_list")
@@ -195,6 +201,14 @@ def admin_dashboard(request):
     # استبعاد العناصر التي لا تملك رابطًا فعليًا
     quick = [q for q in quick if q["url"]]
 
+    # إعدادات الموقع
+    site_setting_id = None
+    if SiteSetting:
+        s = SiteSetting.objects.first()
+        if not s:
+            s = SiteSetting.objects.create()
+        site_setting_id = s.id
+
     ctx: dict[str, object] = {
         "today": today,
         "from": None,
@@ -202,6 +216,7 @@ def admin_dashboard(request):
         "urls": urls,
         "quick": quick,
         "ops_alerts": [],
+        "site_setting_id": site_setting_id,
     }
 
     # ---- المستخدمون
@@ -256,14 +271,33 @@ def admin_dashboard(request):
             disputed_total = Decimal("0.00")
 
             for inv in invs:
-                ag = getattr(inv, "agreement", None)
-                if not ag:
-                    continue
+                # FIX: نعتمد على inv.amount باعتباره الإجمالي (Grand Total) لتجنب ازدواجية الضريبة
+                client_total = _money(getattr(inv, "amount", None))
+                
+                vat_percent = _money(getattr(inv, "vat_percent", 0))
+                fee_percent = _money(getattr(inv, "platform_fee_percent", 0))
+                
+                vat_amount = Decimal("0.00")
+                fee_amount = Decimal("0.00")
+                P = Decimal("0.00")
 
-                breakdown = compute_agreement_totals(ag)
-                client_total = _money(breakdown.get("grand_total"))
-                vat_amount = _money(breakdown.get("vat_amount"))
-                fee_amount = _money(breakdown.get("platform_fee"))
+                if client_total > 0:
+                    # P = G / (1+V)
+                    P = client_total / (Decimal("1") + vat_percent)
+                    vat_amount = client_total - P
+                    fee_amount = P * fee_percent
+                
+                # إذا كانت القيمة صفرية، نحاول الحساب من الاتفاقية (fallback)
+                elif getattr(inv, "agreement", None):
+                    ag = getattr(inv, "agreement", None)
+                    try:
+                        breakdown = compute_agreement_totals(ag)
+                        client_total = _money(breakdown.get("grand_total"))
+                        vat_amount = _money(breakdown.get("vat_amount"))
+                        fee_amount = _money(breakdown.get("platform_fee"))
+                        P = _money(breakdown.get("P"))
+                    except Exception:
+                        pass
 
                 total += client_total
                 vat_total += vat_amount
@@ -275,8 +309,12 @@ def admin_dashboard(request):
                     unpaid_total += client_total
 
                 # مبالغ مجمّدة في النزاعات: نعتمد صافي الموظف
-                if getattr(getattr(ag, "request", None), "status", None) == disputed_val:
-                    disputed_total += _money(breakdown.get("net_for_employee"))
+                ag = getattr(inv, "agreement", None)
+                if ag and getattr(getattr(ag, "request", None), "status", None) == disputed_val:
+                    net_emp = P - fee_amount
+                    if net_emp < 0:
+                        net_emp = Decimal("0.00")
+                    disputed_total += net_emp
 
             ctx["inv_totals"] = {
                 "total": total,
@@ -331,6 +369,27 @@ def admin_dashboard(request):
             req_qs = req_qs.order_by(f"-{created_field}" if created_field else "-id")
             ctx["req_total"] = req_qs.count()
             ctx["req_recent"] = list(req_qs[:5])
+
+            # --- الطلبات المتأخرة (Delayed Requests) ---
+            # الطلب قيد التنفيذ + يوجد اتفاقية + (تاريخ البدء + المدة) < اليوم
+            delayed_requests = []
+            in_progress_reqs = req_qs.filter(status="in_progress", agreement__isnull=False)
+            
+            for r in in_progress_reqs:
+                ag = r.agreement
+                if ag.started_at and ag.duration_days:
+                    deadline = ag.started_at + timedelta(days=ag.duration_days)
+                    if deadline < today:
+                        # حساب أيام التأخير
+                        overdue_days = (today - deadline).days
+                        # إضافة خاصية مؤقتة للعرض
+                        r.overdue_days = overdue_days
+                        delayed_requests.append(r)
+            
+            ctx["delayed_requests"] = delayed_requests
+            if delayed_requests:
+                ctx["ops_alerts"].append(f"هناك {len(delayed_requests)} مشروع متأخر عن التسليم.")
+
     except Exception as e:
         logger.exception("Agreements/Offers/Requests stats error: %s", e)
 
@@ -557,78 +616,97 @@ def requests_list(request):
 @login_required
 def disputes_list(request):
     """
-    إدارة النزاعات مع فلاتر بحث/حالة/تاريخ.
-    يستخدم القالب: dashboard/disputes.html
+    إدارة النزاعات - تم نقلها إلى تطبيق disputes.
     """
     if not _require_admin(request):
         return redirect("website:home")
+    
+    # إعادة توجيه مع الحفاظ على المعاملات
+    query_string = request.META.get("QUERY_STRING", "")
+    url = reverse("disputes:list")
+    if query_string:
+        url = f"{url}?{query_string}"
+    return redirect(url)
 
-    if Dispute is None:
-        messages.warning(request, "تطبيق النزاعات غير متاح.")
-        return render(
-            request,
-            "dashboard/disputes.html",
-            {"page_obj": None, "q": "", "status": "", "today": date.today()},
-        )
 
-    q = (request.GET.get("q") or "").strip()
-    status_val = (request.GET.get("status") or "").strip()
-    d_from, d_to = _daterange(request)
+@login_required
+def contact_messages_list(request):
+    if not _is_admin(request.user):
+        messages.error(request, "غير مصرح لك بالدخول لهذه الصفحة.")
+        return redirect("website:home")
 
-    d_status = _pick_field(Dispute, ["status", "state"])
-    d_created = _pick_field(Dispute, ["created_at", "created", "opened_at"])
+    if not ContactMessage:
+        messages.warning(request, "نموذج الرسائل غير متوفر.")
+        return redirect("dashboard:admin_dashboard")
 
-    qs = Dispute.objects.all()
+    # --- Handle Actions (POST) ---
+    if request.method == "POST":
+        action = request.POST.get("action")
+        msg_id = request.POST.get("msg_id")
+        selected_ids = request.POST.getlist("selected_ids")
 
+        if action == "delete" and msg_id:
+            ContactMessage.objects.filter(id=msg_id).delete()
+            messages.success(request, "تم حذف الرسالة بنجاح.")
+        
+        elif action == "mark_read" and msg_id:
+            ContactMessage.objects.filter(id=msg_id).update(is_read=True)
+            messages.success(request, "تم تحديد الرسالة كمقروءة.")
+
+        elif action == "mark_unread" and msg_id:
+            ContactMessage.objects.filter(id=msg_id).update(is_read=False)
+            messages.success(request, "تم تحديد الرسالة كغير مقروءة.")
+
+        elif action == "bulk_delete" and selected_ids:
+            count, _ = ContactMessage.objects.filter(id__in=selected_ids).delete()
+            messages.success(request, f"تم حذف {count} رسالة بنجاح.")
+
+        elif action == "bulk_read" and selected_ids:
+            updated = ContactMessage.objects.filter(id__in=selected_ids).update(is_read=True)
+            messages.success(request, f"تم تحديد {updated} رسالة كمقروءة.")
+
+        elif action == "bulk_unread" and selected_ids:
+            updated = ContactMessage.objects.filter(id__in=selected_ids).update(is_read=False)
+            messages.success(request, f"تم تحديد {updated} رسالة كغير مقروءة.")
+        
+        return redirect(request.get_full_path())
+
+    # --- Filtering & Search ---
+    msgs_qs = ContactMessage.objects.all().order_by("-created_at")
+    
+    # Search
+    q = request.GET.get("q", "").strip()
     if q:
-        if q.isdigit():
-            qs = qs.filter(request_id=int(q))
-        else:
-            qs = qs.filter(
-                Q(title__icontains=q)
-                | Q(details__icontains=q)
-                | Q(reason__icontains=q)
-            )
-
-    if status_val and d_status:
-        qs = qs.filter(**{d_status: status_val})
-
-    if d_created:
-        qs = qs.filter(
-            **{
-                f"{d_created}__date__gte": d_from,
-                f"{d_created}__date__lte": d_to,
-            }
+        msgs_qs = msgs_qs.filter(
+            Q(name__icontains=q) | 
+            Q(email__icontains=q) | 
+            Q(subject__icontains=q) |
+            Q(message__icontains=q)
         )
 
-    fields = _only_fields(Dispute, ["id", d_status or "", "title", "details", "reason"])
-    if not fields:
-        fields = ["id"]
+    # Status Filter
+    status_filter = request.GET.get("status", "all")
+    if status_filter == "read":
+        msgs_qs = msgs_qs.filter(is_read=True)
+    elif status_filter == "unread":
+        msgs_qs = msgs_qs.filter(is_read=False)
 
-    qs = qs.only(*fields).order_by(f"-{d_created}" if d_created else "-id")
+    # Counts for tabs
+    all_count = ContactMessage.objects.count()
+    unread_count = ContactMessage.objects.filter(is_read=False).count()
+    read_count = ContactMessage.objects.filter(is_read=True).count()
 
-    page_obj = _paginate(request, qs, per_page=20)
+    # Pagination
+    paginator = Paginator(msgs_qs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
-    # حساب عدد النزاعات المفتوحة
-    open_count = review_count = resolved_count = 0
-    for obj in page_obj:
-        status = getattr(obj, "status", None)
-        if status == "open":
-            open_count += 1
-        elif status == "in_review":
-            review_count += 1
-        elif status == "resolved":
-            resolved_count += 1
-
-    ctx = {
+    context = {
         "page_obj": page_obj,
         "q": q,
-        "status": status_val,
-        "from": d_from,
-        "to": d_to,
-        "today": date.today(),
-        "open_count": open_count,
-        "review_count": review_count,
-        "resolved_count": resolved_count,
+        "status_filter": status_filter,
+        "all_count": all_count,
+        "unread_count": unread_count,
+        "read_count": read_count,
     }
-    return render(request, "dashboard/disputes.html", ctx)
+    return render(request, "dashboard/contact_messages.html", context)

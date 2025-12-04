@@ -16,8 +16,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from marketplace.models import Request
-from .forms import DisputeForm
-from .models import Dispute
+from .forms import DisputeForm, DisputeMessageForm
+from .models import Dispute, DisputeMessage
 
 logger = logging.getLogger(__name__)
 
@@ -204,12 +204,20 @@ def dispute_list(request: HttpRequest):
     status = (request.GET.get("status") or "").strip()
     q = (request.GET.get("q") or "").strip()
     request_id = (request.GET.get("request_id") or "").strip()
+    start_date = (request.GET.get("start") or "").strip()
+    end_date = (request.GET.get("end") or "").strip()
 
     if status in {"open", "in_review", "resolved", "canceled", "closed"}:
         qs = qs.filter(status=status)
 
     if request_id.isdigit():
         qs = qs.filter(request_id=int(request_id))
+
+    if start_date:
+        qs = qs.filter(opened_at__date__gte=start_date)
+
+    if end_date:
+        qs = qs.filter(opened_at__date__lte=end_date)
 
     if q:
         qs = qs.filter(
@@ -228,6 +236,8 @@ def dispute_list(request: HttpRequest):
         "status": status,
         "q": q,
         "request_id": request_id,
+        "start": start_date,
+        "end": end_date,
     })
 
 
@@ -453,7 +463,7 @@ def dispute_update_status(request: HttpRequest, pk: int):
 
 
 # ======================================================
-# عرض نزاع
+# عرض نزاع + إضافة ردود
 # ======================================================
 @login_required
 def dispute_detail(request: HttpRequest, pk: int):
@@ -464,8 +474,79 @@ def dispute_detail(request: HttpRequest, pk: int):
     if not _can_view_dispute(request.user, dispute):
         raise PermissionDenied("لا تملك صلاحية مشاهدة هذا النزاع.")
 
+    # معالجة إضافة رد (Message)
+    if request.method == "POST" and "content" in request.POST:
+        if not dispute.is_active:
+            messages.error(request, "عذرًا، النزاع مغلق ولا يمكن إضافة ردود جديدة.")
+            return redirect("disputes:detail", pk=pk)
+
+        form = DisputeMessageForm(request.POST, request.FILES)
+        if form.is_valid():
+            msg = form.save(commit=False)
+            msg.dispute = dispute
+            msg.sender = request.user
+            
+            # ملاحظة داخلية (للإدارة فقط)
+            if _is_admin(request.user) and request.POST.get("is_internal") == "on":
+                msg.is_internal = True
+            
+            msg.save()
+            messages.success(request, "تم إضافة الرد بنجاح.")
+
+            # إشعارات للأطراف الأخرى
+            _notify_new_message(dispute, msg)
+
+            return redirect("disputes:detail", pk=pk)
+        else:
+            messages.error(request, "يرجى تصحيح الأخطاء في النموذج.")
+    else:
+        form = DisputeMessageForm()
+
+    # جلب الرسائل
+    msgs_qs = dispute.messages.select_related("sender").order_by("created_at")
+    if not _is_admin(request.user):
+        msgs_qs = msgs_qs.filter(is_internal=False)
+
     events = dispute.events.all().order_by("created_at") if hasattr(dispute, "events") else None
+
     return render(request, "disputes/dispute_detail.html", {
         "dispute": dispute,
         "events": events,
+        "messages_list": msgs_qs,
+        "form": form,
     })
+
+
+def _notify_new_message(dispute: Dispute, msg: DisputeMessage):
+    """إشعار الأطراف برسالة جديدة في النزاع."""
+    req = dispute.request
+    sender = msg.sender
+    url = reverse("disputes:detail", args=[dispute.pk])
+    
+    # إذا كانت ملاحظة داخلية، لا نرسل للعميل/الموظف
+    if msg.is_internal:
+        return
+
+    # الأطراف المستهدفة: العميل، الموظف، الإدارة (غير المرسل)
+    targets = set()
+    
+    # العميل
+    if getattr(req, "client", None) and req.client != sender:
+        targets.add(req.client)
+    
+    # الموظف
+    if getattr(req, "assigned_employee", None) and req.assigned_employee != sender:
+        targets.add(req.assigned_employee)
+
+    # الإدارة (إذا لم يكن المرسل إداريًا، نرسل لهم)
+    # أو حتى لو كان إداريًا، قد نرسل لبقية الإداريين (اختياري، هنا سنكتفي بالأطراف المباشرة)
+    # لكن سنضيف الإدارة إذا كان المرسل هو العميل أو الموظف
+    if not _is_admin(sender):
+        from accounts.models import User
+        admins = User.objects.filter(role__in=[User.Role.ADMIN, User.Role.FINANCE], is_active=True)
+        for a in admins:
+            if a != sender:
+                targets.add(a)
+
+    for user in targets:
+        _notify_safe(user, "رد جديد في النزاع", f"رد جديد من {sender.get_full_name()} على النزاع #{dispute.pk}", url=url)

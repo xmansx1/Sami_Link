@@ -1,6 +1,6 @@
 from __future__ import annotations
 from django import forms
-from .models import Request, Offer, Note
+from .models import Request, Offer, Note, Review
 # نموذج إلغاء العرض
 class OfferCancelForm(forms.ModelForm):
     class Meta:
@@ -99,7 +99,17 @@ def _clean_text(v: str | None) -> str:
 # ---------------------------------------------
 # نموذج إنشاء طلب (العميل)
 # ---------------------------------------------
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
 class RequestCreateForm(forms.ModelForm):
+    attachments = forms.FileField(
+        required=False,
+        widget=MultipleFileInput(attrs={"class": "file-input"}),
+        label="مرفقات (اختياري)",
+        help_text="يمكنك تحديد أكثر من ملف."
+    )
+
     class Meta:
         model = Request
         fields = ["title", "details", "estimated_duration_days", "estimated_price", "links"]
@@ -288,3 +298,13 @@ class AdminReassignForm(forms.Form):
         self.fields["employee"].queryset = User.objects.filter(
             role="employee", is_active=True
         ).order_by("name", "email")
+
+
+class ReviewForm(forms.ModelForm):
+    class Meta:
+        model = Review
+        fields = ["rating", "comment"]
+        widgets = {
+            "rating": forms.NumberInput(attrs={"min": 0, "max": 5, "class": "input", "placeholder": "التقييم من 0 إلى 5"}),
+            "comment": forms.Textarea(attrs={"rows": 3, "class": "input", "placeholder": "اكتب تعليقك هنا..."}),
+        }

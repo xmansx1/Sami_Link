@@ -1,111 +1,232 @@
-{# finance/templates/finance/confirm_transfers.html #}
-{% extends "base.html" %}
+{% extends "dashboard/base_admin.html" %}
 {% load humanize %}
 
-{% block title %}تأكيد تحويلات العملاء{% endblock %}
+{% block title %}تأكيد التحويلات | سامي لينك{% endblock %}
 
-{% block content %}
-<section class="page-section" dir="rtl">
-  <div class="container">
-
-    {# ===== الهيدر ===== #}
-    <div class="section-header mb-6">
-      <div class="section-badge">💸 تحويلات العملاء</div>
-      <h1 class="section-title">تأكيد تحويلات العملاء</h1>
-      <p class="section-description">
-        فواتير غير مدفوعة قام العميل بإدخال مرجع التحويل البنكي لها.
-        يمكنك مراجعتها ووسمها كمدفوعة مباشرة.
+{% block page_header %}
+<div class="dashboard-header">
+  <div class="header-content">
+    <div class="welcome-section">
+      <div class="badge-pill">
+        <span class="pulse-dot"></span>
+        الإدارة المالية
+      </div>
+      <h1 class="welcome-title">
+        تأكيد تحويلات العملاء
+      </h1>
+      <p class="welcome-subtitle">
+        مراجعة واعتماد الحوالات البنكية للفواتير غير المدفوعة.
       </p>
     </div>
 
-    {# ===== الجدول ===== #}
-    <div class="profile-section rounded-2xl overflow-hidden shadow">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-b">
-            <th class="py-3 px-4 text-right">رقم الفاتورة</th>
-            <th class="py-3 px-4 text-right">الاتفاقية / الطلب</th>
-            <th class="py-3 px-4 text-right">إجمالي العميل</th>
-            <th class="py-3 px-4 text-right">المرجع البنكي</th>
-            <th class="py-3 px-4 text-center">الإجراء</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {% if invoices %}
-            {% for inv in invoices %}
-            <tr class="border-b hover:bg-slate-50 dark:hover:bg-slate-700 transition">
-              <td class="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100">
-                #{{ inv.id }}
-              </td>
-
-              <td class="py-3 px-4 text-slate-700 dark:text-slate-200">
-                A{{ inv.agreement_id }}
-                {% if inv.agreement and inv.agreement.request_id %}
-                  / R{{ inv.agreement.request_id }}
-                {% endif %}
-              </td>
-
-              {# السياسة الجديدة:
-                 إجمالي العميل = amount + VAT(amount فقط)
-                 لا تُضاف عمولة المنصة على العميل
-              #}
-              <td class="py-3 px-4 font-bold text-primary-700 dark:text-primary-300">
-                {% if inv.client_total_amount %}
-                  {{ inv.client_total_amount|floatformat:2 }} ر.س
-                {% else %}
-                  {{ inv.amount|floatformat:2 }} ر.س
-                {% endif %}
-              </td>
-
-              <td class="py-3 px-4">
-                {% if inv.paid_ref %}
-                  <code class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-slate-700 dark:text-slate-300">
-                    {{ inv.paid_ref }}
-                  </code>
-                {% else %}
-                  <span class="text-slate-400">—</span>
-                {% endif %}
-              </td>
-
-              <td class="py-3 px-4 text-center">
-                <div class="flex flex-col md:flex-row gap-2 justify-center items-center">
-
-                  {# زر وسم كمدفوعة #}
-                  <form method="post"
-                        action="{% url 'finance:mark_invoice_paid' inv.id %}"
-                        class="inline w-full md:w-auto">
-                    {% csrf_token %}
-                    <input type="hidden" name="method" value="bank">
-                    <input type="hidden" name="ref_code" value="{{ inv.ref_code }}">
-                    <input type="hidden" name="paid_ref" value="{{ inv.paid_ref }}">
-                    <button class="btn btn-primary btn-sm w-full md:w-auto">
-                      ✅ وسم كمدفوعة
-                    </button>
-                  </form>
-
-                  {# زر التفاصيل #}
-                  <a href="{% url 'finance:invoice_detail' inv.id %}"
-                     class="btn btn-outline btn-sm w-full md:w-auto">
-                    👁️ تفاصيل
-                  </a>
-
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="5"
-                  class="py-6 text-center text-slate-500 dark:text-slate-300">
-                لا توجد تحويلات بانتظار التأكيد.
-              </td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <span class="stat-icon">📥</span>
+        <div class="stat-info">
+          <span class="stat-label">بانتظار التأكيد</span>
+          <span class="stat-value">{{ invoices|length|default:0 }} حوالة</span>
+        </div>
+      </div>
     </div>
-
   </div>
-</section>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+
+  {# --- Transfers Table --- #}
+  <div class="section-container fade-in-up">
+    <div class="card-shadow table-card">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th width="100">رقم الفاتورة</th>
+                    <th>تفاصيل المرجع</th>
+                    <th>المبلغ المستحق</th>
+                    <th>المرجع البنكي</th>
+                    <th width="200">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td>
+                        <div class="font-weight-bold text-main">#{{ inv.id }}</div>
+                    </td>
+                    <td>
+                        <div class="table-main-text">
+                            {% if inv.agreement %}
+                                اتفاقية A{{ inv.agreement_id }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                        {% if inv.agreement and inv.agreement.request_id %}
+                        <div class="table-sub-text">
+                            طلب رقم R{{ inv.agreement.request_id }}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="amount-cell">
+                            {{ inv.amount|default:inv.client_total_amount|floatformat:2|intcomma }}
+                            <small>ر.س</small>
+                        </div>
+                    </td>
+                    <td>
+                        {% if inv.paid_ref %}
+                        <div class="ref-badge">
+                            <span class="ref-icon">🏦</span>
+                            {{ inv.paid_ref }}
+                        </div>
+                        {% else %}
+                        <span class="text-muted text-sm">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="actions-row">
+                            <form method="post" action="{% url 'finance:mark_invoice_paid' inv.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="method" value="bank">
+                                <input type="hidden" name="ref_code" value="{{ inv.ref_code }}">
+                                <input type="hidden" name="paid_ref" value="{{ inv.paid_ref }}">
+                                <button type="submit" class="btn-action success" title="تأكيد الاستلام">
+                                    ✅ تأكيد
+                                </button>
+                            </form>
+                            
+                            <a href="{% url 'finance:invoice_detail' inv.id %}" class="btn-action outline" title="عرض التفاصيل">
+                                👁️ تفاصيل
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-state">
+                        <div class="empty-content">
+                            <span class="empty-icon">🎉</span>
+                            <h3>لا توجد تحويلات معلقة</h3>
+                            <p>جميع التحويلات البنكية تمت مراجعتها.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+    /* --- Reusing Dashboard Variables --- */
+    :root {
+        --dash-bg: #f8fafc;
+        --card-bg: #ffffff;
+        --primary-soft: #f0fdf4;
+        --primary-strong: #16a34a;
+        --text-main: #1e293b;
+        --text-sub: #64748b;
+        --border-light: #e2e8f0;
+        --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+        --radius-card: 16px;
+    }
+
+    /* Layout */
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        font-family: 'Tajawal', sans-serif;
+        color: var(--text-main);
+    }
+
+    /* Header */
+    .dashboard-header {
+        background: linear-gradient(120deg, #ffffff 0%, #f0fdf4 100%);
+        padding: 2rem 1.5rem;
+        border-bottom: 1px solid var(--border-light);
+        margin-bottom: 2rem;
+    }
+    .header-content {
+        max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.5rem;
+    }
+    .badge-pill {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        background: rgba(22, 163, 74, 0.1); color: var(--primary-strong);
+        padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem;
+    }
+    .pulse-dot { width: 8px; height: 8px; background: var(--primary-strong); border-radius: 50%; animation: pulse-green 2s infinite; }
+    .welcome-title { font-size: 1.8rem; font-weight: 900; margin: 0 0 0.25rem 0; color: var(--text-main); }
+    .welcome-subtitle { color: var(--text-sub); margin: 0; font-size: 1rem; }
+
+    .stat-pill {
+        background: #fff; padding: 0.75rem 1.25rem; border-radius: 12px;
+        box-shadow: var(--shadow-card); display: flex; align-items: center; gap: 0.75rem; border: 1px solid var(--border-light);
+    }
+    .stat-icon { font-size: 1.5rem; }
+    .stat-info { display: flex; flex-direction: column; line-height: 1.2; }
+    .stat-label { font-size: 0.75rem; color: var(--text-sub); }
+    .stat-value { font-weight: 800; font-size: 1.1rem; }
+
+    /* Table Styles */
+    .card-shadow {
+        background: var(--card-bg); border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card); border: 1px solid var(--border-light); overflow: hidden;
+    }
+    .modern-table { width: 100%; border-collapse: collapse; }
+    .modern-table th {
+        background: #f8fafc; padding: 1rem 1.5rem; text-align: right;
+        font-size: 0.85rem; color: var(--text-sub); font-weight: 600; border-bottom: 1px solid var(--border-light);
+    }
+    .modern-table td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    .modern-table tr:hover { background: #fcfcfc; }
+
+    .table-main-text { font-weight: 700; color: var(--text-main); font-size: 0.95rem; }
+    .table-sub-text { font-size: 0.8rem; color: var(--text-sub); margin-top: 0.2rem; }
+    .text-main { color: var(--text-main); }
+
+    .amount-cell { font-weight: 800; color: var(--primary-strong); font-size: 1.1rem; }
+    .amount-cell small { font-size: 0.8rem; color: var(--text-sub); font-weight: 600; }
+
+    .ref-badge {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        background: #f1f5f9; padding: 0.4rem 0.8rem; border-radius: 8px;
+        font-family: monospace; font-size: 0.9rem; color: var(--text-main); border: 1px solid var(--border-light);
+    }
+    .ref-icon { font-size: 1rem; }
+
+    /* Actions */
+    .actions-row { display: flex; gap: 0.5rem; align-items: center; }
+    .d-inline { display: inline; }
+    
+    .btn-action {
+        padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700;
+        cursor: pointer; border: none; transition: all 0.2s; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 0.4rem;
+    }
+    .btn-action.success { background: var(--primary-strong); color: white; }
+    .btn-action.success:hover { background: #15803d; transform: translateY(-1px); }
+    .btn-action.outline { background: transparent; border: 1px solid var(--border-light); color: var(--text-sub); }
+    .btn-action.outline:hover { border-color: var(--primary-strong); color: var(--primary-strong); background: var(--primary-soft); }
+
+    /* Empty State */
+    .empty-state { text-align: center; padding: 4rem 2rem; }
+    .empty-icon { font-size: 3rem; display: block; margin-bottom: 1rem; }
+    .empty-content h3 { margin: 0 0 0.5rem; font-size: 1.2rem; }
+    .empty-content p { color: var(--text-sub); margin: 0; }
+
+    /* Animation */
+    .fade-in-up { animation: fadeInUp 0.6s ease-out forwards; opacity: 0; transform: translateY(20px); }
+    @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+    }
+</style>
 {% endblock %}

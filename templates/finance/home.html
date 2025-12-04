@@ -1,823 +1,444 @@
-{# finance/templates/finance/home.html #}
-{% extends "base.html" %}
+{% extends "dashboard/base_admin.html" %}
 {% load humanize %}
 
-{% block title %}لوحة المالية{% endblock %}
+{% block title %}لوحة المالية | سامي لينك{% endblock %}
 
-{% block content %}
-<section class="page-section finance-dashboard" dir="rtl">
-  <div class="container">
-
-    {# ===== رأس الصفحة ===== #}
-    <div class="section-header" style="text-align:right; margin-bottom: 2rem;">
-      <div class="section-badge">💰 لوحة المالية</div>
-      <h1 class="section-title">لوحة المالية</h1>
-      <p class="section-description">
-        نظرة إجمالية على التحصيل، الضرائب، عمولة المنصّة، مستحقات الموظفين، المرتجعات، النزاعات،
-        ورصيد الخزينة وفق السياسة المالية الحالية (العميل يدفع P + VAT فقط).
+{% block page_header %}
+<div class="dashboard-header">
+  <div class="header-content">
+    <div class="welcome-section">
+      <div class="badge-pill">
+        <span class="pulse-dot"></span>
+        الإدارة المالية
+      </div>
+      <h1 class="welcome-title">
+        لوحة التحكم المالية
+      </h1>
+      <p class="welcome-subtitle">
+        نظرة شاملة على التدفقات النقدية، الفواتير، الضرائب، ومستحقات الموظفين.
       </p>
     </div>
 
-    {# ===== روابط الصفحات (آمنة) ===== #}
-    {% url 'finance:invoice_list' as invoices_url %}
-    {% url 'finance:confirm_transfers' as confirm_transfers_url %}
-    {% url 'finance:collections_report' as collections_url %}
-    {% url 'finance:client_payments' as client_payments_url %}
-    {% url 'finance:employee_dues' as employee_dues_url %}
-    {% url 'finance:employee_dues_admin' as employee_dues_admin_url %}
-    {% url 'finance:tax_dashboard' as tax_url %}
-    {% url 'finance:inprogress_requests' as inprogress_url %}
-    {% url 'finance:payouts_list' as payouts_url %}
-    {% url 'finance:refunds_dashboard' as refunds_url %}
-    {% url 'finance:disputes_dashboard' as disputes_url %}
-    {% url 'finance:settings' as settings_fallback_url %}
+    <div class="header-stats">
+      <div class="stat-pill">
+        <span class="stat-icon">📅</span>
+        <div class="stat-info">
+          <span class="stat-label">تاريخ اليوم</span>
+          <span class="stat-value">{{ today|default:None|date:"d F Y" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
 
-    {# لو الفيو مرّر settings_url نستخدمه، وإلا نستخدم المسار العادي #}
-    {% with settings_link=settings_url|default:settings_fallback_url %}
+{% block content %}
+<div class="dashboard-container">
 
-    {# ===== اختصارات سريعة ===== #}
-    <div class="profile-section" style="margin-bottom: 2rem;">
-      <div class="card-section-title">⚡ اختصارات سريعة</div>
+  {# --- Quick Actions --- #}
+  {% url 'finance:invoice_list' as invoices_url %}
+  {% url 'finance:confirm_transfers' as confirm_transfers_url %}
+  {% url 'finance:collections_report' as collections_url %}
+  {% url 'finance:client_payments' as client_payments_url %}
+  {% url 'finance:employee_dues' as employee_dues_url %}
+  {% url 'finance:employee_dues_admin' as employee_dues_admin_url %}
+  {% url 'finance:tax_dashboard' as tax_url %}
+  {% url 'finance:inprogress_requests' as inprogress_url %}
+  {% url 'finance:payouts_list' as payouts_url %}
+  {% url 'finance:refunds_dashboard' as refunds_url %}
+  {% url 'finance:disputes_dashboard' as disputes_url %}
+  {% url 'finance:settings' as settings_fallback_url %}
+  {% with settings_link=settings_url|default:settings_fallback_url %}
 
-      <div class="quick-actions-grid"
-           style="display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1rem; margin-top:1rem;">
+  <div class="quick-actions-section fade-in-up">
+    <div class="quick-grid">
+      <a href="{{ invoices_url }}" class="quick-tile">
+        <div class="tile-icon">📄</div>
+        <span class="tile-label">كل الفواتير</span>
+      </a>
+      <a href="{{ confirm_transfers_url }}" class="quick-tile">
+        <div class="tile-icon">📤</div>
+        <span class="tile-label">تأكيد التحويلات</span>
+      </a>
+      <a href="{{ employee_dues_admin_url }}" class="quick-tile">
+        <div class="tile-icon">💸</div>
+        <span class="tile-label">سداد الموظفين</span>
+      </a>
+      <a href="{{ tax_url }}" class="quick-tile">
+        <div class="tile-icon">🧾</div>
+        <span class="tile-label">لوحة الضريبة</span>
+      </a>
+      <a href="{{ refunds_url }}" class="quick-tile">
+        <div class="tile-icon">↩️</div>
+        <span class="tile-label">المرتجعات</span>
+      </a>
+      <a href="{{ disputes_url }}" class="quick-tile">
+        <div class="tile-icon">⚖️</div>
+        <span class="tile-label">النزاعات</span>
+      </a>
+      <a href="{{ settings_link }}" class="quick-tile highlight">
+        <div class="tile-icon">⚙️</div>
+        <span class="tile-label">الإعدادات</span>
+      </a>
+    </div>
+  </div>
+  {% endwith %}
 
-        <a href="{{ invoices_url }}" class="quick-action profile-section">
-          <div class="quick-icon">📄</div>
-          <div class="quick-text">كل الفواتير</div>
-        </a>
-
-        <a href="{{ invoices_url }}?status=paid" class="quick-action profile-section">
-          <div class="quick-icon">✅</div>
-          <div class="quick-text">فواتير مدفوعة</div>
-        </a>
-
-        <a href="{{ invoices_url }}?status=unpaid" class="quick-action profile-section">
-          <div class="quick-icon">⏳</div>
-          <div class="quick-text">فواتير غير مدفوعة</div>
-        </a>
-
-        <a href="{{ inprogress_url }}" class="quick-action profile-section">
-          <div class="quick-icon">🔄</div>
-          <div class="quick-text">طلبات قيد التنفيذ</div>
-        </a>
-
-        <a href="{{ confirm_transfers_url }}" class="quick-action profile-section">
-          <div class="quick-icon">📤</div>
-          <div class="quick-text">تأكيد تحويلات العملاء</div>
-        </a>
-
-        <a href="{{ employee_dues_admin_url }}" class="quick-action profile-section">
-          <div class="quick-icon">💸</div>
-          <div class="quick-text">سداد الموظفين</div>
-        </a>
-
-        <a href="{{ refunds_url }}" class="quick-action profile-section">
-          <div class="quick-icon">↩️</div>
-          <div class="quick-text">المرتجعات للعملاء</div>
-        </a>
-
-        <a href="{{ tax_url }}" class="quick-action profile-section">
-          <div class="quick-icon">🧾</div>
-          <div class="quick-text">لوحة الضريبة VAT</div>
-        </a>
-
-        <a href="{{ disputes_url }}" class="quick-action profile-section">
-          <div class="quick-icon">⚖️</div>
-          <div class="quick-text">النزاعات النشطة</div>
-        </a>
-
-        <a href="{{ collections_url }}" class="quick-action profile-section">
-          <div class="quick-icon">📊</div>
-          <div class="quick-text">تقرير التحصيل</div>
-        </a>
-
-        <a href="{{ client_payments_url }}" class="quick-action profile-section">
-          <div class="quick-icon">👥</div>
-          <div class="quick-text">مدفوعات العملاء</div>
-        </a>
-
-        <a href="{{ employee_dues_url }}" class="quick-action profile-section">
-          <div class="quick-icon">👷</div>
-          <div class="quick-text">مستحقات الموظف (منظور الموظف)</div>
-        </a>
-
-        <a href="{{ settings_link }}" class="quick-action profile-section"
-           style="background:linear-gradient(135deg,var(--primary-50) 0%,var(--white) 100%);">
-          <div class="quick-icon">⚙️</div>
-          <div class="quick-text">إعدادات النِّسَب</div>
-        </a>
-
+  {# --- Primary Financial KPIs (Treasury & Liability) --- #}
+  <div class="kpi-grid fade-in-up" style="animation-delay: 0.1s;">
+    
+    <!-- Treasury Balance -->
+    <div class="kpi-card primary-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-wrapper">🏦</div>
+        <div class="kpi-trend positive">
+          <span>السيولة</span>
+        </div>
+      </div>
+      <div class="kpi-body">
+        <h3 class="kpi-value">{{ treasury_balance|default:"0"|floatformat:2|intcomma }} <small>ر.س</small></h3>
+        <p class="kpi-label">رصيد الخزينة الحالي</p>
+        <div class="kpi-subtext">دفتر الخزينة: {{ ledger_treasury_balance|default:"0"|floatformat:2|intcomma }} ر.س</div>
       </div>
     </div>
 
-    {# ===== بطاقات KPIs ===== #}
-    <div class="kpi-grid"
-         style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.25rem; margin-bottom:2rem;">
-
-      {# رصيد الخزينة (محسوب من التدفقات) + مقارنة مع دفتر الخزينة #}
-      <div class="profile-section kpi-card"
-           style="background:linear-gradient(135deg,#ecfeff 0%,var(--white) 100%);">
-        <div class="kpi-header">
-          <div class="kpi-icon" style="background:#cffafe;color:#0e7490;">🏦</div>
-          <div class="kpi-info">
-            <div class="kpi-title">رصيد الخزينة الحالي (محسوب)</div>
-            <div class="kpi-subtitle">
-              صافي السيولة = تحصيل العملاء − صرف الموظفين − المرتجعات − توريد VAT
-            </div>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:#0e7490;">
-          {{ treasury_balance|default:"0"|floatformat:2 }} ريال
-        </div>
-        <div class="kpi-subnote text-muted" style="margin-top:.35rem; font-size:.8rem;">
-          من دفتر الخزينة: {{ ledger_treasury_balance|default:"0"|floatformat:2 }} ر.س
+    <!-- Customer Liability -->
+    <div class="kpi-card secondary-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-wrapper">📘</div>
+        <div class="kpi-trend neutral">
+          <span>التزامات</span>
         </div>
       </div>
-
-      {# التزام المنصّة تجاه العملاء #}
-      <div class="profile-section kpi-card"
-           style="background:linear-gradient(135deg,#eef2ff 0%,var(--white) 100%);">
-        <div class="kpi-header">
-          <div class="kpi-icon" style="background:#e0e7ff;color:#3730a3;">📘</div>
-          <div class="kpi-info">
-            <div class="kpi-title">التزام المنصّة تجاه العملاء</div>
-            <div class="kpi-subtitle">
-              ما تم تحصيله من العملاء ناقص ما تم إرجاعه وصرفه للموظفين
-            </div>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:#3730a3;">
-          {{ customer_liability|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# ضريبة غير مورّدة (VAT Payable) #}
-      <div class="profile-section kpi-card"
-           style="background:linear-gradient(135deg,#fff7ed 0%,var(--white) 100%);">
-        <div class="kpi-header">
-          <div class="kpi-icon" style="background:#ffedd5;color:#9a3412;">🧾</div>
-          <div class="kpi-info">
-            <div class="kpi-title">VAT غير مورّدة</div>
-            <div class="kpi-subtitle">
-              VAT محصّلة من العملاء ولم تُورَّد للهيئة بعد
-            </div>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:#9a3412;">
-          {{ vat_payable|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# طلبات قيد التنفيذ #}
-      <div class="profile-section kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon">🔄</div>
-          <div class="kpi-info">
-            <div class="kpi-title">طلبات قيد التنفيذ</div>
-            <div class="kpi-subtitle">عدد الطلبات الجارية حالياً</div>
-          </div>
-        </div>
-        <div class="kpi-value">{{ inprogress_count|default:"0" }}</div>
-      </div>
-
-      {# إجمالي اتفاقيات قيد التنفيذ #}
-      <div class="profile-section kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon">📌</div>
-          <div class="kpi-info">
-            <div class="kpi-title">اتفاقيات قيد التنفيذ</div>
-            <div class="kpi-subtitle">إجمالي قيمة الخدمات الجارية (P + VAT)</div>
-          </div>
-        </div>
-        <div class="kpi-value">
-          {{ total_agreements_amount|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# مدفوعات العملاء #}
-      <div class="profile-section kpi-card"
-           style="background:linear-gradient(135deg,var(--primary-50) 0%,var(--white) 100%);">
-        <div class="kpi-header">
-          <div class="kpi-icon">✅</div>
-          <div class="kpi-info">
-            <div class="kpi-title">إجمالي ما دفعه العملاء</div>
-            <div class="kpi-subtitle">فواتير مدفوعة (إجمالي العميل = P + VAT)</div>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--primary-600);">
-          {{ paid_sum|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# غير مدفوع #}
-      <div class="profile-section kpi-card"
-           style="background:linear-gradient(135deg,var(--secondary-50) 0%,var(--white) 100%);">
-        <div class="kpi-header">
-          <div class="kpi-icon">⏳</div>
-          <div class="kpi-info">
-            <div class="kpi-title">إجمالي غير مدفوع</div>
-            <div class="kpi-subtitle">فواتير بانتظار السداد</div>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--secondary-600);">
-          {{ unpaid_sum|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# عمولة المنصة #}
-      <div class="profile-section kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon">🏷️</div>
-          <div class="kpi-info">
-            <div class="kpi-title">دخل المنصّة (عمولة)</div>
-            <div class="kpi-subtitle">
-              تُخصم من الموظف فقط — لا يتحملها العميل
-            </div>
-          </div>
-        </div>
-        <div class="kpi-value">
-          {{ platform_fee_total|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# VAT الإجمالية المحصّلة #}
-      <div class="profile-section kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon">🧾</div>
-          <div class="kpi-info">
-            <div class="kpi-title">VAT محصّلة</div>
-            <div class="kpi-subtitle">VAT على السعر الأساسي P فقط</div>
-          </div>
-        </div>
-        <div class="kpi-value">
-          {{ vat_total|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# إجمالي مستحقات الموظفين غير المدفوعة (صافي) من منظور الفواتير #}
-      <div class="profile-section kpi-card"
-           style="background:linear-gradient(135deg,#f8fafc 0%,var(--white) 100%);">
-        <div class="kpi-header">
-          <div class="kpi-icon" style="background:#e2e8f0;color:#0f172a;">👷</div>
-          <div class="kpi-info">
-            <div class="kpi-title">إجمالي مستحقات الموظفين غير المدفوعة (صافي)</div>
-            <div class="kpi-subtitle">
-              صافي P − Fee للفواتير غير المسددة (يشمل المؤهَّل والمعلّق والمجمّد)
-            </div>
-          </div>
-        </div>
-        <div class="kpi-value">
-          {{ employee_unpaid_net_all|default:employee_unpaid_net|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# مستحقات مجمّدة بسبب نزاع #}
-      <div class="profile-section kpi-card"
-           style="background:linear-gradient(135deg,#fef2f2 0%,var(--white) 100%);">
-        <div class="kpi-header">
-          <div class="kpi-icon" style="background:#fee2e2;color:#b91c1c;">🚫</div>
-          <div class="kpi-info">
-            <div class="kpi-title">مستحقات مجمّدة (نزاعات)</div>
-            <div class="kpi-subtitle">صافي الموظف المجمد = P − Fee في الطلبات المتنازع عليها</div>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:#ef4444;">
-          {{ disputed_total|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# أوامر صرف مدفوعة #}
-      <div class="profile-section kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon">💸</div>
-          <div class="kpi-info">
-            <div class="kpi-title">مستحقات موظفين مدفوعة</div>
-            <div class="kpi-subtitle">مجموع أوامر الصرف المنفَّذة</div>
-          </div>
-        </div>
-        <div class="kpi-value">
-          {{ employee_dues_total|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# أوامر صرف معلّقة #}
-      <div class="profile-section kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon">📝</div>
-          <div class="kpi-info">
-            <div class="kpi-title">أوامر صرف معلّقة</div>
-            <div class="kpi-subtitle">قيمة أوامر الصرف بانتظار السداد</div>
-          </div>
-        </div>
-        <div class="kpi-value">
-          {{ employee_unpaid_total|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# إجمالي المرتجعات المنفذة #}
-      <div class="profile-section kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon">↩️</div>
-          <div class="kpi-info">
-            <div class="kpi-title">مرتجعات منفَّذة للعملاء</div>
-            <div class="kpi-subtitle">ما تم إرجاعه فعليًا من تحصيل العملاء</div>
-          </div>
-        </div>
-        <div class="kpi-value">
-          {{ refunds_sent_total|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# مرتجعات بانتظار التنفيذ #}
-      <div class="profile-section kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon">⏱️</div>
-          <div class="kpi-info">
-            <div class="kpi-title">مرتجعات قيد التنفيذ</div>
-            <div class="kpi-subtitle">طلبات Refund بانتظار التنفيذ المالي</div>
-          </div>
-        </div>
-        <div class="kpi-value">
-          {{ refunds_pending_total|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-      {# ضريبة مورَّدة فعليًا #}
-      <div class="profile-section kpi-card">
-        <div class="kpi-header">
-          <div class="kpi-icon">📤</div>
-          <div class="kpi-info">
-            <div class="kpi-title">VAT تم توريدها</div>
-            <div class="kpi-subtitle">مجموع توريدات الضريبة المنفذة للهيئة</div>
-          </div>
-        </div>
-        <div class="kpi-value">
-          {{ remitted_total|default:"0"|floatformat:2 }} ريال
-        </div>
-      </div>
-
-    </div>
-
-    {# ===== قسم الجداول ===== #}
-    <div class="tables-grid"
-         style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
-
-      {# أوامر صرف غير مدفوعة #}
-      <div class="profile-section data-card">
-        <div class="data-card-header"
-             style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-          <h3 class="card-section-title">📝 أوامر صرف معلّقة</h3>
-          <a href="{{ payouts_url }}" class="btn btn-outline btn-sm">عرض الكل</a>
-        </div>
-
-        <div class="table-wrapper">
-          <table class="table table-clean">
-            <thead>
-              <tr>
-                <th>الموظف</th>
-                <th>المبلغ</th>
-                <th>تاريخ الإنشاء</th>
-                <th>الحالة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for payout in payouts_unpaid %}
-                <tr class="scroll-reveal">
-                  <td>{{ payout.employee }}</td>
-                  <td class="value-strong">{{ payout.amount|floatformat:2 }} ريال</td>
-                  <td class="text-muted">{{ payout.issued_at|date:"Y-m-d" }}</td>
-                  <td><span class="badge badge-pending">{{ payout.get_status_display }}</span></td>
-                </tr>
-              {% empty %}
-                <tr>
-                  <td colspan="4" class="text-center text-muted" style="padding:2rem;">
-                    لا توجد أوامر صرف معلّقة حالياً.
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {# النزاعات النشطة #}
-      <div class="profile-section data-card">
-        <div class="data-card-header"
-             style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-          <h3 class="card-section-title">⚖️ النزاعات النشطة</h3>
-          <a href="{{ disputes_url }}" class="btn btn-outline btn-sm">لوحة النزاعات</a>
-        </div>
-
-        <div class="table-wrapper">
-          <table class="table table-clean">
-            <thead>
-              <tr>
-                <th>رقم الطلب</th>
-                <th>عنوان النزاع</th>
-                <th>الحالة</th>
-                <th>الفاتورة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for dispute in disputes_active %}
-                <tr class="scroll-reveal">
-                  <td>
-                    <a class="link" href="{% url 'marketplace:request_detail' dispute.request.pk %}">
-                      #{{ dispute.request.pk }}
-                    </a>
-                  </td>
-                  <td>{{ dispute.title|default:"نزاع" }}</td>
-                  <td><span class="badge badge-default">{{ dispute.get_status_display }}</span></td>
-                  <td>
-                    {% if dispute.invoice %}
-                      <a class="link" href="{% url 'finance:invoice_detail' dispute.invoice.pk %}">
-                        فاتورة #{{ dispute.invoice.pk }}
-                      </a>
-                    {% else %}
-                      <span class="text-muted">—</span>
-                    {% endif %}
-                  </td>
-                </tr>
-              {% empty %}
-                <tr>
-                  <td colspan="4" class="text-center text-muted" style="padding:2rem;">
-                    لا توجد نزاعات نشطة حالياً.
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-
+      <div class="kpi-body">
+        <h3 class="kpi-value">{{ customer_liability|default:"0"|floatformat:2|intcomma }} <small>ر.س</small></h3>
+        <p class="kpi-label">التزام المنصّة للعملاء</p>
       </div>
     </div>
 
-    {# ===== التحويلات بانتظار التأكيد ===== #}
-    <div class="profile-section data-card" style="margin-bottom:2rem;">
-      <div class="data-card-header"
-           style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h3 class="card-section-title">📤 تحويلات بانتظار تأكيد مالي</h3>
-        <a href="{{ confirm_transfers_url }}" class="btn btn-outline btn-sm">فتح صفحة التأكيد</a>
+    <!-- VAT Payable -->
+    <div class="kpi-card warning-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-wrapper">🧾</div>
+        <div class="kpi-trend negative">
+          <span>مستحق للهيئة</span>
+        </div>
+      </div>
+      <div class="kpi-body">
+        <h3 class="kpi-value">{{ vat_payable|default:"0"|floatformat:2|intcomma }} <small>ر.س</small></h3>
+        <p class="kpi-label">VAT غير مورّدة</p>
+      </div>
+    </div>
+
+    <!-- Platform Revenue -->
+    <div class="kpi-card success-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-wrapper">🏷️</div>
+        <div class="kpi-trend positive">
+          <span>صافي دخل</span>
+        </div>
+      </div>
+      <div class="kpi-body">
+        <h3 class="kpi-value">{{ platform_fee_total|default:"0"|floatformat:2|intcomma }} <small>ر.س</small></h3>
+        <p class="kpi-label">أرباح المنصّة (عمولة)</p>
+      </div>
+    </div>
+
+  </div>
+
+  {# --- Secondary Stats Grid --- #}
+  <div class="section-container fade-in-up" style="animation-delay: 0.2s;">
+    <h2 class="section-heading mb-3">📊 مؤشرات الأداء المالي</h2>
+    <div class="finance-summary-card">
+      
+      <div class="finance-item">
+        <span class="fin-label">إجمالي المدفوعات</span>
+        <span class="fin-value text-success">{{ paid_sum|default:"0"|floatformat:2|intcomma }} <small>ر.س</small></span>
+        <div class="progress-bar"><div class="progress-fill success" style="width: 100%"></div></div>
       </div>
 
-      <div class="table-wrapper">
-        <table class="table table-clean">
+      <div class="finance-item">
+        <span class="fin-label">بانتظار السداد</span>
+        <span class="fin-value text-warning">{{ unpaid_sum|default:"0"|floatformat:2|intcomma }} <small>ر.س</small></span>
+        <div class="progress-bar"><div class="progress-fill warning" style="width: 60%"></div></div>
+      </div>
+
+      <div class="finance-item">
+        <span class="fin-label">مستحقات موظفين (صافي)</span>
+        <span class="fin-value text-primary">{{ employee_unpaid_net_all|default:employee_unpaid_net|default:"0"|floatformat:2|intcomma }} <small>ر.س</small></span>
+        <div class="progress-bar"><div class="progress-fill primary" style="width: 45%"></div></div>
+      </div>
+
+      <div class="finance-item">
+        <span class="fin-label">مبالغ مجمّدة (نزاع)</span>
+        <span class="fin-value text-danger">{{ disputed_total|default:"0"|floatformat:2|intcomma }} <small>ر.س</small></span>
+        <div class="progress-bar"><div class="progress-fill danger" style="width: 20%"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  {# --- Pending Actions Tables --- #}
+  <div class="tables-grid-layout fade-in-up" style="animation-delay: 0.3s;">
+    
+    <!-- Pending Transfers -->
+    <div class="grid-column full-width">
+      <div class="section-header-row">
+        <h3 class="section-heading">📤 تحويلات بانتظار التأكيد</h3>
+        <a href="{{ confirm_transfers_url }}" class="link-subtle">عرض الكل</a>
+      </div>
+      <div class="card-shadow table-card">
+        <table class="modern-table">
           <thead>
             <tr>
-              <th>فاتورة</th>
-              <th>طلب</th>
-              <th>إجمالي العميل</th>
-              <th>مرجع التحويل</th>
-              <th>إجراءات</th>
+              <th>الفاتورة</th>
+              <th>الطلب</th>
+              <th>المبلغ</th>
+              <th>المرجع</th>
+              <th>الإجراء</th>
             </tr>
           </thead>
           <tbody>
             {% for inv in pending_bank_confirms %}
-              <tr class="scroll-reveal">
-                <td class="text-muted">#{{ inv.id }}</td>
-                <td>R{{ inv.agreement.request_id }}</td>
-                <td class="value-strong">
-                  {% if inv.client_total_amount %}
-                    {{ inv.client_total_amount|floatformat:2 }}
-                  {% else %}
-                    {{ inv.amount|default:"0"|floatformat:2 }}
-                  {% endif %}
-                  ريال
-                </td>
-                <td><span class="badge badge-default">{{ inv.paid_ref|default:"—" }}</span></td>
-                <td>
-                  <a href="{% url 'finance:invoice_detail' inv.id %}" class="btn btn-outline btn-sm">تفاصيل</a>
-                </td>
-              </tr>
+            <tr>
+              <td class="font-weight-bold">#{{ inv.id }}</td>
+              <td>R{{ inv.agreement.request_id }}</td>
+              <td class="text-success font-weight-bold">
+                {{ inv.amount|default:inv.client_total_amount|default:0|floatformat:2 }} <small>ر.س</small>
+              </td>
+              <td><span class="badge-pill neutral">{{ inv.paid_ref|default:"—" }}</span></td>
+              <td>
+                <a href="{% url 'finance:invoice_detail' inv.id %}" class="btn-sm btn-outline-primary">تفاصيل</a>
+              </td>
+            </tr>
             {% empty %}
-              <tr>
-                <td colspan="5" class="text-center text-muted" style="padding:2rem;">
-                  <div class="text-4xl mb-2 opacity-40">💸</div>
-                  لا توجد تحويلات بانتظار التأكيد حالياً
-                </td>
-              </tr>
+            <tr>
+              <td colspan="5" class="empty-state-row">
+                <span class="empty-icon-sm">✅</span> لا توجد تحويلات معلقة
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
 
-    {# ===== موجز سريع ===== #}
-    <div class="profile-section" style="background:var(--dark-50);">
-      <div class="card-section-title">📊 موجز سريع</div>
-
-      <div class="summary-grid"
-           style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-top:1rem;">
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">مدفوعات العملاء</div>
-          <div class="summary-value" style="color:var(--primary-600);">
-            {{ paid_sum|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">غير مدفوع</div>
-          <div class="summary-value" style="color:var(--secondary-600);">
-            {{ unpaid_sum|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">عمولة المنصّة</div>
-          <div class="summary-value">
-            {{ platform_fee_total|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">VAT محصّلة</div>
-          <div class="summary-value">
-            {{ vat_total|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">VAT غير مورّدة</div>
-          <div class="summary-value">
-            {{ vat_payable|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">التزام تجاه العملاء</div>
-          <div class="summary-value">
-            {{ customer_liability|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        {# ملخص مستحقات الموظفين #}
-        <div class="summary-item profile-section">
-          <div class="summary-label">إجمالي مستحقات غير مدفوعة (صافي)</div>
-          <div class="summary-value">
-            {{ employee_unpaid_net_all|default:employee_unpaid_net|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">مستحقات مدفوعة</div>
-          <div class="summary-value">
-            {{ employee_dues_total|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">مجمّد بسبب نزاع</div>
-          <div class="summary-value" style="color:#ef4444;">
-            {{ disputed_total|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">مرتجعات منفّذة</div>
-          <div class="summary-value">
-            {{ refunds_sent_total|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">مرتجعات قيد التنفيذ</div>
-          <div class="summary-value">
-            {{ refunds_pending_total|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
-        <div class="summary-item profile-section">
-          <div class="summary-label">VAT مورَّدة</div>
-          <div class="summary-value">
-            {{ remitted_total|default:"0"|floatformat:2 }} ريال
-          </div>
-        </div>
-
+    <!-- Pending Payouts -->
+    <div class="grid-column">
+      <div class="section-header-row">
+        <h3 class="section-heading">📝 أوامر صرف معلّقة</h3>
+        <a href="{{ payouts_url }}" class="link-subtle">عرض الكل</a>
       </div>
-
-      <div class="card-section-note" style="margin-top:1rem; text-align:center;">
-        ✅ السياسة المالية: العميل يدفع <strong>P + VAT</strong> فقط،
-        عمولة المنصّة تُخصم من الموظف،
-        والـ VAT تُحتسب على السعر الأساسي P دون عمولة.
+      <div class="card-shadow table-card">
+        <table class="modern-table compact">
+          <thead>
+            <tr>
+              <th>الموظف</th>
+              <th>المبلغ</th>
+              <th>الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payout in payouts_unpaid %}
+            <tr>
+              <td>{{ payout.employee }}</td>
+              <td class="font-weight-bold">{{ payout.amount|floatformat:2 }} <small>ر.س</small></td>
+              <td><span class="status-pill warning-light">{{ payout.get_status_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="empty-state-row">لا توجد أوامر صرف</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
 
-    {% endwith %}
+    <!-- Active Disputes -->
+    <div class="grid-column">
+      <div class="section-header-row">
+        <h3 class="section-heading">⚖️ النزاعات النشطة</h3>
+        <a href="{{ disputes_url }}" class="link-subtle">لوحة النزاعات</a>
+      </div>
+      <div class="card-shadow table-card">
+        <table class="modern-table compact">
+          <thead>
+            <tr>
+              <th>الطلب</th>
+              <th>العنوان</th>
+              <th>الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for dispute in disputes_active %}
+            <tr>
+              <td><a href="{% url 'marketplace:request_detail' dispute.request.pk %}" class="table-link">#{{ dispute.request.pk }}</a></td>
+              <td>{{ dispute.title|default:"نزاع"|truncatechars:20 }}</td>
+              <td><span class="status-pill danger-light">{{ dispute.get_status_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="empty-state-row">لا توجد نزاعات نشطة</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
-</section>
+
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
-  {{ block.super }}
-  <script>
-  (function () {
-    if (typeof initScrollReveal === 'function') {
-      initScrollReveal();
-    }
-
-    document.querySelectorAll('.profile-section').forEach(function (card, index) {
-      card.style.animationDelay = String(index * 0.06) + 's';
-
-      if (card.classList.contains('kpi-card') ||
-          card.classList.contains('quick-action') ||
-          card.classList.contains('summary-item')) {
-
-        card.addEventListener('mouseenter', function() {
-          this.style.transform = 'translateY(-4px)';
-          this.style.boxShadow = 'var(--shadow-lg)';
-        });
-
-        card.addEventListener('mouseleave', function() {
-          this.style.transform = 'translateY(0)';
-          this.style.boxShadow = '';
-        });
-      }
-    });
-
-    document.querySelectorAll('.table-clean tbody tr').forEach(function (row) {
-      row.addEventListener('mouseenter', function() {
-        this.style.background = 'var(--primary-50)';
-      });
-      row.addEventListener('mouseleave', function() {
-        this.style.background = '';
-      });
-    });
-
-  })();
-  </script>
-
-  <style>
-  .finance-dashboard .quick-action {
-    text-decoration: none;
-    text-align: center;
-    padding: 1.25rem 1rem;
-    border-radius: var(--radius-xl);
-    transition: all 0.25s ease;
-  }
-  .finance-dashboard .quick-icon {
-    font-size: 1.8rem;
-    margin-bottom: .4rem;
-  }
-  .finance-dashboard .quick-text {
-    font-weight: 700;
-    color: var(--dark-700);
-    font-size: .95rem;
+<style>
+  /* --- Reusing Dashboard Variables & Styles --- */
+  :root {
+    --dash-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --primary-soft: #f0fdf4;
+    --primary-strong: #16a34a;
+    --danger-soft: #fef2f2;
+    --danger-strong: #dc2626;
+    --warning-soft: #fffbeb;
+    --warning-strong: #d97706;
+    --text-main: #1e293b;
+    --text-sub: #64748b;
+    --border-light: #e2e8f0;
+    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+    --radius-card: 16px;
   }
 
-  .finance-dashboard .kpi-card {
-    min-height: 140px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    transition: all 0.25s ease;
-  }
-  .finance-dashboard .kpi-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-  .finance-dashboard .kpi-icon {
-    width: 3rem;
-    height: 3rem;
-    background: var(--primary-100);
-    color: var(--primary-600);
-    border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.45rem;
-    flex-shrink: 0;
-  }
-  .finance-dashboard .kpi-title {
-    font-weight: 700;
-    color: var(--dark-800);
-    margin-bottom: .25rem;
-    font-size: .98rem;
-  }
-  .finance-dashboard .kpi-subtitle {
-    color: var(--dark-500);
-    font-size: .8rem;
-    line-height: 1.45;
-  }
-  .finance-dashboard .kpi-value {
-    font-size: 1.7rem;
-    font-weight: 800;
-    color: var(--dark-900);
-    line-height: 1.2;
-  }
-  .finance-dashboard .kpi-subnote {
-    color: var(--dark-500);
+  /* Layout */
+  .dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    font-family: 'Tajawal', sans-serif;
+    color: var(--text-main);
   }
 
-  .finance-dashboard .data-card {
-    min-height: 300px;
-    display: flex;
-    flex-direction: column;
-  }
-  .finance-dashboard .table-wrapper {
-    overflow-x: auto;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--dark-200);
-    flex: 1;
-  }
-  .finance-dashboard .table-clean {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .finance-dashboard .table-clean th {
-    background: var(--dark-50);
-    color: var(--dark-700);
-    font-weight: 700;
-    padding: 1rem;
-    text-align: right;
-    border-bottom: 1px solid var(--dark-200);
-  }
-  .finance-dashboard .table-clean td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--dark-100);
-    vertical-align: top;
-  }
-  .finance-dashboard .table-clean tr:last-child td {
-    border-bottom: none;
-  }
+  .section-heading { font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin: 0; }
+  .section-header-row { display: flex; align-items: baseline; margin-bottom: 1rem; gap: 0.5rem; }
+  .link-subtle { margin-right: auto; font-size: 0.85rem; color: var(--primary-strong); text-decoration: none; font-weight: 600; }
+  .mb-3 { margin-bottom: 1rem; }
 
-  .finance-dashboard .value-strong {
-    font-weight: 800;
-    color: var(--dark-900);
+  /* Header */
+  .dashboard-header {
+    background: linear-gradient(120deg, #ffffff 0%, #f0fdf4 100%);
+    padding: 2rem 1.5rem;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 2rem;
   }
-  .finance-dashboard .text-muted {
-    color: var(--dark-500);
+  .header-content {
+    max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.5rem;
   }
+  .badge-pill {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(22, 163, 74, 0.1); color: var(--primary-strong);
+    padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem;
+  }
+  .pulse-dot { width: 8px; height: 8px; background: var(--primary-strong); border-radius: 50%; animation: pulse-green 2s infinite; }
+  .welcome-title { font-size: 1.8rem; font-weight: 900; margin: 0 0 0.25rem 0; color: var(--text-main); }
+  .welcome-subtitle { color: var(--text-sub); margin: 0; font-size: 1rem; }
+  
+  .stat-pill {
+    background: #fff; padding: 0.75rem 1.25rem; border-radius: 12px;
+    box-shadow: var(--shadow-card); display: flex; align-items: center; gap: 0.75rem; border: 1px solid var(--border-light);
+  }
+  .stat-icon { font-size: 1.5rem; }
+  .stat-info { display: flex; flex-direction: column; line-height: 1.2; }
+  .stat-label { font-size: 0.75rem; color: var(--text-sub); }
+  .stat-value { font-weight: 800; color: var(--text-main); font-size: 1rem; }
 
-  .finance-dashboard .link {
-    color: var(--primary-600);
-    text-decoration: none;
-    transition: var(--transition);
+  /* Quick Actions */
+  .quick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+  .quick-tile {
+    background: var(--card-bg); border: 1px solid var(--border-light); border-radius: 16px;
+    padding: 1.25rem; text-align: center; text-decoration: none; color: var(--text-main);
+    transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
   }
-  .finance-dashboard .link:hover {
-    color: var(--primary-700);
-    text-decoration: underline;
-  }
+  .quick-tile:hover { transform: translateY(-3px); border-color: var(--primary-strong); background: var(--primary-soft); }
+  .quick-tile.highlight { background: linear-gradient(135deg, var(--primary-soft) 0%, #fff 100%); border-color: var(--primary-strong); }
+  .tile-icon { font-size: 1.5rem; }
+  .tile-label { font-size: 0.85rem; font-weight: 600; }
 
-  .finance-dashboard .summary-item {
-    text-align: center;
-    padding: 1.2rem .8rem;
+  /* KPI Cards */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
+  .kpi-card {
+    background: var(--card-bg); border-radius: var(--radius-card); padding: 1.5rem;
+    box-shadow: var(--shadow-card); border: 1px solid var(--border-light);
+    transition: transform 0.3s ease; display: flex; flex-direction: column;
   }
-  .finance-dashboard .summary-label {
-    font-size: .875rem;
-    color: var(--dark-600);
-    margin-bottom: .35rem;
-  }
-  .finance-dashboard .summary-value {
-    font-size: 1.15rem;
-    font-weight: 800;
-  }
+  .kpi-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); }
+  .kpi-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+  .kpi-icon-wrapper { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+  
+  .primary-card .kpi-icon-wrapper { background: #ecfeff; color: #0e7490; }
+  .secondary-card .kpi-icon-wrapper { background: #eef2ff; color: #3730a3; }
+  .warning-card .kpi-icon-wrapper { background: #fff7ed; color: #9a3412; }
+  .success-card .kpi-icon-wrapper { background: var(--primary-soft); color: var(--primary-strong); }
 
-  @media (max-width: 1024px) {
-    .finance-dashboard .tables-grid {
-      grid-template-columns: 1fr;
-    }
-    .finance-dashboard .kpi-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-  @media (max-width: 768px) {
-    .finance-dashboard .quick-actions-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    .finance-dashboard .summary-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    .finance-dashboard .data-card-header {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 1rem;
-    }
-    .finance-dashboard .data-card-header .btn {
-      align-self: flex-end;
-    }
-  }
-  @media (max-width: 480px) {
-    .finance-dashboard .quick-actions-grid {
-      grid-template-columns: 1fr;
-    }
-    .finance-dashboard .summary-grid {
-      grid-template-columns: 1fr;
-    }
-    .finance-dashboard .kpi-value {
-      font-size: 1.45rem;
-    }
-  }
+  .kpi-trend { font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.5rem; border-radius: 6px; }
+  .kpi-trend.positive { background: #dcfce7; color: #166534; }
+  .kpi-trend.negative { background: #fee2e2; color: #991b1b; }
+  .kpi-trend.neutral { background: #f1f5f9; color: #475569; }
 
-  @keyframes slideInUp {
-    from { opacity: 0; transform: translateY(24px); }
-    to { opacity: 1; transform: translateY(0); }
+  .kpi-value { font-size: 1.8rem; font-weight: 800; margin: 0; line-height: 1; color: var(--text-main); }
+  .kpi-value small { font-size: 0.9rem; font-weight: 600; color: var(--text-sub); }
+  .kpi-label { color: var(--text-sub); margin: 0.5rem 0 0 0; font-size: 0.9rem; }
+  .kpi-subtext { font-size: 0.75rem; color: var(--text-sub); margin-top: 0.5rem; opacity: 0.8; }
+
+  /* Finance Summary */
+  .finance-summary-card {
+    background: var(--card-bg); border-radius: var(--radius-card); padding: 2rem;
+    box-shadow: var(--shadow-card); border: 1px solid var(--border-light);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-bottom: 2.5rem;
   }
-  .finance-dashboard .scroll-reveal {
-    animation: slideInUp 0.55s ease-out;
+  .finance-item { display: flex; flex-direction: column; gap: 0.5rem; }
+  .fin-label { font-size: 0.85rem; color: var(--text-sub); font-weight: 600; }
+  .fin-value { font-size: 1.25rem; font-weight: 800; }
+  .text-success { color: var(--primary-strong); }
+  .text-warning { color: var(--warning-strong); }
+  .text-danger { color: var(--danger-strong); }
+  .text-primary { color: #2563eb; }
+  .progress-bar { height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; margin-top: 0.25rem; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+  .progress-fill.success { background: var(--primary-strong); }
+  .progress-fill.warning { background: var(--warning-strong); }
+  .progress-fill.danger { background: var(--danger-strong); }
+  .progress-fill.primary { background: #2563eb; }
+
+  /* Tables */
+  .tables-grid-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem; margin-bottom: 2.5rem; }
+  .grid-column.full-width { grid-column: 1 / -1; }
+  
+  .card-shadow { background: var(--card-bg); border-radius: var(--radius-card); box-shadow: var(--shadow-card); border: 1px solid var(--border-light); overflow: hidden; }
+  .modern-table { width: 100%; border-collapse: collapse; }
+  .modern-table th { background: #f8fafc; padding: 1rem 1.5rem; text-align: right; font-size: 0.85rem; color: var(--text-sub); font-weight: 600; border-bottom: 1px solid var(--border-light); }
+  .modern-table td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+  .modern-table tr:hover { background: #fcfcfc; }
+  
+  .status-pill { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+  .status-pill.warning-light { background: #fffbeb; color: #d97706; }
+  .status-pill.danger-light { background: #fee2e2; color: #dc2626; }
+  .badge-pill.neutral { background: #f1f5f9; color: #475569; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; }
+  
+  .btn-sm { padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; text-decoration: none; display: inline-block; }
+  .btn-outline-primary { border: 1px solid var(--primary-strong); color: var(--primary-strong); background: transparent; }
+  .btn-outline-primary:hover { background: var(--primary-soft); }
+  
+  .empty-state-row { text-align: center; padding: 2rem; color: var(--text-sub); font-size: 0.9rem; }
+  .empty-icon-sm { font-size: 1.2rem; margin-left: 0.5rem; }
+  .table-link { text-decoration: none; color: inherit; font-weight: 700; }
+  .table-link:hover { color: var(--primary-strong); }
+
+  /* Animation */
+  .fade-in-up { animation: fadeInUp 0.6s ease-out forwards; opacity: 0; transform: translateY(20px); }
+  @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
   }
-  </style>
+</style>
 {% endblock %}
