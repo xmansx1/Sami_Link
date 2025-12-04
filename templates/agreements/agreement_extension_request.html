@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}طلب تمديد المهلة للاتفاقية{% endblock %}
+
+{% block content %}
+<section class="page-section">
+  <div class="container">
+    <div class="profile-section" style="max-width:500px;margin:auto;">
+      <h2 class="card-section-title">⏳ طلب تمديد المهلة</h2>
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="extra_days">عدد الأيام المطلوبة للتمديد:</label>
+          <input type="number" name="extra_days" id="extra_days" min="1" class="input input-lg" required placeholder="مثال: 5">
+        </div>
+        <button class="btn btn-info btn-lg" style="margin-top:1rem;">إرسال الطلب</button>
+      </form>
+      {% if messages %}
+        <ul class="messages">
+          {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      <a href="{% url 'agreements:detail' agreement.pk %}" class="btn btn-link" style="margin-top:1rem;">العودة لتفاصيل الاتفاقية</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

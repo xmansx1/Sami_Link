@@ -71,6 +71,7 @@ class Agreement(models.Model):
     text = models.TextField("نص الاتفاقية", blank=True)
 
     duration_days = models.PositiveIntegerField("المدة (أيام)", default=7)
+    extension_requested_days = models.IntegerField(null=True, blank=True, verbose_name="عدد أيام التمديد المطلوبة")
     total_amount = models.DecimalField(
         "قيمة المشروع P (ريال)",
         max_digits=12,
@@ -417,7 +418,16 @@ class Agreement(models.Model):
             except Agreement.DoesNotExist:
                 prev = None
             if prev and prev.status != Agreement.Status.DRAFT:
-                if prev.duration_days != self.duration_days or prev.total_amount != self.total_amount:
+                # السماح بتعديل المدة فقط عند الموافقة على طلب التمديد
+                allow_duration_change = False
+                if (
+                    prev.duration_days != self.duration_days
+                    and prev.extension_requested_days
+                    and prev.extension_requested_days > 0
+                    and self.duration_days == prev.duration_days + prev.extension_requested_days
+                ):
+                    allow_duration_change = True
+                if (prev.duration_days != self.duration_days and not allow_duration_change) or prev.total_amount != self.total_amount:
                     raise ValidationError("لا يُسمح بتعديل المدة أو إجمالي المشروع بعد مغادرة المسودة.")
 
     def save(self, *args, **kwargs):

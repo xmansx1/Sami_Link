@@ -8,6 +8,29 @@
 <section class="page-section agreement-detail-page" dir="rtl">
   <div class="container">
 
+    {# تنبيه طلب تمديد المهلة للعميل #}
+    {% if agreement.extension_requested_days and agreement.extension_requested_days > 0 and user.is_authenticated and user.id == agreement.request.client.id %}
+    <div class="alert alert-warning" style="background:#fffbe6;border:1.5px solid #facc15;color:#b45309;padding:1.5rem 1.2rem;border-radius:14px;margin-bottom:1.5rem;box-shadow:0 2px 8px #facc1533;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;">
+      <div style="display:flex;align-items:center;gap:.9rem;">
+        <span style="font-size:2.1rem;">⏳</span>
+        <div>
+          <div style="font-weight:800;font-size:1.1rem;">طلب تمديد مهلة التنفيذ</div>
+          <div style="font-size:.98rem;margin-top:.2rem;">الموظف طلب تمديد مدة الاتفاقية بمقدار <b>{{ agreement.extension_requested_days }}</b> يوم. يمكنك الموافقة أو الرفض.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.7rem;">
+        <form method="post" action="{% url 'agreements:approve_extension' agreement.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success" style="font-weight:700;min-width:110px;">✔️ موافقة</button>
+        </form>
+        <form method="post" action="{% url 'agreements:reject_extension' agreement.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger" style="font-weight:700;min-width:110px;">❌ رفض</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
     <div id="agreementPrintArea">
 
       <div class="profile-section scroll-reveal" style="border:2px solid #0f172a;border-radius:16px;padding:1.5rem;background:#fff;">

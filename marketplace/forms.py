@@ -1,6 +1,74 @@
-# marketplace/forms.py
 from __future__ import annotations
+from django import forms
+from .models import Request, Offer, Note
+# نموذج إلغاء العرض
+class OfferCancelForm(forms.ModelForm):
+    class Meta:
+        model = Offer
+        fields = ["modification_reason"]
+        labels = {"modification_reason": "سبب الإلغاء"}
+        widgets = {
+            "modification_reason": forms.Textarea(attrs={"rows": 2, "class": "input", "placeholder": "سبب الإلغاء (إجباري)"}),
+        }
 
+    def clean_modification_reason(self):
+        reason = _clean_text(self.cleaned_data.get("modification_reason"))
+        if not reason:
+            raise forms.ValidationError("يرجى كتابة سبب الإلغاء.")
+        return reason
+
+# نموذج طلب تمديد العرض
+class OfferExtensionForm(forms.ModelForm):
+    class Meta:
+        model = Offer
+        fields = ["extension_requested_days", "extension_reason"]
+        labels = {
+            "extension_requested_days": "عدد أيام التمديد المطلوبة",
+            "extension_reason": "سبب طلب التمديد",
+        }
+        widgets = {
+            "extension_requested_days": forms.NumberInput(attrs={"min": 1, "class": "input", "placeholder": "عدد الأيام"}),
+            "extension_reason": forms.Textarea(attrs={"rows": 2, "class": "input", "placeholder": "سبب التمديد (إجباري)"}),
+        }
+
+    def clean_extension_requested_days(self):
+        days = self.cleaned_data.get("extension_requested_days")
+        if not days or days < 1:
+            raise forms.ValidationError("يرجى إدخال عدد أيام التمديد (رقم موجب).")
+        return days
+
+    def clean_extension_reason(self):
+        reason = _clean_text(self.cleaned_data.get("extension_reason"))
+        if not reason:
+            raise forms.ValidationError("يرجى كتابة سبب التمديد.")
+        return reason
+# marketplace/forms.py
+from django import forms
+from .models import Request, Offer, Note
+class OfferEditForm(forms.ModelForm):
+    class Meta:
+        model = Offer
+        fields = [
+            "modified_price",
+            "modified_duration_days",
+            "modification_reason",
+            "note",
+        ]
+        widgets = {
+            "modified_price": forms.NumberInput(
+                attrs={"min": 1, "step": "0.5", "class": "input", "placeholder": "السعر بعد التعديل"}
+            ),
+            "modified_duration_days": forms.NumberInput(
+                attrs={"min": 1, "class": "input", "placeholder": "المدة بعد التعديل بالأيام"}
+            ),
+            "modification_reason": forms.Textarea(
+                attrs={"rows": 2, "class": "input", "placeholder": "سبب التعديل"}
+            ),
+            "note": forms.Textarea(
+                attrs={"rows": 2, "class": "input", "placeholder": "ملاحظات إضافية (اختياري)"}
+            ),
+        }
+# marketplace/forms.py
 from django import forms
 from django.contrib.auth import get_user_model
 from django.utils.html import strip_tags
@@ -141,10 +209,11 @@ class OfferCreateForm(forms.ModelForm):
         emp = getattr(self.instance, "employee", None)
         if req and emp:
             # نسمح بعرض واحد PENDING؛ العروض المرفوضة/الملغية لا تمنع تقديم عرض جديد
+            from .models import Status
             exists = Offer.objects.filter(
                 request=req,
                 employee=emp,
-                status=getattr(Offer.Status, "PENDING", "pending"),
+                status=getattr(Status, "PENDING", "pending"),
             ).exists()
             if exists:
                 raise forms.ValidationError("لا يمكنك تقديم أكثر من عرض واحد قيد الانتظار لهذا الطلب.")

@@ -15,6 +15,23 @@ from django.utils.html import strip_tags
 
 User = settings.AUTH_USER_MODEL
 
+# تعريف الحالات بشكل مشترك بين الطلبات والعروض
+class Status(models.TextChoices):
+    NEW = "new", "طلب جديد"
+    OFFER_SELECTED = "offer_selected", "تم اختيار عرض"
+    AGREEMENT_PENDING = "agreement_pending", "اتفاقية بانتظار الموافقة"
+    AWAITING_PAYMENT_CONFIRMATION = "awaiting_payment_confirmation", "تم قبول الاتفاقية وبانتظار تأكيد الدفع"
+    IN_PROGRESS = "in_progress", "قيد التنفيذ"
+    COMPLETED = "completed", "مكتمل"
+    DISPUTED = "disputed", "نزاع"
+    CANCELLED = "cancelled", "ملغى"
+    # حالات خاصة بالعروض:
+    REJECTED = "rejected", "مرفوض"
+    MODIFIED = "modified", "معدل بانتظار موافقة العميل"
+    WAITING_CLIENT_APPROVAL = "waiting_client_approval", "بانتظار موافقة العميل"
+    SELECTED = "selected", "تم اختيار العرض"
+    WITHDRAWN = "withdrawn", "منسحب/ملغي من الموظف"
+
 
 def _normalize_percent(value) -> Decimal:
     """
@@ -37,37 +54,63 @@ class Request(models.Model):
       NEW → OFFER_SELECTED → AGREEMENT_PENDING → AWAITING_PAYMENT_CONFIRMATION → IN_PROGRESS → (COMPLETED | DISPUTED | CANCELLED)
     """
 
-    class Status(models.TextChoices):
-        NEW = "new", "طلب جديد"
-        OFFER_SELECTED = "offer_selected", "تم اختيار عرض"
-        AGREEMENT_PENDING = "agreement_pending", "اتفاقية بانتظار الموافقة"
-        AWAITING_PAYMENT_CONFIRMATION = "awaiting_payment_confirmation", "تم قبول الاتفاقية وبانتظار تأكيد الدفع"
-        IN_PROGRESS = "in_progress", "قيد التنفيذ"
-        COMPLETED = "completed", "مكتمل"
-        DISPUTED = "disputed", "نزاع"
-        CANCELLED = "cancelled", "ملغى"
 
+    # الحقول الأساسية المطلوبة للفورم والقوالب
+    title = models.CharField(
+        max_length=255,
+        verbose_name="عنوان الطلب",
+        help_text="عنوان مختصر للطلب."
+    )
+    details = models.TextField(
+        verbose_name="تفاصيل الطلب",
+        help_text="وصف مفصل للطلب."
+    )
+    estimated_duration_days = models.PositiveIntegerField(
+        verbose_name="المدة التقديرية (أيام)",
+        help_text="عدد الأيام المتوقع لإنجاز الطلب."
+    )
+    estimated_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="السعر التقديري",
+        help_text="المبلغ المتوقع للطلب."
+    )
+    links = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="روابط مرتبطة",
+        help_text="روابط أو مراجع إضافية (اختياري)."
+    )
+    agreement_due_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="تاريخ استحقاق الاتفاقية",
+        help_text="تاريخ ووقت استحقاق الاتفاقية لهذا الطلب.",
+    )
+    offers_window_ends_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="نهاية فترة استقبال العروض",
+        help_text="تاريخ ووقت انتهاء فترة استقبال العروض لهذا الطلب.",
+    )
     client = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="requests_as_client",
+        related_name="requests",
         verbose_name="العميل",
+        db_index=True,
     )
     assigned_employee = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
-        related_name="requests_as_employee",
-        verbose_name="الموظف المُسنّد",
+        related_name="assigned_requests",
+        verbose_name="الموظف المسند",
         null=True,
         blank=True,
+        db_index=True,
     )
-
-    title = models.CharField("العنوان", max_length=160)
-    details = models.TextField("التفاصيل", blank=True)
-    estimated_duration_days = models.PositiveIntegerField("مدة تقديرية (أيام)", default=7)
-    estimated_price = models.DecimalField("سعر تقريبي", max_digits=12, decimal_places=2, default=0)
-    links = models.TextField("روابط مرتبطة (اختياري)", blank=True)
-
     status = models.CharField(
         max_length=32,
         choices=Status.choices,
@@ -75,32 +118,10 @@ class Request(models.Model):
         db_index=True,
         verbose_name="الحالة",
     )
-
-    has_milestones = models.BooleanField("يحتوي مراحل؟", default=False)
-    has_dispute = models.BooleanField("به نزاع؟", default=False)
-
-    offers_window_ends_at = models.DateTimeField(
-        "نهاية نافذة استقبال العروض (5 أيام)",
-        null=True,
-        blank=True,
-        db_index=True,
-    )
-    selected_at = models.DateTimeField(
-        "وقت اختيار العرض (للحالة OFFER_SELECTED وما بعدها)",
-        null=True,
-        blank=True,
-        db_index=True,
-    )
-    agreement_due_at = models.DateTimeField(
-        "موعد استحقاق إرسال الاتفاقية (SLA 3 أيام)",
-        null=True,
-        blank=True,
-    )
     sla_agreement_overdue = models.BooleanField(
         "تجاوز مهلة إنشاء الاتفاقية (تم التنبيه؟)",
         default=False,
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -442,220 +463,57 @@ class Request(models.Model):
 
 
 class Offer(models.Model):
-    """
-    سياسة المال المعتمدة (مصدر الحقيقة: finance.services.pricing):
-      - P = proposed_price
-      - fee = P × fee%
-      - net_emp = P − fee
-      - vat = P × vat%
-      - client_total = P + vat
-    """
-
-    class Status(models.TextChoices):
-        PENDING = "pending", "قيد المراجعة"
-        SELECTED = "selected", "العرض المختار"
-        REJECTED = "rejected", "مرفوض"
-        WITHDRAWN = "withdrawn", "مسحوب"
-
-    request = models.ForeignKey(
-        "marketplace.Request",
-        related_name="offers",
-        on_delete=models.CASCADE,
-        verbose_name="الطلب",
-    )
-    employee = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name="offers",
-        on_delete=models.CASCADE,
-        verbose_name="الموظف",
-    )
-
-    proposed_duration_days = models.PositiveIntegerField("المدة المقترحة (أيام)")
-    proposed_price = models.DecimalField("السعر المقترح P", max_digits=12, decimal_places=2)
-    note = models.TextField("ملاحظة", blank=True)
-
+    request = models.ForeignKey('Request', on_delete=models.CASCADE, related_name='offers', verbose_name='الطلب')
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='offers', verbose_name='الموظف')
     status = models.CharField(
-        "الحالة",
-        max_length=20,
+        max_length=32,
         choices=Status.choices,
-        default=Status.PENDING,
+        default=Status.NEW,
         db_index=True,
+        verbose_name="الحالة",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    proposed_price = models.DecimalField("السعر المقترح", max_digits=12, decimal_places=2, blank=True, null=True)
+    proposed_duration_days = models.PositiveIntegerField("المدة المقترحة (أيام)", blank=True, null=True)
+    modification_reason = models.TextField("سبب التعديل/الإلغاء", blank=True, null=True)
+    extension_requested_days = models.PositiveIntegerField("عدد أيام التمديد المطلوبة", blank=True, null=True)
+    extension_reason = models.TextField("سبب طلب التمديد", blank=True, null=True)
+    modified_price = models.DecimalField("السعر بعد التعديل", max_digits=12, decimal_places=2, blank=True, null=True)
+    modified_duration_days = models.PositiveIntegerField("المدة بعد التعديل بالأيام", blank=True, null=True)
+    note = models.TextField("ملاحظات إضافية (اختياري)", blank=True, null=True)
 
-    client_total_amount_cache = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        editable=False,
-        verbose_name="إجمالي العميل (مخزن)",
-    )
 
-    class Meta:
-        ordering = ["-created_at"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["request"],
-                condition=Q(status="selected"),
-                name="uq_request_single_selected_offer",
-            ),
-            models.UniqueConstraint(
-                fields=["request", "employee"],
-                condition=~Q(status="withdrawn"),
-                name="uq_active_offer_per_employee_per_request",
-            ),
-            models.CheckConstraint(
-                check=Q(proposed_duration_days__gt=0),
-                name="offer_duration_days_gt_0",
-            ),
-            models.CheckConstraint(
-                check=Q(proposed_price__gte=0),
-                name="offer_price_gte_0",
-            ),
-        ]
-        verbose_name = "عرض"
-        verbose_name_plural = "عروض"
-
-    @cached_property
-    def _raw_rates(self) -> tuple[Decimal, Decimal]:
+    def can_cancel(self, user) -> bool:
         """
-        يرجع (fee_raw, vat_raw) كما هي من الإعدادات (للعرض فقط).
-        ممكن تكون 10 أو 0.10 حسب ما هو مخزن.
+        يمنع الإلغاء إذا كانت الاتفاقية مقبولة.
         """
-        try:
-            from finance.models import FinanceSettings
-            fee, vat = FinanceSettings.current_rates()
-        except Exception:
-            fee, vat = 0, 0
-        return Decimal(str(fee or 0)), Decimal(str(vat or 0))
-
-    @property
-    def platform_fee_percent(self) -> Decimal:
-        fee_raw, _ = self._raw_rates
-        return fee_raw.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-    @property
-    def vat_percent(self) -> Decimal:
-        _, vat_raw = self._raw_rates
-        return vat_raw.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-    @cached_property
-    def _rates(self) -> tuple[Decimal, Decimal]:
-        """
-        يرجع (fee_percent, vat_percent) كنسب عشرية للاستخدام في الحساب.
-        """
-        fee_raw, vat_raw = self._raw_rates
-        return _normalize_percent(fee_raw), _normalize_percent(vat_raw)
-
-    @cached_property
-    def _breakdown(self):
-        from finance.services.pricing import compute_breakdown
-        fee_rate, vat_rate = self._rates
-        return compute_breakdown(
-            self.proposed_price_q,
-            fee_percent=fee_rate,
-            vat_rate=vat_rate,
-        )
-
-    @property
-    def proposed_price_q(self) -> Decimal:
-        return Decimal(self.proposed_price or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-    @property
-    def platform_fee_amount(self) -> Decimal:
-        return Decimal(self._breakdown.platform_fee_value).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-
-    @property
-    def net_for_employee(self) -> Decimal:
-        return Decimal(self._breakdown.tech_payout).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-
-    @property
-    def vat_amount(self) -> Decimal:
-        return Decimal(self._breakdown.vat_amount).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-
-    @property
-    def client_total_amount(self) -> Decimal:
-        if self.client_total_amount_cache is not None:
-            return Decimal(self.client_total_amount_cache).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-        return Decimal(self._breakdown.client_total).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-
-    def as_financial_dict(self) -> dict:
-        return {
-            "proposed_price": self.proposed_price_q,
-            "employee_net": self.net_for_employee,
-            "platform_fee": self.platform_fee_amount,
-            "vat_amount": self.vat_amount,
-            "client_total": self.client_total_amount,
-        }
-
-    def save(self, *args, skip_clean: bool = False, **kwargs):
-        if not skip_clean:
-            self.full_clean()
-        try:
-            self.client_total_amount_cache = self.client_total_amount
-        except Exception:
-            self.client_total_amount_cache = None
-        return super().save(*args, **kwargs)
-
-    def can_view(self, user) -> bool:
         if not getattr(user, "is_authenticated", False):
             return False
-        if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
+        if self.status in [Status.REJECTED, Status.WITHDRAWN]:
+            return False
+        # منع الإلغاء إذا كانت الاتفاقية مقبولة
+        agreement = getattr(self.request, "agreement", None)
+        if agreement and getattr(agreement, "status", None) == "accepted":
+            return False
+        if user == self.employee or getattr(user, "is_staff", False) or getattr(user, "role", "") == "admin":
             return True
-        if getattr(user, "role", "") in ("admin", "manager", "finance"):
+        return False
+
+    def can_extend(self, user) -> bool:
+        """
+        يسمح للموظف صاحب العرض أو الإدارة بطلب تمديد إذا كان العرض مختارًا أو قيد التنفيذ.
+        """
+        if not getattr(user, "is_authenticated", False):
+            return False
+        if self.status not in [Status.SELECTED, Status.MODIFIED, Status.WAITING_CLIENT_APPROVAL]:
+            return False
+        if user == self.employee or getattr(user, "is_staff", False) or getattr(user, "role", "") == "admin":
             return True
-        return user.id in (self.request.client_id, self.employee_id)
+        return False
 
-    def can_select(self, user) -> bool:
-        return (
-            getattr(user, "is_authenticated", False)
-            and user.id == self.request.client_id
-            and self.status == self.Status.PENDING
-            and self.request.status == Request.Status.NEW
-            and self.request.offers_window_active
-        )
 
-    def can_reject(self, user) -> bool:
-        return (
-            getattr(user, "is_authenticated", False)
-            and user.id == self.request.client_id
-            and self.status == self.Status.PENDING
-        )
 
-    def clean(self):
-        if self.proposed_duration_days <= 0:
-            raise ValidationError("المدة المقترحة يجب أن تكون أكبر من صفر.")
-        if self.proposed_price < 0:
-            raise ValidationError("السعر المقترح لا يمكن أن يكون سالبًا.")
-
-        req: Request = getattr(self, "request", None)
-        if req:
-            req.ensure_offers_window()
-            if (
-                req.status == Request.Status.NEW
-                and req.offers_window_ends_at
-                and timezone.now() > req.offers_window_ends_at
-                and self.status != self.Status.WITHDRAWN
-            ):
-                raise ValidationError("انتهت نافذة استقبال العروض لهذا الطلب.")
-
-        if self.note:
-            self.note = strip_tags(self.note).strip()
-
-    def __str__(self):
-        return f"Offer#{self.pk} R{self.request_id} by {self.employee_id}"
 
 
 class Note(models.Model):
@@ -695,3 +553,4 @@ class ServiceRequest(Request):
             return False
         limit = self.created_at + timedelta(days=days)
         return timezone.now() < limit and self.status == Request.Status.NEW
+

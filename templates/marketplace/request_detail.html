@@ -81,6 +81,28 @@
 {% endblock %}
 
 {% block content %}
+  {# تنبيه طلب تمديد المهلة للعميل #}
+  {% if req.agreement and req.agreement.extension_requested_days and req.agreement.extension_requested_days > 0 and request.user.is_authenticated and request.user.id == req.client_id %}
+  <div class="alert alert-warning" style="background:#fffbe6;border:1.5px solid #facc15;color:#b45309;padding:1.5rem 1.2rem;border-radius:14px;margin-bottom:1.5rem;box-shadow:0 2px 8px #facc1533;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;">
+    <div style="display:flex;align-items:center;gap:.9rem;">
+      <span style="font-size:2.1rem;">⏳</span>
+      <div>
+        <div style="font-weight:800;font-size:1.1rem;">طلب تمديد مهلة التنفيذ</div>
+        <div style="font-size:.98rem;margin-top:.2rem;">الموظف طلب تمديد مدة الاتفاقية بمقدار <b>{{ req.agreement.extension_requested_days }}</b> يوم. يمكنك الموافقة أو الرفض.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.7rem;">
+      <form method="post" action="{% url 'agreements:approve_extension' req.agreement.pk %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success" style="font-weight:700;min-width:110px;">✔️ موافقة</button>
+      </form>
+      <form method="post" action="{% url 'agreements:reject_extension' req.agreement.pk %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger" style="font-weight:700;min-width:110px;">❌ رفض</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
 
 <section class="page-section request-detail-page">
   <div class="container">
@@ -616,6 +638,27 @@
                     </div>
                   {% endif %}
 
+                  {# تفاصيل العرض المعدل إن وجدت #}
+                  {% if off.modified_price or off.modified_duration_days or off.modification_reason %}
+                    <div class="details-block" style="background: #fff7ed; border: 1px solid #fed7aa; margin-bottom: 0.75rem;">
+                      <div class="details-block-header">
+                        <span class="icon">🛠️</span>
+                        <span>تفاصيل التعديل</span>
+                      </div>
+                      <div class="details-prose">
+                        {% if off.modified_price %}
+                          <div><strong>السعر بعد التعديل:</strong> {{ off.modified_price }} ريال</div>
+                        {% endif %}
+                        {% if off.modified_duration_days %}
+                          <div><strong>المدة بعد التعديل:</strong> {{ off.modified_duration_days }} يوم</div>
+                        {% endif %}
+                        {% if off.modification_reason %}
+                          <div><strong>سبب التعديل:</strong> {{ off.modification_reason }}</div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endif %}
+
                   <div class="offer-tags" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <span class="badge badge-muted">
                       ⏱️ المدة:
@@ -626,9 +669,11 @@
                       <span>
                         العرض للعميل:
                         <strong class="off-total"
-                                data-total="{{ off.client_total_amount_cache|default_if_none:off.client_total_amount|default_if_none:'' }}">
-                          {% if off.client_total_amount_cache or off.client_total_amount %}
-                            {{ off.client_total_amount_cache|default_if_none:off.client_total_amount|floatformat:2 }}
+                                data-total="{% if off.client_total_amount_cache %}{{ off.client_total_amount_cache }}{% elif off.client_total_amount %}{{ off.client_total_amount }}{% else %}{% endif %}">
+                          {% if off.client_total_amount_cache %}
+                            {{ off.client_total_amount_cache|floatformat:2 }}
+                          {% elif off.client_total_amount %}
+                            {{ off.client_total_amount|floatformat:2 }}
                           {% else %}
                             —
                           {% endif %}
@@ -644,9 +689,19 @@
                 </div>
 
                 <div class="offer-actions" style="margin-top: 1rem;">
-                  {% if req.client_id == request.user.id and req.status == 'new' and off.status != 'selected' %}
+                  {# قبول/رفض العرض المعدل للعميل إذا كان العرض بحاجة موافقة #}
+                  {% if req.client_id == request.user.id and off.status == 'waiting_client_approval' or req.client_id == request.user.id and off.status == 'MODIFIED' %}
+                    <form method="post" action="{% url 'marketplace:offer_select' off.pk %}" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-success">قبول العرض المعدل</button>
+                    </form>
+                    <form method="post" action="{% url 'marketplace:offer_reject' off.pk %}" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-danger">رفض العرض المعدل</button>
+                    </form>
+                  {% elif req.client_id == request.user.id and req.status == 'new' and off.status != 'selected' %}
                     <form method="post"
-                          action="{% url 'marketplace:offer_select' off.pk %}"`
+                          action="{% url 'marketplace:offer_select' off.pk %}"
                           onsubmit="return confirm('سيتم اعتماد هذا العرض والانتقال لمرحلة الاتفاقية. تأكيد؟');">
                       {% csrf_token %}
                       <button class="btn btn-primary btn-sm">
@@ -657,6 +712,61 @@
                     <span class="badge badge-verified">
                       🏆 العرض المختار
                     </span>
+                  {% endif %}
+
+                  {# زر تعديل وإلغاء العرض للموظف صاحب العرض #}
+                  {% if request.user.is_authenticated and request.user.id == off.employee.id and off.status != 'withdrawn' and off.status != 'rejected' and not req.agreement %}
+                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
+                       class="btn btn-warning btn-sm"
+                       style="margin-right: 0.5rem;">
+                      ✏️ تعديل العرض
+                    </a>
+                    <form method="post" action="{% url 'marketplace:offer_cancel' off.pk %}" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('هل أنت متأكد من إلغاء العرض؟ سيتم حذف العرض وإرجاع الطلب لحالة جديد.');">
+                        ❌ إلغاء العرض
+                      </button>
+                    </form>
+                  {% elif request.user.is_authenticated and request.user.id == off.employee.id and off.status != 'withdrawn' and off.status != 'rejected' and req.agreement and req.agreement.status != 'accepted' %}
+                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
+                       class="btn btn-warning btn-sm"
+                       style="margin-right: 0.5rem;">
+                      ✏️ تعديل العرض
+                    </a>
+                    <form method="post" action="{% url 'marketplace:offer_cancel' off.pk %}" style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('هل أنت متأكد من إلغاء العرض؟ سيتم حذف العرض وإرجاع الطلب لحالة جديد.');">
+                        ❌ إلغاء العرض
+                      </button>
+                    </form>
+                  {% endif %}
+
+                  {# زر تعديل العرض للإدارة #}
+                  {% if request.user.is_authenticated and request.user.is_staff and req.status == 'new' %}
+                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
+                       class="btn btn-warning btn-sm"
+                       style="margin-right: 0.5rem;">
+                      ✏️ تعديل العرض
+                    </a>
+                  {% elif request.user.is_authenticated and request.user.is_staff and req.status == 'offer_selected' %}
+                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
+                       class="btn btn-warning btn-sm"
+                       style="margin-right: 0.5rem;">
+                      ✏️ تعديل العرض
+                    </a>
+                  {% endif %}
+                  {% if request.user.is_authenticated and request.user.role == 'admin' and req.status == 'new' %}
+                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
+                       class="btn btn-warning btn-sm"
+                       style="margin-right: 0.5rem;">
+                      ✏️ تعديل العرض
+                    </a>
+                  {% elif request.user.is_authenticated and request.user.role == 'admin' and req.status == 'offer_selected' %}
+                    <a href="{% url 'marketplace:offer_edit' off.pk %}"
+                       class="btn btn-warning btn-sm"
+                       style="margin-right: 0.5rem;">
+                      ✏️ تعديل العرض
+                    </a>
                   {% endif %}
                 </div>
               </div>
@@ -694,6 +804,29 @@
                 👁️ عرض/تحرير الاتفاقية
               </a>
 
+              {# 🔔 طلب مهلة من داخل قسم الاتفاقية — للموظف المسند فقط أثناء التنفيذ #}
+              {% if request.user.is_authenticated and request.user.id == req.assigned_employee_id and req.agreement.status == 'accepted' and req.status == 'in_progress' %}
+                <form method="post"
+                      action="{% url 'agreements:request_extension' req.agreement.pk %}"
+                      class="inline-form"
+                      style="margin-inline-start:.5rem;"
+                      onsubmit="return confirm('سيتم إرسال طلب تمديد المهلة للعميل. تأكيد الإرسال؟');">
+                  {% csrf_token %}
+                  <div style="display:flex;align-items:center;gap:.35rem;">
+                    <input type="number"
+                           name="extra_days"
+                           min="1"
+                           class="input input-sm"
+                           placeholder="أيام إضافية"
+                           required
+                           style="width:100px;">
+                    <button class="btn btn-info btn-sm" title="طلب تمديد مدة تنفيذ المشروع">
+                      ⏳ طلب مهلة
+                    </button>
+                  </div>
+                </form>
+              {% endif %}
+
               {% if request.user.id == req.client_id %}
                 {% if req.status == 'agreement_pending' or req.agreement.status == 'pending' %}
 
@@ -716,7 +849,7 @@
 
               {% if req.agreement.status == 'accepted' %}
                 <span class="card-section-note">
-                  ✅ الاتفاقية مقبولة — لا يمكن تعديلها.
+                  ✅ الاتفاقية مقبولة — لا يمكن تعديل بنودها، ويمكن فقط طلب تمديد المهلة عند الحاجة.
                 </span>
               {% endif %}
             </div>

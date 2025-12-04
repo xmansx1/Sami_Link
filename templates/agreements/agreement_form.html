@@ -27,7 +27,7 @@
         </div>
       </div>
 
-      {% with agreed_days=req.selected_offer.proposed_duration_days|default:0 %}
+
       <div class="agreement-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
 
         <div class="stat-item profile-section" style="padding: 1rem; text-align: center;">
@@ -45,13 +45,9 @@
           <div class="stat-label">⏱️ المدة الإجمالية المتفق عليها</div>
           <div id="agreed-duration"
                class="stat-value"
-               data-duration-days="{% if req.selected_offer %}{{ req.selected_offer.proposed_duration_days }}{% else %}{{ agreed_days }}{% endif %}"
+               data-duration-days="{{ agreement.duration_days }}"
                style="color: var(--secondary-600);">
-            {% if req.selected_offer %}
-              {{ req.selected_offer.proposed_duration_days }} يوم
-            {% else %}
-              {{ agreed_days }} يوم
-            {% endif %}
+            {{ agreement.duration_days }} يوم
           </div>
         </div>
 
@@ -70,7 +66,7 @@
         </div>
 
       </div>
-      {% endwith %}
+
     </div>
 
     <form method="post" novalidate class="agreement-form">
@@ -113,15 +109,15 @@
               </div>
             </div>
 
-            {% with agreed_days=req.selected_offer.proposed_duration_days|default:0 %}
+
             <div class="form-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
 
               <div class="form-field">
                 <label class="form-label">المدة المتفق عليها (أيام)</label>
                 <div class="input" style="background: var(--dark-50); border-color: var(--dark-200); cursor: not-allowed;">
-                  {{ agreed_days }} يوم
+                  {{ agreement.duration_days }} يوم
                 </div>
-                <input type="hidden" name="duration_days" value="{{ agreed_days }}">
+                <input type="hidden" name="duration_days" value="{{ agreement.duration_days }}">
               </div>
 
               <div class="form-field">
@@ -132,7 +128,7 @@
               </div>
 
             </div>
-            {% endwith %}
+
 
             {# breakdown المالي المفصل #}
             {% if breakdown %}
@@ -352,7 +348,8 @@
       </div>
 
       {# ===== أزرار الإجراءات ===== #}
-      <div class="form-actions employee-actions" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--dark-200); justify-content: center;">
+      {% if agreement.status != 'accepted' %}
+      <div class="form-actions employee-actions" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--dark-200); justify-content: center; flex-wrap: wrap; gap: 1rem;">
         <button id="btn-save" name="action" value="save" class="btn btn-primary">
           💾 حفظ (مسودة)
         </button>
@@ -362,7 +359,17 @@
         <a href="{% url 'marketplace:request_detail' req.id %}" class="btn btn-outline">
           ↩️ عودة للطلب
         </a>
+        {# زر إلغاء العرض للموظف صاحب الاتفاقية إذا لم يكن الطلب في حالة new #}
+        {% if user.is_authenticated and user.id == agreement.employee_id and req.status != 'new' %}
+          <form method="post" action="{% url 'marketplace:offer_cancel' agreement.offer_id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger" onclick="return confirm('هل أنت متأكد من إلغاء العرض؟ سيتم حذف العرض وإرجاع الطلب لحالة جديد.');">
+              ❌ إلغاء العرض
+            </button>
+          </form>
+        {% endif %}
       </div>
+      {% endif %}
 
     </form>
 

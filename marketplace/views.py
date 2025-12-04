@@ -1,4 +1,121 @@
-from __future__ import annotations
+from .forms import OfferCancelForm, OfferExtensionForm
+from django.contrib.auth.decorators import login_required
+# ======================
+# إلغاء العرض
+# ======================
+@login_required
+def offer_cancel(request, offer_id):
+    offer = get_object_or_404(Offer, pk=offer_id)
+    user = request.user
+    if not offer.can_cancel(user):
+        messages.error(request, "غير مصرح لك بإلغاء هذا العرض.")
+        return redirect("marketplace:request_detail", pk=offer.request.pk)
+    if request.method == "POST":
+        form = OfferCancelForm(request.POST, instance=offer)
+        if form.is_valid():
+            req = offer.request
+            offer.delete()  # حذف العرض فعليًا
+            # إعادة الطلب لحالة جديد وإلغاء الإسناد
+            from .models import Status
+            req.status = Status.NEW
+            req.assigned_employee = None
+            req.save(update_fields=["status", "assigned_employee"])
+            # إشعار العميل
+            try:
+                create_notification(
+                    recipient=req.client,
+                    title="تم إلغاء العرض",
+                    body=f"قام الموظف {user} بإلغاء عرضه على طلبك #{req.pk} لسبب: {form.cleaned_data.get('modification_reason', '')}",
+                    url=reverse("marketplace:request_detail", args=[req.pk]),
+                    actor=user,
+                    target=req,
+                )
+            except Exception:
+                pass
+            messages.success(request, "تم إلغاء العرض بنجاح، وعاد الطلب لحالة جديد.")
+            return redirect("marketplace:request_detail", pk=req.pk)
+        else:
+            messages.error(request, "يرجى تصحيح الأخطاء في النموذج.")
+    else:
+        form = OfferCancelForm(instance=offer)
+    return render(request, "marketplace/offer_cancel.html", {"form": form, "offer": offer})
+
+# ======================
+# طلب تمديد العرض
+# ======================
+@login_required
+def offer_extend(request, offer_id):
+    offer = get_object_or_404(Offer, pk=offer_id)
+    user = request.user
+    if not offer.can_extend(user):
+        messages.error(request, "غير مصرح لك بطلب تمديد لهذا العرض.")
+        return redirect("marketplace:request_detail", pk=offer.request.pk)
+    if request.method == "POST":
+        form = OfferExtensionForm(request.POST, instance=offer)
+        if form.is_valid():
+            offer = form.save(commit=False)
+            # يمكن وضع حالة خاصة للتمديد إذا رغبت
+            offer.save()
+            # إشعار العميل
+            try:
+                create_notification(
+                    recipient=offer.request.client,
+                    title="طلب تمديد مدة المشروع",
+                    body=f"قام الموظف {user} بطلب تمديد مدة المشروع لعدد {offer.extension_requested_days} يوم. السبب: {offer.extension_reason}",
+                    url=reverse("marketplace:request_detail", args=[offer.request.pk]),
+                    actor=user,
+                    target=offer.request,
+                )
+            except Exception:
+                pass
+            messages.success(request, "تم إرسال طلب التمديد بنجاح.")
+            return redirect("marketplace:request_detail", pk=offer.request.pk)
+        else:
+            messages.error(request, "يرجى تصحيح الأخطاء في النموذج.")
+    else:
+        form = OfferExtensionForm(instance=offer)
+    return render(request, "marketplace/offer_extend.html", {"form": form, "offer": offer})
+from django.contrib.auth.decorators import login_required
+from .forms import OfferEditForm
+# ======================
+# تعديل العرض من الموظف
+# ======================
+@login_required
+def edit_offer(request, offer_id):
+    offer = get_object_or_404(Offer, pk=offer_id)
+    user = request.user
+    # السماح فقط للموظف صاحب العرض أو الإدارة
+    if not (user.is_authenticated and (user == offer.employee or getattr(user, "is_staff", False))):
+        messages.error(request, "غير مصرح لك بتعديل هذا العرض.")
+        return redirect("marketplace:request_detail", pk=offer.request.pk)
+
+    if request.method == "POST":
+        form = OfferEditForm(request.POST, instance=offer)
+        if form.is_valid():
+            offer = form.save(commit=False)
+            from .models import Status
+            offer.status = Status.WAITING_CLIENT_APPROVAL
+            offer.save()
+            # إشعار العميل بالتعديل
+            try:
+                create_notification(
+                    recipient=offer.request.client,
+                    title="تم تعديل العرض",
+                    body=f"قام الموظف {user} بتعديل العرض على طلبك #{offer.request.pk}. يرجى مراجعة التعديلات والموافقة عليها.",
+                    url=reverse("marketplace:offer_detail", args=[offer.pk]),
+                    actor=user,
+                    target=offer.request,
+                )
+            except Exception:
+                pass
+            messages.success(request, "تم تعديل العرض بنجاح. بانتظار موافقة العميل.")
+            return redirect("marketplace:request_detail", pk=offer.request.pk)
+        else:
+            messages.error(request, "يرجى تصحيح الأخطاء في النموذج.")
+    else:
+        form = OfferEditForm(instance=offer)
+
+    return render(request, "marketplace/edit_offer.html", {"form": form, "offer": offer})
 from decimal import Decimal, ROUND_HALF_UP
 
 import logging
@@ -24,7 +141,7 @@ from core.permissions import require_role
 from finance.models import FinanceSettings, Invoice
 from notifications.utils import create_notification
 from .forms import AdminReassignForm, OfferCreateForm, OfferForm, RequestCreateForm
-from .models import Note, Offer, Request
+from .models import Note, Offer, Request, Status
 
 logger = logging.getLogger(__name__)
 
@@ -191,9 +308,10 @@ def _status_vals(*names):
     أو كانت الحالة نصية (lowercase).
     """
     out: list[str] = []
+    from .models import Status
     for n in names:
-        if hasattr(Request, "Status") and hasattr(Request.Status, n):
-            out.append(getattr(Request.Status, n))
+        if hasattr(Status, n):
+            out.append(getattr(Status, n))
         else:
             out.append(n.lower())
     return out
@@ -381,8 +499,8 @@ class MyAssignedRequestsView(LoginRequiredMixin, ListView):
         qs = qs.exclude(status__in=done_like)
 
         # إخفاء النزاعات (المجمّدة) إن رغبت
-        if hasattr(Request, "Status") and hasattr(Request.Status, "DISPUTED"):
-            qs = qs.exclude(status=Request.Status.DISPUTED)
+        if hasattr(Status, "DISPUTED"):
+            qs = qs.exclude(status=Status.DISPUTED)
         else:
             qs = qs.exclude(status="disputed")
 
@@ -442,7 +560,7 @@ class NewRequestsForEmployeesView(LoginRequiredMixin, EmployeeOnlyMixin, ListVie
 
     def get_queryset(self):
         return (
-            Request.objects.filter(status=Request.Status.NEW, assigned_employee__isnull=True)
+            Request.objects.filter(status=Status.NEW, assigned_employee__isnull=True)
             .select_related("client")
             .prefetch_related(Prefetch("offers", queryset=Offer.objects.only("id", "status", "employee_id")))
             .order_by("-created_at")
@@ -455,7 +573,7 @@ class NewRequestsForEmployeesView(LoginRequiredMixin, EmployeeOnlyMixin, ListVie
         ctx = super().get_context_data(**kwargs)
         u = self.request.user
         offered_ids = list(
-            Offer.objects.filter(employee=u, status=Offer.Status.PENDING).values_list("request_id", flat=True)
+            Offer.objects.filter(employee=u, status="pending").values_list("request_id", flat=True)
         )
         ctx["offered_request_ids"] = offered_ids
         return ctx
@@ -550,13 +668,15 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
         # ------------ تقديم عرض (موظف فقط وعلى NEW وغير مُسنَّد) ------------
         ctx["can_offer"] = False
         ctx["offer_form"] = None
+        from .models import Status
         if (
             u.is_authenticated
             and getattr(u, "role", None) == "employee"
-            and getattr(req, "status", None) == getattr(Request.Status, "NEW", "new")
+            and getattr(req, "status", None) == getattr(Status, "NEW", "new")
             and getattr(req, "assigned_employee_id", None) is None
         ):
-            pending_offer = req.offers.filter(employee=u, status=getattr(Offer.Status, "PENDING", "pending")).first()
+            from .models import Status
+            pending_offer = req.offers.filter(employee=u, status="pending").first()
             ctx["can_offer"] = pending_offer is None
             if pending_offer is None:
                 ctx["offer_form"] = OfferCreateForm()
@@ -566,7 +686,7 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
         if u.is_authenticated and getattr(u, "role", None) == "employee":
             selected = getattr(req, "selected_offer", None)
             if selected and (getattr(req, "assigned_employee_id", None) == u.id or getattr(selected, "employee_id", None) == u.id):
-                if getattr(req, "status", None) == getattr(Request.Status, "OFFER_SELECTED", "offer_selected") or hasattr(req, "agreement"):
+                if getattr(req, "status", None) == getattr(Status, "OFFER_SELECTED", "offer_selected") or hasattr(req, "agreement"):
                     ctx["can_create_agreement"] = True
 
         # نزاع/تغيير حالة
@@ -604,12 +724,13 @@ class RequestDetailView(LoginRequiredMixin, DetailView):
             messages.error(request, "غير مصرح بتقديم عرض على هذا الطلب.")
             return redirect("marketplace:request_detail", pk=req.pk)
 
-        if getattr(req, "status", None) != getattr(Request.Status, "NEW", "new") or getattr(req, "assigned_employee_id", None) is not None:
+        if getattr(req, "status", None) != getattr(Status, "NEW", "new") or getattr(req, "assigned_employee_id", None) is not None:
             messages.warning(request, "لا يمكن تقديم عروض لهذا الطلب في حالته الحالية.")
             return redirect("marketplace:request_detail", pk=req.pk)
 
         # فرض قيد “عرض واحد فعّال لكل (request, employee)” + نافذة العروض
-        if req.offers.filter(employee=u).exclude(status=getattr(Offer.Status, "WITHDRAWN", "withdrawn")).exists():
+        from .models import Status
+        if req.offers.filter(employee=u).exclude(status=getattr(Status, "WITHDRAWN", "withdrawn")).exists():
             messages.info(request, "لديك عرض فعّال مسبقًا لهذا الطلب.")
             return redirect("marketplace:request_detail", pk=req.pk)
 
@@ -678,11 +799,11 @@ class OfferCreateView(LoginRequiredMixin, EmployeeOnlyMixin, CreateView):
         self.req_obj = get_object_or_404(
             Request.objects.select_related("client"),
             pk=kwargs.get("request_id"),
-            status=Request.Status.NEW,
+            status=Status.NEW,
             assigned_employee__isnull=True,
         )
         # عرض واحد فعّال لكل موظف على ذات الطلب
-        if Offer.objects.filter(request=self.req_obj, employee=request.user).exclude(status=Offer.Status.WITHDRAWN).exists():
+        if Offer.objects.filter(request=self.req_obj, employee=request.user).exclude(status=Status.WITHDRAWN).exists():
             messages.warning(request, "قدّمت عرضًا مسبقًا لهذا الطلب.")
             return redirect("marketplace:request_detail", pk=self.req_obj.pk)
         # التحقّق من النافذة
@@ -699,9 +820,21 @@ class OfferCreateView(LoginRequiredMixin, EmployeeOnlyMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        fee, vat = FinanceSettings.current_rates()
-        context["platform_fee_percent"] = float(fee)
-        context["vat_percent"] = float(vat)
+        # ضمان تمرير القيم دائمًا
+        fee, vat = 0, 0
+        try:
+            fee, vat = FinanceSettings.current_rates()
+        except Exception:
+            pass
+        context.setdefault("platform_fee_percent", float(fee))
+        context.setdefault("vat_percent", float(vat))
+        # إذا كان هناك form.instance، عيّن القيم الافتراضية داخله أيضًا
+        form = context.get("form")
+        if form and hasattr(form, "instance"):
+            if not getattr(form.instance, "platform_fee_percent", None):
+                form.instance.platform_fee_percent = float(fee)
+            if not getattr(form.instance, "vat_percent", None):
+                form.instance.vat_percent = float(vat)
         return context
 
     def form_valid(self, form):
@@ -750,25 +883,36 @@ def offer_select(request, offer_id):
         return redirect("marketplace:request_detail", pk=req.pk)
 
     # لا تعتمد على can_select إن كان متشددًا؛ نطبّق شروطنا بوضوح
-    if getattr(off, "status", None) != getattr(Offer.Status, "PENDING", "pending"):
+    from .models import Status
+    if getattr(off, "status", None) not in ["pending", Status.NEW, Status.WAITING_CLIENT_APPROVAL, Status.MODIFIED]:
         messages.info(request, "لا يمكن اختيار عرض غير معلّق.")
         return redirect("marketplace:request_detail", pk=req.pk)
 
-    # الطلب يجب أن يكون NEW وغير مُسنَّد
-    if getattr(req, "status", None) != getattr(Request.Status, "NEW", "new") or getattr(req, "assigned_employee_id", None) is not None:
-        messages.error(request, "لا يمكن اختيار عرض في هذه الحالة.")
-        return redirect("marketplace:request_detail", pk=req.pk)
+
+    # إذا كان العرض معدل أو بانتظار موافقة العميل، اسمح بالاختيار حتى لو لم يكن الطلب NEW بشرط عدم وجود عرض مختار مسبقًا
+    if getattr(off, "status", None) in [Status.WAITING_CLIENT_APPROVAL, Status.MODIFIED]:
+        # لا تسمح إذا كان هناك عرض مختار بالفعل
+        if Offer.objects.filter(request=req, status=Status.SELECTED).exclude(pk=off.pk).exists():
+            messages.error(request, "تم اختيار عرض آخر بالفعل.")
+            return redirect("marketplace:request_detail", pk=req.pk)
+    else:
+        # الطلب يجب أن يكون NEW وغير مُسنَّد
+        if getattr(req, "status", None) != getattr(Status, "NEW", "new") or getattr(req, "assigned_employee_id", None) is not None:
+            messages.error(request, "لا يمكن اختيار عرض في هذه الحالة.")
+            return redirect("marketplace:request_detail", pk=req.pk)
 
     # ارفض بقية العروض
-    Offer.objects.filter(request=req).exclude(pk=off.pk).update(status=getattr(Offer.Status, "REJECTED", "rejected"))
+    from .models import Status
+    Offer.objects.filter(request=req).exclude(pk=off.pk).update(status=getattr(Status, "REJECTED", "rejected"))
 
     # اختر العرض
-    off.status = getattr(Offer.Status, "SELECTED", "selected")
+    from .models import Status
+    off.status = getattr(Status, "SELECTED", "selected")
     off.save(update_fields=["status"])
 
     # إسناد الطلب + تحديث حالته
     req.assigned_employee = off.employee
-    req.status = getattr(Request.Status, "OFFER_SELECTED", "offer_selected")
+    req.status = getattr(Status, "OFFER_SELECTED", "offer_selected")
     update_fields = ["assigned_employee", "status"]
     if hasattr(req, "updated_at"):
         req.updated_at = timezone.now()
@@ -793,7 +937,8 @@ def offer_reject(request, offer_id):
     if hasattr(off, "can_reject") and not off.can_reject(request.user):
         return HttpResponseForbidden("غير مسموح")
 
-    off.status = Offer.Status.REJECTED
+    from .models import Status
+    off.status = Status.REJECTED
     off.save(update_fields=["status"])
     try:
         _notify_link(
@@ -1044,8 +1189,8 @@ class MyTasksView(LoginRequiredMixin, ListView):
         done_like = _status_vals("COMPLETED", "CANCELED", "CLOSED")
         qs = qs.exclude(status__in=done_like)
 
-        if hasattr(Request, "Status") and hasattr(Request.Status, "DISPUTED"):
-            qs = qs.exclude(status=Request.Status.DISPUTED)
+        if hasattr(Status, "DISPUTED"):
+            qs = qs.exclude(status=Status.DISPUTED)
         else:
             qs = qs.exclude(status="disputed")
 
@@ -1073,8 +1218,8 @@ def disputed_tasks(request):
     u = request.user
 
     disputed_q = Q(status="disputed")
-    if hasattr(Request, "Status") and hasattr(Request.Status, "DISPUTED"):
-        disputed_q = Q(status=Request.Status.DISPUTED) | Q(status__iexact="disputed")
+    if hasattr(Status, "DISPUTED"):
+        disputed_q = Q(status=Status.DISPUTED) | Q(status__iexact="disputed")
 
     qs = (
         Request.objects.select_related("client", "assigned_employee")
@@ -1108,7 +1253,7 @@ def admin_request_reset_to_new(request, pk: int):
 
     obj = get_object_or_404(Request.objects.select_for_update(), pk=pk)
 
-    NEW = getattr(getattr(Request, "Status", None), "NEW", "new")
+    NEW = getattr(Status, "NEW", "new")
     now = timezone.now()
 
     updates: list[str] = []

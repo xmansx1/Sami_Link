@@ -1,4 +1,119 @@
-from __future__ import annotations
+from django.shortcuts import get_object_or_404, redirect, render
+from django.http import HttpResponseForbidden
+from django.utils import timezone
+from .models import Agreement
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.http import HttpRequest, HttpResponse
+from django.contrib.auth.decorators import login_required
+
+# ========================= طلب تمديد المهلة للاتفاقية =========================
+@login_required
+@transaction.atomic
+def approve_extension(request: HttpRequest, pk: int) -> HttpResponse:
+    ag = get_object_or_404(Agreement, pk=pk)
+    # فقط العميل يحق له الموافقة
+    if request.user.id != getattr(ag.request, "client_id", None):
+        return HttpResponseForbidden("غير مصرح لك.")
+    if ag.extension_requested_days and ag.extension_requested_days > 0:
+        ag.duration_days += ag.extension_requested_days
+        ag.extension_requested_days = None
+        if hasattr(ag, "updated_at"):
+            ag.updated_at = timezone.now()
+        ag.save(update_fields=["duration_days", "extension_requested_days"] + (["updated_at"] if hasattr(ag, "updated_at") else []))
+        # إشعار الموظف
+        try:
+            from notifications.utils import create_notification
+            create_notification(
+                recipient=ag.employee,
+                title="تمت الموافقة على طلب تمديد المهلة",
+                body=f"تمت الموافقة من العميل على تمديد مدة الاتفاقية #{ag.pk}.",
+                url=ag.get_absolute_url(),
+                actor=request.user,
+                target=ag,
+            )
+        except Exception:
+            pass
+        messages.success(request, "تمت الموافقة على تمديد المهلة بنجاح.")
+    else:
+        messages.error(request, "لا يوجد طلب تمديد مهلة بانتظار الموافقة.")
+    return redirect("agreements:detail", pk=ag.pk)
+
+@login_required
+@transaction.atomic
+def reject_extension(request: HttpRequest, pk: int) -> HttpResponse:
+    ag = get_object_or_404(Agreement, pk=pk)
+    # فقط العميل يحق له الرفض
+    if request.user.id != getattr(ag.request, "client_id", None):
+        return HttpResponseForbidden("غير مصرح لك.")
+    if ag.extension_requested_days and ag.extension_requested_days > 0:
+        ag.extension_requested_days = None
+        if hasattr(ag, "updated_at"):
+            ag.updated_at = timezone.now()
+        ag.save(update_fields=["extension_requested_days"] + (["updated_at"] if hasattr(ag, "updated_at") else []))
+        # إشعار الموظف
+        try:
+            from notifications.utils import create_notification
+            create_notification(
+                recipient=ag.employee,
+                title="تم رفض طلب تمديد المهلة",
+                body=f"تم رفض طلب تمديد المهلة للاتفاقية #{ag.pk} من العميل.",
+                url=ag.get_absolute_url(),
+                actor=request.user,
+                target=ag,
+            )
+        except Exception:
+            pass
+        messages.success(request, "تم رفض طلب تمديد المهلة.")
+    else:
+        messages.error(request, "لا يوجد طلب تمديد مهلة بانتظار الموافقة.")
+    return redirect("agreements:detail", pk=ag.pk)
+
+from django.views.decorators.http import require_POST
+from django.http import HttpRequest, HttpResponse
+from django.db import transaction
+from django.contrib.auth.decorators import login_required
+
+
+@login_required
+@transaction.atomic
+def request_extension(request: HttpRequest, pk: int) -> HttpResponse:
+    ag = get_object_or_404(Agreement.objects.select_related("request"), pk=pk)
+    req = ag.request
+    # تحقق من الصلاحية: فقط الموظف المسند
+    if request.user.id != getattr(req, "assigned_employee_id", None):
+        return HttpResponseForbidden("غير مصرح لك بطلب تمديد المهلة.")
+
+    if request.method == "POST":
+        try:
+            extra_days = int(request.POST.get("extra_days", "0"))
+        except Exception:
+            extra_days = 0
+        if extra_days < 1:
+            messages.error(request, "يجب إدخال عدد أيام صحيح للتمديد.")
+        else:
+            ag.extension_requested_days = extra_days
+            if hasattr(ag, "updated_at"):
+                ag.updated_at = timezone.now()
+            ag.save(update_fields=["extension_requested_days"] + (["updated_at"] if hasattr(ag, "updated_at") else []))
+            # إشعار العميل
+            try:
+                from notifications.utils import create_notification
+                client = getattr(ag.request, "client", None)
+                create_notification(
+                    recipient=client,
+                    title="طلب تمديد مهلة التنفيذ",
+                    body=f"قام الموظف بطلب تمديد مدة الاتفاقية #{ag.pk} بمقدار {extra_days} يوم. يمكنك الموافقة أو الرفض من صفحة الطلب.",
+                    url=ag.get_absolute_url(),
+                    actor=request.user,
+                    target=ag,
+                )
+            except Exception:
+                pass
+            messages.success(request, f"تم إرسال طلب تمديد المهلة ({extra_days} يوم) للعميل بنجاح.")
+            return redirect("agreements:detail", pk=ag.pk)
+
+    return render(request, "agreements/agreement_extension_request.html", {"agreement": ag})
 
 import logging
 from decimal import Decimal
@@ -21,7 +136,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core.permissions import require_role
-from marketplace.models import Request, Offer
+from marketplace.models import Request, Offer, Status
 
 from .forms import AgreementEditForm, MilestoneFormSet, AgreementClauseSelectForm
 from .models import Agreement, AgreementClauseItem, Milestone
@@ -48,7 +163,7 @@ def _get_selected_offer(req: Request) -> Offer | None:
     if off:
         return off
     return (
-        req.offers.filter(status=getattr(Offer.Status, "SELECTED", "selected"))
+        req.offers.filter(status=getattr(Status, "SELECTED", "selected"))
         .select_related("employee")
         .first()
     )
@@ -72,7 +187,7 @@ def _set_db_field(instance, field_name: str, value, update_fields: list[str]) ->
 
 
 def _update_request_status_on_send(req: Request) -> None:
-    new_status = getattr(Request.Status, "AGREEMENT_PENDING", "agreement_pending")
+    new_status = getattr(Status, "AGREEMENT_PENDING", "agreement_pending")
     try:
         req.status = new_status
         updates = ["status"]
@@ -90,7 +205,7 @@ def _update_request_status_on_send(req: Request) -> None:
 
 def _move_request_on_accept(req: Request) -> None:
     awaiting = getattr(
-        Request.Status, "AWAITING_PAYMENT_CONFIRMATION", "awaiting_payment_confirmation"
+        Status, "AWAITING_PAYMENT_CONFIRMATION", "awaiting_payment_confirmation"
     )
     updates = ["status"]
     req.status = awaiting
@@ -114,10 +229,10 @@ def _touch_request_in_progress(req: Request) -> None:
     except Exception:
         pass
 
-    in_progress = getattr(Request.Status, "IN_PROGRESS", "in_progress")
+    in_progress = getattr(Status, "IN_PROGRESS", "in_progress")
     early = {
-        getattr(Request.Status, "AWAITING_PAYMENT_CONFIRMATION", "awaiting_payment_confirmation"),
-        getattr(Request.Status, "AGREEMENT_PENDING", "agreement_pending"),
+        getattr(Status, "AWAITING_PAYMENT_CONFIRMATION", "awaiting_payment_confirmation"),
+        getattr(Status, "AGREEMENT_PENDING", "agreement_pending"),
     }
     try:
         if getattr(req, "status", None) in early:
@@ -132,8 +247,8 @@ def _touch_request_in_progress(req: Request) -> None:
 
 
 def _return_request_to_offer_selected(req: Request) -> None:
-    if hasattr(Request, "Status") and hasattr(Request.Status, "OFFER_SELECTED"):
-        req.status = Request.Status.OFFER_SELECTED
+    if hasattr(Status, "OFFER_SELECTED"):
+        req.status = Status.OFFER_SELECTED
         updates = ["status"]
         if _has_db_field(req, "updated_at"):
             req.updated_at = timezone.now()
@@ -216,12 +331,25 @@ def open_by_request(request: HttpRequest, request_id: int) -> HttpResponse:
         messages.error(request, "لا يمكن إنشاء اتفاقية بدون وجود عرض مختار.")
         return redirect("marketplace:request_detail", pk=req.pk)
 
+    # استخدم أول قيمة موجبة (أكبر من 0) من المعدل أو المقترح، وإلا الافتراضي 7
+    duration = (
+        selected.modified_duration_days if (selected.modified_duration_days and selected.modified_duration_days > 0)
+        else selected.proposed_duration_days if (selected.proposed_duration_days and selected.proposed_duration_days > 0)
+        else 7
+    )
+    if not duration or duration <= 0:
+        duration = 7
+    price = (
+        selected.modified_price
+        if selected.modified_price is not None
+        else (selected.proposed_price or Decimal("0.00"))
+    )
     ag = Agreement.objects.create(
         request=req,
         employee=(getattr(req, "assigned_employee", None) or selected.employee or request.user),
         title=req.title or f"اتفاقية طلب #{req.pk}",
-        duration_days=selected.proposed_duration_days or 7,
-        total_amount=selected.proposed_price or Decimal("0.00"),
+        duration_days=duration,
+        total_amount=price,
         status=Agreement.Status.DRAFT,
     )
 
@@ -312,7 +440,7 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
 
         try:
             if form.is_valid() and formset.is_valid():
-                duration_days = form.cleaned_data.get("duration_days") or 0
+                # حساب مجموع مدد المراحل
                 milestones_days = sum(
                     [
                         f.cleaned_data.get("due_days", 0)
@@ -321,8 +449,12 @@ def edit(request: HttpRequest, pk: int) -> HttpResponse:
                     ]
                 )
 
-                if duration_days != milestones_days:
-                    form.add_error(None, "مجموع مدة الأيام المتفق عليها يجب أن يساوي مجموع مدة الأيام في جميع المراحل.")
+                # تحديث مدة الاتفاقية مباشرة من مجموع مدد المراحل
+                ag.duration_days = milestones_days
+
+                # تحقق أن المدة ليست صفرية
+                if milestones_days <= 0:
+                    form.add_error(None, "يجب أن يكون مجموع مدة الأيام في جميع المراحل أكبر من صفر.")
                 else:
                     try:
                         ag = form.save()
@@ -413,7 +545,7 @@ def accept_by_request(request: HttpRequest, request_id: int) -> HttpResponse:
     try:
         req.accept_agreement_and_wait_payment()
     except Exception:
-        req.status = Request.Status.AWAITING_PAYMENT_CONFIRMATION
+        req.status = Status.AWAITING_PAYMENT_CONFIRMATION
         req.save(update_fields=["status", "updated_at"])
 
     messages.success(request, "تمت الموافقة على الاتفاقية. جارٍ تحويلك للدفع الآمن.")
@@ -619,6 +751,7 @@ def agreement_edit(request: HttpRequest, request_id: int) -> HttpResponse:
     if request.user != getattr(req, "assigned_employee", None) and not _is_admin(request.user):
         return HttpResponseForbidden("غير مسموح")
 
+
     ag, _ = Agreement.objects.get_or_create(
         request=req,
         defaults={
@@ -627,6 +760,11 @@ def agreement_edit(request: HttpRequest, request_id: int) -> HttpResponse:
             "status": Agreement.Status.DRAFT,
         },
     )
+
+    # منع تحرير الاتفاقية إذا كانت مقبولة
+    if ag.status == Agreement.Status.ACCEPTED:
+        messages.error(request, "لا يمكن تعديل الاتفاقية بعد قبولها من العميل.")
+        return redirect("agreements:detail", pk=ag.pk)
 
     breakdown = {
         "net_for_employee": ag.employee_net_amount or 0,

@@ -1,10 +1,12 @@
-# agreements/urls.py
 from __future__ import annotations
-
+# ========================= طلب تمديد المهلة للاتفاقية =========================
+# (يجب أن يكون بعد الاستيرادات)
 import inspect
 from typing import Callable, Any
 from django.urls import path
 from . import views
+
+
 
 app_name = "agreements"
 
@@ -58,6 +60,11 @@ urlpatterns = [
     # موافقة/رفض العميل على اتفاقية الطلب
     path("by-request/<int:request_id>/accept/", views.accept_by_request, name="accept_by_request"),
     path("by-request/<int:request_id>/reject/", views.reject_by_request, name="reject_by_request"),
+    # طلب تمديد المهلة للاتفاقية
+    path("<int:pk>/request-extension/", views.request_extension, name="request_extension"),
+    # موافقة أو رفض العميل على طلب التمديد
+    path("<int:pk>/approve-extension/", views.approve_extension, name="approve_extension"),
+    path("<int:pk>/reject-extension/", views.reject_extension, name="reject_extension"),
 ]
 
 # توافق خلفي: بعض القوالب القديمة كانت تمرّر pk بدل request_id

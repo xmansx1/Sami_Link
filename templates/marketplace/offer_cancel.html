@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}إلغاء العرض{% endblock %}
+{% block content %}
+<section class="page-section">
+  <div class="container">
+    <div class="profile-section">
+      <h2 class="card-section-title">🗑️ إلغاء العرض</h2>
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn btn-danger">تأكيد الإلغاء</button>
+        <a href="{% url 'marketplace:request_detail' offer.request.pk %}" class="btn btn-secondary">إلغاء</a>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

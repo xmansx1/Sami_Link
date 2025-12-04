@@ -64,6 +64,10 @@ urlpatterns = [
     path("offers/<int:offer_id>/select/", views.offer_select, name="offer_select"),
     path("offers/<int:offer_id>/reject/", views.offer_reject, name="offer_reject"),
 
+    path("offers/<int:offer_id>/edit/", views.edit_offer, name="offer_edit"),
+    path("offers/<int:offer_id>/cancel/", views.offer_cancel, name="offer_cancel"),
+    path("offers/<int:offer_id>/extend/", views.offer_extend, name="offer_extend"),
+
     # توافق لمسارات قديمة
     path("o/<int:request_id>/new/", offer_create_legacy_cbv_redirect, name="offer_create_cbv"),
     path("o/<int:offer_id>/select/", offer_select_legacy_cbv_redirect, name="offer_select_cbvstyle"),

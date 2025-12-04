@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>تفاصيل العرض</h2>
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">العرض رقم: {{ off.pk }}</h5>
+            <p><strong>الحالة:</strong> {{ off.status }}</p>
+            <p><strong>السعر المقترح:</strong> {{ off.proposed_price }} ريال</p>
+            <p><strong>المدة المقترحة:</strong> {{ off.proposed_duration_days }} يوم</p>
+            {% if off.modified_price or off.modified_duration_days or off.modification_reason %}
+                <hr>
+                <h6>تعديلات العرض</h6>
+                {% if off.modified_price %}
+                    <p><strong>السعر بعد التعديل:</strong> {{ off.modified_price }} ريال</p>
+                {% endif %}
+                {% if off.modified_duration_days %}
+                    <p><strong>المدة بعد التعديل:</strong> {{ off.modified_duration_days }} يوم</p>
+                {% endif %}
+                {% if off.modification_reason %}
+                    <p><strong>سبب التعديل:</strong> {{ off.modification_reason }}</p>
+                {% endif %}
+            {% endif %}
+            {% if off.status == 'waiting_client_approval' or off.status == 'MODIFIED' %}
+                <form method="post" action="{% url 'marketplace:offer_accept' off.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">قبول العرض المعدل</button>
+                </form>
+                <form method="post" action="{% url 'marketplace:offer_reject' off.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">رفض العرض المعدل</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    <a href="{{ req.get_absolute_url }}" class="btn btn-secondary">العودة إلى تفاصيل الطلب</a>
+</div>
+{% endblock %}
